@@ -34,11 +34,38 @@ jobs:
           key: ci-passed-${{ github.sha }}
           lookup-only: true
 
+  # ─── Clear previous error logs ──────────────────────────────
+  clear-logs:
+    name: Clear Error Logs
+    runs-on: ubuntu-latest
+    needs: sha-check
+    if: needs.sha-check.outputs.already-built != 'true'
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.head_ref || github.ref_name }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Delete previous error logs
+        run: |
+          if [ -d ".github/logs/errors" ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            rm -rf .github/logs/errors
+            git add -A .github/logs/errors
+            git diff --cached --quiet || {
+              git commit -m "ci: clear error logs [skip ci]"
+              git push
+            }
+          else
+            echo "No error logs to clear."
+          fi
+
   # ─── Lint ──────────────────────────────────────────────────
   lint:
     name: Lint
     runs-on: ubuntu-latest
-    needs: sha-check
+    needs: [sha-check, clear-logs]
     steps:
       - name: Already validated
         if: needs.sha-check.outputs.already-built == 'true'
