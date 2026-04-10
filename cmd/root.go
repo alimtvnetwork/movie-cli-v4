@@ -71,6 +71,7 @@ func init() {
 		movieConfigCmd,
 		movieExportCmd,
 		movieDuplicatesCmd,
+		movieCleanupCmd,
 	)
 }
 

@@ -30,6 +30,7 @@
 | S10 | Add file size stats to `movie stats` | 10-Apr-2026 | Already implemented: total, largest, smallest, average in CLI + total in web UI |
 | S18 | Add `movie duplicates` command | 10-Apr-2026 | Detect by TMDb ID, filename, or file size — db/duplicates.go + cmd/movie_duplicates.go |
 | S21 | Apply error log spec v2 to ci.yml | 10-Apr-2026 | clear-logs job, per-stage .github/logs/errors/*.log, summary.log assembly |
+| S19 | Add `movie cleanup` command | 10-Apr-2026 | Find/remove stale DB entries — db/cleanup.go + cmd/movie_cleanup.go |
 
 ---
 
@@ -40,7 +41,6 @@
 | # | Suggestion | Affected | Rationale |
 |---|-----------|----------|-----------|
 | S17 | Implement retry logic in TMDb client | `tmdb/client.go` | Rate-limit handling spec exists but no code |
-| S19 | Add `movie cleanup` command | `cmd/`, `db/` | Find stale DB entries where file no longer exists |
 
 ### P3 — Low Priority
 
