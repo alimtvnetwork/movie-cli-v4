@@ -83,7 +83,7 @@
 ## 🔲 Pending — Prioritized Backlog
 
 ### Phase 1: Safety & Reliability (P0)
-- [ ] `movie undo` confirmation prompt before reverting
+- [x] `movie undo` confirmation prompt before reverting ✅ 10-Apr-2026 (already implemented)
 
 ### Phase 2: Spec Completeness (P1)
 - [x] Clarify `movie ls` filter rule (scan-indexed items only) ✅ 09-Apr-2026
