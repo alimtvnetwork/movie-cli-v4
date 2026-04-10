@@ -21,16 +21,13 @@
 | S13 | Batch move (`--all` flag) | 09-Apr-2026 | Move all video files from source at once |
 | S14 | JSON metadata per movie/TV on scan | 09-Apr-2026 | `cmd/movie_scan_json.go` |
 | S15 | Use `DiscoverByGenre` in suggest | 09-Apr-2026 | Genre-based discovery integrated |
+| S05 | Add confirmation prompt to `movie undo` | 10-Apr-2026 | Already implemented with `[y/N]` prompt |
 
 ---
 
 ## 🔲 Open — Priority Order
 
-### P0 — Must Fix
-
-| # | Suggestion | Affected | Rationale |
-|---|-----------|----------|-----------|
-| S05 | Add confirmation prompt to `movie undo` | `cmd/movie_undo.go` | Destructive operation without safety net |
+### P0 — All Complete ✅
 
 ### P1 — High Priority
 
