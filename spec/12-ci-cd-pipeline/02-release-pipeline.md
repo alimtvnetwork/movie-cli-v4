@@ -4,6 +4,8 @@
 
 The release pipeline automates binary production, packaging, and GitHub Release creation whenever code is pushed to a `release/**` branch or a `v*` tag. It produces cross-compiled binaries for 6 platform/architecture targets, platform-specific install scripts, checksums, and a fully formatted release page.
 
+> **Reference**: Adapted from gitmap-v2 release patterns ([source](https://github.com/alimtvnetwork/gitmap-v2/blob/main/spec/generic-release/02-release-pipeline.md))
+
 ---
 
 ## Trigger and Concurrency
@@ -89,9 +91,9 @@ Build for 6 platform/architecture combinations:
 ```bash
 CGO_ENABLED=0 GOOS="$os" GOARCH="$arch" go build \
   -ldflags "-s -w \
-    -X 'github.com/movie/movie-cli-v2/version.Version=$VERSION' \
-    -X 'github.com/movie/movie-cli-v2/version.Commit=$COMMIT' \
-    -X 'github.com/movie/movie-cli-v2/version.BuildDate=$BUILD_DATE'" \
+    -X 'github.com/mahin/mahin-cli-v2/version.Version=$VERSION' \
+    -X 'github.com/mahin/mahin-cli-v2/version.Commit=$COMMIT' \
+    -X 'github.com/mahin/mahin-cli-v2/version.BuildDate=$BUILD_DATE'" \
   -o "dist/movie-${VERSION}-${os}-${arch}${ext}" .
 ```
 
@@ -100,6 +102,10 @@ CGO_ENABLED=0 GOOS="$os" GOARCH="$arch" go build \
 - Binary: `movie-{version}-{os}-{arch}{ext}`
 - Windows zip: `movie-{version}-windows-{arch}.zip`
 - Unix tarball: `movie-{version}-{os}-{arch}.tar.gz`
+
+### Build Once Rule
+
+Binaries are compiled **exactly once**. All downstream steps (compress, checksum, publish) reuse the same artifacts and must never trigger a rebuild.
 
 ---
 
@@ -118,6 +124,8 @@ After compression, generate SHA256 checksums for all artifacts:
 sha256sum * > checksums.txt
 ```
 
+Output format: `<hash>  <filename>` (two spaces between hash and name).
+
 ---
 
 ## Install Scripts
@@ -131,7 +139,7 @@ One-liner install:
 irm https://github.com/REPO/releases/download/VERSION/install.ps1 | iex
 ```
 
-**Important**: The script must NOT use a top-level `param()` block — `irm | iex` pipes content to `Invoke-Expression`, which cannot bind parameters. All config uses hardcoded defaults (install dir: `$env:LOCALAPPDATA\movie`, arch: auto-detect).
+**Important**: The script must NOT use a top-level `param()` block — `irm | iex` pipes content to `Invoke-Expression`, which cannot bind parameters.
 
 Features:
 - Auto-detect CPU architecture (amd64/arm64)
@@ -194,4 +202,15 @@ Both trigger the same pipeline. The version is resolved from the ref name.
 
 ---
 
-*Release pipeline spec — updated: 2026-04-09*
+## Acceptance Criteria
+
+- GIVEN a `release/v1.3.0` branch push WHEN pipeline runs THEN 6 binaries are built with version `v1.3.0`
+- GIVEN a `v1.3.0` tag push WHEN pipeline runs THEN the same release artifacts are produced
+- GIVEN a Windows binary WHEN packaged THEN it is compressed as `.zip`
+- GIVEN all binaries WHEN checksums are generated THEN `checksums.txt` contains one entry per archive
+- GIVEN install scripts WHEN generated THEN `VERSION_PLACEHOLDER` is replaced with the actual version
+- GIVEN a CHANGELOG.md entry WHEN release page is built THEN the entry appears in the release body
+
+---
+
+*Release pipeline spec — updated: 2026-04-10*
