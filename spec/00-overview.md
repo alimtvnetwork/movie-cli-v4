@@ -1,8 +1,8 @@
 # Specification Root
 
-**Version:** 1.2.0  
+**Version:** 1.3.0  
 **Status:** Active  
-**Updated:** 2026-04-08
+**Updated:** 2026-04-10
 
 ---
 
@@ -25,6 +25,8 @@ Root index for all project specifications. Each subfolder is a self-contained sp
 | 06 | [06-diagrams](./06-diagrams/) | Mermaid flow diagrams for all CLI commands |
 | 08 | [08-app](./08-app/00-overview.md) | Application project spec and documentation |
 | 09 | [09-app-issues](./09-app-issues/) | Application issue tracking and resolution |
+| 12 | [12-ci-cd-pipeline](./12-ci-cd-pipeline/README.md) | CI/CD pipeline: lint, test, vuln scan, build, release |
+| 13 | [13-self-update-app-update](./13-self-update-app-update/README.md) | Self-update architecture, deploy strategy, release distribution |
 
 ---
 
@@ -32,3 +34,6 @@ Root index for all project specifications. Each subfolder is a self-contained sp
 
 - [Spec Authoring Guide](./00-spec-authoring-guide/00-overview.md)
 - [plan.md](../plan.md) — Task tracker
+- [gitmap-v2 pipeline spec](https://github.com/alimtvnetwork/gitmap-v2/tree/main/spec/pipeline) — Reference CI/CD patterns
+- [gitmap-v2 generic-update spec](https://github.com/alimtvnetwork/gitmap-v2/tree/main/spec/generic-update) — Reference self-update patterns
+- [gitmap-v2 generic-release spec](https://github.com/alimtvnetwork/gitmap-v2/tree/main/spec/generic-release) — Reference release patterns
