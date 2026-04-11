@@ -626,16 +626,6 @@ This Code of Conduct is adapted from the [Contributor Covenant v2.1](https://www
 
 <div align="center">
 
-## License
-
-</div>
-
-Private project.
-
----
-
-<div align="center">
-
 ## Author
 
 ### [Md. Alim Ul Karim](https://www.google.com/search?q=alim+ul+karim)
@@ -666,3 +656,13 @@ Recognized as a **top 1% talent at Crossover** and one of the top software archi
 | **Facebook** | [riseupasia.talent](https://www.facebook.com/riseupasia.talent/) |
 | **LinkedIn** | [Riseup Asia](https://www.linkedin.com/company/105304484/) |
 | **YouTube** | [@riseup-asia](https://www.youtube.com/@riseup-asia) |
+
+---
+
+<div align="center">
+
+## License
+
+</div>
+
+Private project.
