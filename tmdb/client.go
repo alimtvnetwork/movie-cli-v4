@@ -55,29 +55,49 @@ type searchResponse struct {
 
 // MovieDetails holds detailed movie info.
 type MovieDetails struct {
-	Title       string  `json:"title"`
-	Overview    string  `json:"overview"`
-	ReleaseDate string  `json:"release_date"`
-	PosterPath  string  `json:"poster_path"`
-	ImdbID      string  `json:"imdb_id"`
-	Genres      []Genre `json:"genres"`
-	VoteAvg     float64 `json:"vote_average"`
-	Popularity  float64 `json:"popularity"`
-	ID          int     `json:"id"`
-	Runtime     int     `json:"runtime"`
+	Title               string  `json:"title"`
+	Overview            string  `json:"overview"`
+	ReleaseDate         string  `json:"release_date"`
+	PosterPath          string  `json:"poster_path"`
+	ImdbID              string  `json:"imdb_id"`
+	OriginalLanguage    string  `json:"original_language"`
+	Tagline             string  `json:"tagline"`
+	Genres              []Genre `json:"genres"`
+	VoteAvg             float64 `json:"vote_average"`
+	Popularity          float64 `json:"popularity"`
+	ID                  int     `json:"id"`
+	Runtime             int     `json:"runtime"`
+	Budget              int64   `json:"budget"`
+	Revenue             int64   `json:"revenue"`
+}
+
+// VideoResult holds a single video from TMDb.
+type VideoResult struct {
+	Key  string `json:"key"`
+	Site string `json:"site"`
+	Type string `json:"type"`
+	Name string `json:"name"`
+}
+
+type videosResponse struct {
+	Results []VideoResult `json:"results"`
 }
 
 // TVDetails holds detailed TV show info.
 type TVDetails struct {
-	Name         string  `json:"name"`
-	Overview     string  `json:"overview"`
-	FirstAirDate string  `json:"first_air_date"`
-	PosterPath   string  `json:"poster_path"`
-	Genres       []Genre `json:"genres"`
-	VoteAvg      float64 `json:"vote_average"`
-	Popularity   float64 `json:"popularity"`
-	ID           int     `json:"id"`
-	Seasons      int     `json:"number_of_seasons"`
+	Name             string   `json:"name"`
+	Overview         string   `json:"overview"`
+	FirstAirDate     string   `json:"first_air_date"`
+	PosterPath       string   `json:"poster_path"`
+	OriginalLanguage string   `json:"original_language"`
+	Tagline          string   `json:"tagline"`
+	Genres           []Genre  `json:"genres"`
+	Languages        []string `json:"languages"`
+	VoteAvg          float64  `json:"vote_average"`
+	Popularity       float64  `json:"popularity"`
+	ID               int      `json:"id"`
+	Seasons          int      `json:"number_of_seasons"`
+	EpisodeRunTime   []int    `json:"episode_run_time"`
 }
 
 // Genre is a TMDb genre.
@@ -163,6 +183,43 @@ func (c *Client) GetTVCredits(tmdbID int) (*Credits, error) {
 		return nil, err
 	}
 	return &cr, nil
+}
+
+// GetMovieVideos returns videos (trailers, teasers) for a movie.
+func (c *Client) GetMovieVideos(tmdbID int) ([]VideoResult, error) {
+	u := fmt.Sprintf("%s/movie/%d/videos?api_key=%s", baseURL, tmdbID, c.APIKey)
+	var resp videosResponse
+	if err := c.get(u, &resp); err != nil {
+		return nil, err
+	}
+	return resp.Results, nil
+}
+
+// GetTVVideos returns videos (trailers, teasers) for a TV show.
+func (c *Client) GetTVVideos(tmdbID int) ([]VideoResult, error) {
+	u := fmt.Sprintf("%s/tv/%d/videos?api_key=%s", baseURL, tmdbID, c.APIKey)
+	var resp videosResponse
+	if err := c.get(u, &resp); err != nil {
+		return nil, err
+	}
+	return resp.Results, nil
+}
+
+// TrailerURL finds the best YouTube trailer URL from a list of videos.
+func TrailerURL(videos []VideoResult) string {
+	// Prefer official trailer on YouTube
+	for _, v := range videos {
+		if v.Site == "YouTube" && v.Type == "Trailer" {
+			return "https://www.youtube.com/watch?v=" + v.Key
+		}
+	}
+	// Fall back to any YouTube video
+	for _, v := range videos {
+		if v.Site == "YouTube" {
+			return "https://www.youtube.com/watch?v=" + v.Key
+		}
+	}
+	return ""
 }
 
 // DownloadPoster downloads a poster image and saves it to dst.

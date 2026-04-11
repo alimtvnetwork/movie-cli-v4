@@ -2,6 +2,13 @@ package db
 
 import "database/sql"
 
+// mediaColumns is the standard SELECT column list for media queries.
+const mediaColumns = `id, title, clean_title, year, type, tmdb_id, imdb_id,
+	description, imdb_rating, tmdb_rating, popularity, genre,
+	director, cast_list, thumbnail_path, original_file_name,
+	original_file_path, current_file_path, file_extension, file_size,
+	runtime, language, budget, revenue, trailer_url, tagline`
+
 // Media represents a row in the media table.
 type Media struct {
 	Title            string
@@ -17,13 +24,19 @@ type Media struct {
 	OriginalFilePath string
 	CurrentFilePath  string
 	FileExtension    string
+	Language         string
+	TrailerURL       string
+	Tagline          string
 	ID               int64
 	FileSize         int64
+	Budget           int64
+	Revenue          int64
 	ImdbRating       float64
 	TmdbRating       float64
 	Popularity       float64
 	Year             int
 	TmdbID           int
+	Runtime          int
 }
 
 // InsertMedia inserts a new media record and returns the ID.
@@ -32,12 +45,14 @@ func (d *DB) InsertMedia(m *Media) (int64, error) {
 		INSERT INTO media (title, clean_title, year, type, tmdb_id, imdb_id,
 			description, imdb_rating, tmdb_rating, popularity, genre, director,
 			cast_list, thumbnail_path, original_file_name, original_file_path,
-			current_file_path, file_extension, file_size)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			current_file_path, file_extension, file_size,
+			runtime, language, budget, revenue, trailer_url, tagline)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		m.Title, m.CleanTitle, m.Year, m.Type, m.TmdbID, m.ImdbID,
 		m.Description, m.ImdbRating, m.TmdbRating, m.Popularity, m.Genre, m.Director,
 		m.CastList, m.ThumbnailPath, m.OriginalFileName, m.OriginalFilePath,
 		m.CurrentFilePath, m.FileExtension, m.FileSize,
+		m.Runtime, m.Language, m.Budget, m.Revenue, m.TrailerURL, m.Tagline,
 	)
 	if err != nil {
 		return 0, err
@@ -51,12 +66,16 @@ func (d *DB) UpdateMediaByTmdbID(m *Media) error {
 		UPDATE media SET title=?, clean_title=?, year=?, type=?, imdb_id=?,
 			description=?, imdb_rating=?, tmdb_rating=?, popularity=?, genre=?,
 			director=?, cast_list=?, thumbnail_path=?, current_file_path=?,
-			file_extension=?, file_size=?, updated_at=CURRENT_TIMESTAMP
+			file_extension=?, file_size=?,
+			runtime=?, language=?, budget=?, revenue=?, trailer_url=?, tagline=?,
+			updated_at=CURRENT_TIMESTAMP
 		WHERE tmdb_id=?`,
 		m.Title, m.CleanTitle, m.Year, m.Type, m.ImdbID,
 		m.Description, m.ImdbRating, m.TmdbRating, m.Popularity, m.Genre,
 		m.Director, m.CastList, m.ThumbnailPath, m.CurrentFilePath,
-		m.FileExtension, m.FileSize, m.TmdbID,
+		m.FileExtension, m.FileSize,
+		m.Runtime, m.Language, m.Budget, m.Revenue, m.TrailerURL, m.Tagline,
+		m.TmdbID,
 	)
 	return err
 }
@@ -69,11 +88,7 @@ func (d *DB) UpdateMediaPath(mediaID int64, newPath string) error {
 
 // ListMedia returns paginated media records (only scan-indexed items with a file path).
 func (d *DB) ListMedia(offset, limit int) ([]Media, error) {
-	rows, err := d.Query(`
-		SELECT id, title, clean_title, year, type, tmdb_id, imdb_id,
-			description, imdb_rating, tmdb_rating, popularity, genre,
-			director, cast_list, thumbnail_path, original_file_name,
-			original_file_path, current_file_path, file_extension, file_size
+	rows, err := d.Query(`SELECT `+mediaColumns+`
 		FROM media WHERE original_file_path != ''
 		ORDER BY clean_title ASC LIMIT ? OFFSET ?`, limit, offset)
 	if err != nil {
@@ -85,11 +100,7 @@ func (d *DB) ListMedia(offset, limit int) ([]Media, error) {
 
 // SearchMedia searches by title (fuzzy via LIKE).
 func (d *DB) SearchMedia(query string) ([]Media, error) {
-	rows, err := d.Query(`
-		SELECT id, title, clean_title, year, type, tmdb_id, imdb_id,
-			description, imdb_rating, tmdb_rating, popularity, genre,
-			director, cast_list, thumbnail_path, original_file_name,
-			original_file_path, current_file_path, file_extension, file_size
+	rows, err := d.Query(`SELECT `+mediaColumns+`
 		FROM media WHERE clean_title LIKE ? OR title LIKE ?
 		ORDER BY popularity DESC LIMIT 20`, "%"+query+"%", "%"+query+"%")
 	if err != nil {
@@ -101,42 +112,14 @@ func (d *DB) SearchMedia(query string) ([]Media, error) {
 
 // GetMediaByID returns a single media record.
 func (d *DB) GetMediaByID(id int64) (*Media, error) {
-	row := d.QueryRow(`
-		SELECT id, title, clean_title, year, type, tmdb_id, imdb_id,
-			description, imdb_rating, tmdb_rating, popularity, genre,
-			director, cast_list, thumbnail_path, original_file_name,
-			original_file_path, current_file_path, file_extension, file_size
-		FROM media WHERE id = ?`, id)
-	m := &Media{}
-	err := row.Scan(&m.ID, &m.Title, &m.CleanTitle, &m.Year, &m.Type,
-		&m.TmdbID, &m.ImdbID, &m.Description, &m.ImdbRating, &m.TmdbRating,
-		&m.Popularity, &m.Genre, &m.Director, &m.CastList, &m.ThumbnailPath,
-		&m.OriginalFileName, &m.OriginalFilePath, &m.CurrentFilePath,
-		&m.FileExtension, &m.FileSize)
-	if err != nil {
-		return nil, err
-	}
-	return m, nil
+	row := d.QueryRow(`SELECT `+mediaColumns+` FROM media WHERE id = ?`, id)
+	return scanMediaRow(row)
 }
 
 // GetMediaByTmdbID returns a media record by its TMDb ID.
 func (d *DB) GetMediaByTmdbID(tmdbID int) (*Media, error) {
-	row := d.QueryRow(`
-		SELECT id, title, clean_title, year, type, tmdb_id, imdb_id,
-			description, imdb_rating, tmdb_rating, popularity, genre,
-			director, cast_list, thumbnail_path, original_file_name,
-			original_file_path, current_file_path, file_extension, file_size
-		FROM media WHERE tmdb_id = ?`, tmdbID)
-	m := &Media{}
-	err := row.Scan(&m.ID, &m.Title, &m.CleanTitle, &m.Year, &m.Type,
-		&m.TmdbID, &m.ImdbID, &m.Description, &m.ImdbRating, &m.TmdbRating,
-		&m.Popularity, &m.Genre, &m.Director, &m.CastList, &m.ThumbnailPath,
-		&m.OriginalFileName, &m.OriginalFilePath, &m.CurrentFilePath,
-		&m.FileExtension, &m.FileSize)
-	if err != nil {
-		return nil, err
-	}
-	return m, nil
+	row := d.QueryRow(`SELECT `+mediaColumns+` FROM media WHERE tmdb_id = ?`, tmdbID)
+	return scanMediaRow(row)
 }
 
 // CountMedia returns total count of scan-indexed items, optionally filtered by type.
@@ -163,11 +146,7 @@ func (d *DB) FileSizeStats() (total int64, largest int64, smallest int64, err er
 
 // MediaByType returns media filtered by type.
 func (d *DB) MediaByType(mediaType string, limit int) ([]Media, error) {
-	rows, err := d.Query(`
-		SELECT id, title, clean_title, year, type, tmdb_id, imdb_id,
-			description, imdb_rating, tmdb_rating, popularity, genre,
-			director, cast_list, thumbnail_path, original_file_name,
-			original_file_path, current_file_path, file_extension, file_size
+	rows, err := d.Query(`SELECT `+mediaColumns+`
 		FROM media WHERE type = ? ORDER BY popularity DESC LIMIT ?`, mediaType, limit)
 	if err != nil {
 		return nil, err
@@ -197,6 +176,21 @@ func (d *DB) TopGenres(limit int) (map[string]int, error) {
 	return counts, nil
 }
 
+// scanMediaRow scans a single media row.
+func scanMediaRow(row *sql.Row) (*Media, error) {
+	m := &Media{}
+	err := row.Scan(&m.ID, &m.Title, &m.CleanTitle, &m.Year, &m.Type,
+		&m.TmdbID, &m.ImdbID, &m.Description, &m.ImdbRating, &m.TmdbRating,
+		&m.Popularity, &m.Genre, &m.Director, &m.CastList, &m.ThumbnailPath,
+		&m.OriginalFileName, &m.OriginalFilePath, &m.CurrentFilePath,
+		&m.FileExtension, &m.FileSize,
+		&m.Runtime, &m.Language, &m.Budget, &m.Revenue, &m.TrailerURL, &m.Tagline)
+	if err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 // scanMediaRows scans multiple media rows from a query result.
 func scanMediaRows(rows *sql.Rows) ([]Media, error) {
 	var list []Media
@@ -206,7 +200,8 @@ func scanMediaRows(rows *sql.Rows) ([]Media, error) {
 			&m.TmdbID, &m.ImdbID, &m.Description, &m.ImdbRating, &m.TmdbRating,
 			&m.Popularity, &m.Genre, &m.Director, &m.CastList, &m.ThumbnailPath,
 			&m.OriginalFileName, &m.OriginalFilePath, &m.CurrentFilePath,
-			&m.FileExtension, &m.FileSize); err != nil {
+			&m.FileExtension, &m.FileSize,
+			&m.Runtime, &m.Language, &m.Budget, &m.Revenue, &m.TrailerURL, &m.Tagline); err != nil {
 			return nil, err
 		}
 		list = append(list, m)

@@ -132,11 +132,7 @@ func (d *DB) FindDuplicatesByFileSize() ([]DuplicateGroup, error) {
 // --- internal helpers ---
 
 func (d *DB) mediaByTmdbIDAll(tmdbID int) ([]Media, error) {
-	rows, err := d.Query(`
-		SELECT id, title, clean_title, year, type, tmdb_id, imdb_id,
-			description, imdb_rating, tmdb_rating, popularity, genre,
-			director, cast_list, thumbnail_path, original_file_name,
-			original_file_path, current_file_path, file_extension, file_size
+	rows, err := d.Query(`SELECT `+mediaColumns+`
 		FROM media WHERE tmdb_id = ? ORDER BY id`, tmdbID)
 	if err != nil {
 		return nil, err
@@ -146,11 +142,7 @@ func (d *DB) mediaByTmdbIDAll(tmdbID int) ([]Media, error) {
 }
 
 func (d *DB) mediaByFileName(name string) ([]Media, error) {
-	rows, err := d.Query(`
-		SELECT id, title, clean_title, year, type, tmdb_id, imdb_id,
-			description, imdb_rating, tmdb_rating, popularity, genre,
-			director, cast_list, thumbnail_path, original_file_name,
-			original_file_path, current_file_path, file_extension, file_size
+	rows, err := d.Query(`SELECT `+mediaColumns+`
 		FROM media WHERE original_file_name = ? ORDER BY id`, name)
 	if err != nil {
 		return nil, err
@@ -160,11 +152,7 @@ func (d *DB) mediaByFileName(name string) ([]Media, error) {
 }
 
 func (d *DB) mediaByFileSize(size int64) ([]Media, error) {
-	rows, err := d.Query(`
-		SELECT id, title, clean_title, year, type, tmdb_id, imdb_id,
-			description, imdb_rating, tmdb_rating, popularity, genre,
-			director, cast_list, thumbnail_path, original_file_name,
-			original_file_path, current_file_path, file_extension, file_size
+	rows, err := d.Query(`SELECT `+mediaColumns+`
 		FROM media WHERE file_size = ? ORDER BY id`, size)
 	if err != nil {
 		return nil, err
