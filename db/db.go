@@ -180,6 +180,6 @@ func (d *DB) migrate() error {
 	INSERT OR IGNORE INTO config (key, value) VALUES ('scan_dir',    '~/Downloads');
 	INSERT OR IGNORE INTO config (key, value) VALUES ('page_size',   '20');
 	`
-	_, err := d.Exec(schema)
+	_, err = d.Exec(rest)
 	return err
 }

@@ -38,12 +38,14 @@ func (d *DB) InsertMedia(m *Media) (int64, error) {
 		INSERT INTO media (title, clean_title, year, type, tmdb_id, imdb_id,
 			description, imdb_rating, tmdb_rating, popularity, genre, director,
 			cast_list, thumbnail_path, original_file_name, original_file_path,
-			current_file_path, file_extension, file_size)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			current_file_path, file_extension, file_size,
+			runtime, language, budget, revenue, trailer_url, tagline)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		m.Title, m.CleanTitle, m.Year, m.Type, m.TmdbID, m.ImdbID,
 		m.Description, m.ImdbRating, m.TmdbRating, m.Popularity, m.Genre, m.Director,
 		m.CastList, m.ThumbnailPath, m.OriginalFileName, m.OriginalFilePath,
 		m.CurrentFilePath, m.FileExtension, m.FileSize,
+		m.Runtime, m.Language, m.Budget, m.Revenue, m.TrailerURL, m.Tagline,
 	)
 	if err != nil {
 		return 0, err
@@ -57,12 +59,16 @@ func (d *DB) UpdateMediaByTmdbID(m *Media) error {
 		UPDATE media SET title=?, clean_title=?, year=?, type=?, imdb_id=?,
 			description=?, imdb_rating=?, tmdb_rating=?, popularity=?, genre=?,
 			director=?, cast_list=?, thumbnail_path=?, current_file_path=?,
-			file_extension=?, file_size=?, updated_at=CURRENT_TIMESTAMP
+			file_extension=?, file_size=?,
+			runtime=?, language=?, budget=?, revenue=?, trailer_url=?, tagline=?,
+			updated_at=CURRENT_TIMESTAMP
 		WHERE tmdb_id=?`,
 		m.Title, m.CleanTitle, m.Year, m.Type, m.ImdbID,
 		m.Description, m.ImdbRating, m.TmdbRating, m.Popularity, m.Genre,
 		m.Director, m.CastList, m.ThumbnailPath, m.CurrentFilePath,
-		m.FileExtension, m.FileSize, m.TmdbID,
+		m.FileExtension, m.FileSize,
+		m.Runtime, m.Language, m.Budget, m.Revenue, m.TrailerURL, m.Tagline,
+		m.TmdbID,
 	)
 	return err
 }
