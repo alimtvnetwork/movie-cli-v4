@@ -88,11 +88,7 @@ func (d *DB) UpdateMediaPath(mediaID int64, newPath string) error {
 
 // ListMedia returns paginated media records (only scan-indexed items with a file path).
 func (d *DB) ListMedia(offset, limit int) ([]Media, error) {
-	rows, err := d.Query(`
-		SELECT id, title, clean_title, year, type, tmdb_id, imdb_id,
-			description, imdb_rating, tmdb_rating, popularity, genre,
-			director, cast_list, thumbnail_path, original_file_name,
-			original_file_path, current_file_path, file_extension, file_size
+	rows, err := d.Query(`SELECT `+mediaColumns+`
 		FROM media WHERE original_file_path != ''
 		ORDER BY clean_title ASC LIMIT ? OFFSET ?`, limit, offset)
 	if err != nil {
@@ -104,11 +100,7 @@ func (d *DB) ListMedia(offset, limit int) ([]Media, error) {
 
 // SearchMedia searches by title (fuzzy via LIKE).
 func (d *DB) SearchMedia(query string) ([]Media, error) {
-	rows, err := d.Query(`
-		SELECT id, title, clean_title, year, type, tmdb_id, imdb_id,
-			description, imdb_rating, tmdb_rating, popularity, genre,
-			director, cast_list, thumbnail_path, original_file_name,
-			original_file_path, current_file_path, file_extension, file_size
+	rows, err := d.Query(`SELECT `+mediaColumns+`
 		FROM media WHERE clean_title LIKE ? OR title LIKE ?
 		ORDER BY popularity DESC LIMIT 20`, "%"+query+"%", "%"+query+"%")
 	if err != nil {
@@ -120,42 +112,14 @@ func (d *DB) SearchMedia(query string) ([]Media, error) {
 
 // GetMediaByID returns a single media record.
 func (d *DB) GetMediaByID(id int64) (*Media, error) {
-	row := d.QueryRow(`
-		SELECT id, title, clean_title, year, type, tmdb_id, imdb_id,
-			description, imdb_rating, tmdb_rating, popularity, genre,
-			director, cast_list, thumbnail_path, original_file_name,
-			original_file_path, current_file_path, file_extension, file_size
-		FROM media WHERE id = ?`, id)
-	m := &Media{}
-	err := row.Scan(&m.ID, &m.Title, &m.CleanTitle, &m.Year, &m.Type,
-		&m.TmdbID, &m.ImdbID, &m.Description, &m.ImdbRating, &m.TmdbRating,
-		&m.Popularity, &m.Genre, &m.Director, &m.CastList, &m.ThumbnailPath,
-		&m.OriginalFileName, &m.OriginalFilePath, &m.CurrentFilePath,
-		&m.FileExtension, &m.FileSize)
-	if err != nil {
-		return nil, err
-	}
-	return m, nil
+	row := d.QueryRow(`SELECT `+mediaColumns+` FROM media WHERE id = ?`, id)
+	return scanMediaRow(row)
 }
 
 // GetMediaByTmdbID returns a media record by its TMDb ID.
 func (d *DB) GetMediaByTmdbID(tmdbID int) (*Media, error) {
-	row := d.QueryRow(`
-		SELECT id, title, clean_title, year, type, tmdb_id, imdb_id,
-			description, imdb_rating, tmdb_rating, popularity, genre,
-			director, cast_list, thumbnail_path, original_file_name,
-			original_file_path, current_file_path, file_extension, file_size
-		FROM media WHERE tmdb_id = ?`, tmdbID)
-	m := &Media{}
-	err := row.Scan(&m.ID, &m.Title, &m.CleanTitle, &m.Year, &m.Type,
-		&m.TmdbID, &m.ImdbID, &m.Description, &m.ImdbRating, &m.TmdbRating,
-		&m.Popularity, &m.Genre, &m.Director, &m.CastList, &m.ThumbnailPath,
-		&m.OriginalFileName, &m.OriginalFilePath, &m.CurrentFilePath,
-		&m.FileExtension, &m.FileSize)
-	if err != nil {
-		return nil, err
-	}
-	return m, nil
+	row := d.QueryRow(`SELECT `+mediaColumns+` FROM media WHERE tmdb_id = ?`, tmdbID)
+	return scanMediaRow(row)
 }
 
 // CountMedia returns total count of scan-indexed items, optionally filtered by type.
@@ -182,11 +146,7 @@ func (d *DB) FileSizeStats() (total int64, largest int64, smallest int64, err er
 
 // MediaByType returns media filtered by type.
 func (d *DB) MediaByType(mediaType string, limit int) ([]Media, error) {
-	rows, err := d.Query(`
-		SELECT id, title, clean_title, year, type, tmdb_id, imdb_id,
-			description, imdb_rating, tmdb_rating, popularity, genre,
-			director, cast_list, thumbnail_path, original_file_name,
-			original_file_path, current_file_path, file_extension, file_size
+	rows, err := d.Query(`SELECT `+mediaColumns+`
 		FROM media WHERE type = ? ORDER BY popularity DESC LIMIT ?`, mediaType, limit)
 	if err != nil {
 		return nil, err
@@ -216,6 +176,21 @@ func (d *DB) TopGenres(limit int) (map[string]int, error) {
 	return counts, nil
 }
 
+// scanMediaRow scans a single media row.
+func scanMediaRow(row *sql.Row) (*Media, error) {
+	m := &Media{}
+	err := row.Scan(&m.ID, &m.Title, &m.CleanTitle, &m.Year, &m.Type,
+		&m.TmdbID, &m.ImdbID, &m.Description, &m.ImdbRating, &m.TmdbRating,
+		&m.Popularity, &m.Genre, &m.Director, &m.CastList, &m.ThumbnailPath,
+		&m.OriginalFileName, &m.OriginalFilePath, &m.CurrentFilePath,
+		&m.FileExtension, &m.FileSize,
+		&m.Runtime, &m.Language, &m.Budget, &m.Revenue, &m.TrailerURL, &m.Tagline)
+	if err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 // scanMediaRows scans multiple media rows from a query result.
 func scanMediaRows(rows *sql.Rows) ([]Media, error) {
 	var list []Media
@@ -225,7 +200,8 @@ func scanMediaRows(rows *sql.Rows) ([]Media, error) {
 			&m.TmdbID, &m.ImdbID, &m.Description, &m.ImdbRating, &m.TmdbRating,
 			&m.Popularity, &m.Genre, &m.Director, &m.CastList, &m.ThumbnailPath,
 			&m.OriginalFileName, &m.OriginalFilePath, &m.CurrentFilePath,
-			&m.FileExtension, &m.FileSize); err != nil {
+			&m.FileExtension, &m.FileSize,
+			&m.Runtime, &m.Language, &m.Budget, &m.Revenue, &m.TrailerURL, &m.Tagline); err != nil {
 			return nil, err
 		}
 		list = append(list, m)
