@@ -126,6 +126,23 @@ func (d *DB) migrate() error {
 	CREATE INDEX IF NOT EXISTS idx_move_history_undone ON move_history(undone);
 	CREATE INDEX IF NOT EXISTS idx_tags_media       ON tags(media_id);
 
+	CREATE TABLE IF NOT EXISTS watchlist (
+		id         INTEGER PRIMARY KEY AUTOINCREMENT,
+		media_id   INTEGER,
+		tmdb_id    INTEGER NOT NULL,
+		title      TEXT NOT NULL,
+		year       INTEGER,
+		type       TEXT CHECK(type IN ('movie', 'tv')) NOT NULL,
+		status     TEXT CHECK(status IN ('to-watch', 'watched')) NOT NULL DEFAULT 'to-watch',
+		added_at   DATETIME DEFAULT CURRENT_TIMESTAMP,
+		watched_at DATETIME,
+		FOREIGN KEY (media_id) REFERENCES media(id) ON DELETE SET NULL,
+		UNIQUE(tmdb_id)
+	);
+
+	CREATE INDEX IF NOT EXISTS idx_watchlist_status ON watchlist(status);
+	CREATE INDEX IF NOT EXISTS idx_watchlist_tmdb   ON watchlist(tmdb_id);
+
 	INSERT OR IGNORE INTO config (key, value) VALUES ('movies_dir',  '~/Movies');
 	INSERT OR IGNORE INTO config (key, value) VALUES ('tv_dir',      '~/TVShows');
 	INSERT OR IGNORE INTO config (key, value) VALUES ('archive_dir', '~/Archive');
