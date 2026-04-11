@@ -39,11 +39,7 @@
 
 ## 🔲 Open — Priority Order
 
-### P3 — Low Priority
-
-| # | Suggestion | Affected | Rationale |
-|---|-----------|----------|-----------|
-| S20 | Integration tests for CI | `tests/`, `ci.yml` | No test job with SQLite fixtures |
+_(No open suggestions — all S01–S22 complete!)_
 
 ---
 
