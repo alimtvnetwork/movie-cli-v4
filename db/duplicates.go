@@ -2,6 +2,8 @@
 // SHARED: used by cmd/movie_duplicates.go
 package db
 
+import "fmt"
+
 // DuplicateGroup represents a set of media records that share a duplicate key.
 type DuplicateGroup struct {
 	Key   string  // the shared value (e.g. TMDb ID, filename, size)
