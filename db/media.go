@@ -2,6 +2,13 @@ package db
 
 import "database/sql"
 
+// mediaColumns is the standard SELECT column list for media queries.
+const mediaColumns = `id, title, clean_title, year, type, tmdb_id, imdb_id,
+	description, imdb_rating, tmdb_rating, popularity, genre,
+	director, cast_list, thumbnail_path, original_file_name,
+	original_file_path, current_file_path, file_extension, file_size,
+	runtime, language, budget, revenue, trailer_url, tagline`
+
 // Media represents a row in the media table.
 type Media struct {
 	Title            string
