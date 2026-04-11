@@ -79,9 +79,40 @@ func (d *DB) migrate() error {
 		current_file_path  TEXT,
 		file_extension   TEXT,
 		file_size        INTEGER,
+		runtime          INTEGER DEFAULT 0,
+		language         TEXT DEFAULT '',
+		budget           INTEGER DEFAULT 0,
+		revenue          INTEGER DEFAULT 0,
+		trailer_url      TEXT DEFAULT '',
+		tagline          TEXT DEFAULT '',
 		scanned_at       DATETIME DEFAULT CURRENT_TIMESTAMP,
 		updated_at       DATETIME DEFAULT CURRENT_TIMESTAMP
 	);
+
+	-- Migration: add new columns if upgrading from older schema
+	-- SQLite ignores ALTER TABLE ADD COLUMN if column already exists via IF NOT EXISTS workaround
+	`
+
+	// Run the main schema
+	if _, err := d.Exec(schema); err != nil {
+		return err
+	}
+
+	// Add columns if they don't exist (for existing databases)
+	newCols := []struct{ name, def string }{
+		{"runtime", "INTEGER DEFAULT 0"},
+		{"language", "TEXT DEFAULT ''"},
+		{"budget", "INTEGER DEFAULT 0"},
+		{"revenue", "INTEGER DEFAULT 0"},
+		{"trailer_url", "TEXT DEFAULT ''"},
+		{"tagline", "TEXT DEFAULT ''"},
+	}
+	for _, col := range newCols {
+		q := fmt.Sprintf("ALTER TABLE media ADD COLUMN %s %s", col.name, col.def)
+		d.Exec(q) // ignore error = column already exists
+	}
+
+	rest := `
 
 	CREATE TABLE IF NOT EXISTS move_history (
 		id               INTEGER PRIMARY KEY AUTOINCREMENT,

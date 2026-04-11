@@ -17,13 +17,19 @@ type Media struct {
 	OriginalFilePath string
 	CurrentFilePath  string
 	FileExtension    string
+	Language         string
+	TrailerURL       string
+	Tagline          string
 	ID               int64
 	FileSize         int64
+	Budget           int64
+	Revenue          int64
 	ImdbRating       float64
 	TmdbRating       float64
 	Popularity       float64
 	Year             int
 	TmdbID           int
+	Runtime          int
 }
 
 // InsertMedia inserts a new media record and returns the ID.

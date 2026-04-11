@@ -55,29 +55,49 @@ type searchResponse struct {
 
 // MovieDetails holds detailed movie info.
 type MovieDetails struct {
-	Title       string  `json:"title"`
-	Overview    string  `json:"overview"`
-	ReleaseDate string  `json:"release_date"`
-	PosterPath  string  `json:"poster_path"`
-	ImdbID      string  `json:"imdb_id"`
-	Genres      []Genre `json:"genres"`
-	VoteAvg     float64 `json:"vote_average"`
-	Popularity  float64 `json:"popularity"`
-	ID          int     `json:"id"`
-	Runtime     int     `json:"runtime"`
+	Title               string  `json:"title"`
+	Overview            string  `json:"overview"`
+	ReleaseDate         string  `json:"release_date"`
+	PosterPath          string  `json:"poster_path"`
+	ImdbID              string  `json:"imdb_id"`
+	OriginalLanguage    string  `json:"original_language"`
+	Tagline             string  `json:"tagline"`
+	Genres              []Genre `json:"genres"`
+	VoteAvg             float64 `json:"vote_average"`
+	Popularity          float64 `json:"popularity"`
+	ID                  int     `json:"id"`
+	Runtime             int     `json:"runtime"`
+	Budget              int64   `json:"budget"`
+	Revenue             int64   `json:"revenue"`
+}
+
+// VideoResult holds a single video from TMDb.
+type VideoResult struct {
+	Key  string `json:"key"`
+	Site string `json:"site"`
+	Type string `json:"type"`
+	Name string `json:"name"`
+}
+
+type videosResponse struct {
+	Results []VideoResult `json:"results"`
 }
 
 // TVDetails holds detailed TV show info.
 type TVDetails struct {
-	Name         string  `json:"name"`
-	Overview     string  `json:"overview"`
-	FirstAirDate string  `json:"first_air_date"`
-	PosterPath   string  `json:"poster_path"`
-	Genres       []Genre `json:"genres"`
-	VoteAvg      float64 `json:"vote_average"`
-	Popularity   float64 `json:"popularity"`
-	ID           int     `json:"id"`
-	Seasons      int     `json:"number_of_seasons"`
+	Name             string   `json:"name"`
+	Overview         string   `json:"overview"`
+	FirstAirDate     string   `json:"first_air_date"`
+	PosterPath       string   `json:"poster_path"`
+	OriginalLanguage string   `json:"original_language"`
+	Tagline          string   `json:"tagline"`
+	Genres           []Genre  `json:"genres"`
+	Languages        []string `json:"languages"`
+	VoteAvg          float64  `json:"vote_average"`
+	Popularity       float64  `json:"popularity"`
+	ID               int      `json:"id"`
+	Seasons          int      `json:"number_of_seasons"`
+	EpisodeRunTime   []int    `json:"episode_run_time"`
 }
 
 // Genre is a TMDb genre.
