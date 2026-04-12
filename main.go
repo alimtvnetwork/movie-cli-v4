@@ -2,7 +2,7 @@
 package main
 
 import (
-	"github.com/mahin/mahin-cli-v2/cmd"
+	"github.com/alimtvnetwork/movie-cli-v3/cmd"
 )
 
 func main() {

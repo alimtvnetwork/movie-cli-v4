@@ -1,4 +1,4 @@
-module github.com/mahin/mahin-cli-v2
+module github.com/alimtvnetwork/movie-cli-v3
 
 go 1.22
 

@@ -7,7 +7,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/mahin/mahin-cli-v2/updater"
+	"github.com/alimtvnetwork/movie-cli-v3/updater"
 )
 
 var selfUpdateCmd = &cobra.Command{

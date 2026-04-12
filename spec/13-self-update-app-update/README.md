@@ -48,7 +48,7 @@ The mahin CLI uses **Strategy 1 (Source-Based Update)** via `git pull --ff-only`
 | `<binary>` | CLI binary name | `movie` (or `movie.exe`) |
 | `<deploy-dir>` | Install directory | `$env:LOCALAPPDATA\movie` (Win) / `~/.local/bin` (Unix) |
 | `<repo-root>` | Source repository root | Repository root containing `go.mod` |
-| `<module>` | Go module path | `github.com/mahin/mahin-cli-v2` |
+| `<module>` | Go module path | `github.com/alimtvnetwork/movie-cli-v3` |
 
 ---
 
