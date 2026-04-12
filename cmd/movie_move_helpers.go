@@ -28,7 +28,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/mahin/mahin-cli-v2/db"
+	"github.com/alimtvnetwork/movie-cli-v3/db"
 )
 
 // expandHome replaces ~ with actual home directory.

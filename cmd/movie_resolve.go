@@ -18,7 +18,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/mahin/mahin-cli-v2/db"
+	"github.com/alimtvnetwork/movie-cli-v3/db"
 )
 
 // resolveMediaByQuery resolves a media item by numeric ID or fuzzy title query.

@@ -17,8 +17,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/mahin/mahin-cli-v2/cleaner"
-	"github.com/mahin/mahin-cli-v2/db"
+	"github.com/alimtvnetwork/movie-cli-v3/cleaner"
+	"github.com/alimtvnetwork/movie-cli-v3/db"
 )
 
 // scanMediaJSON is the JSON representation written to disk.

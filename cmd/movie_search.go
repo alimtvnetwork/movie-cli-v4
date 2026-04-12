@@ -11,9 +11,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/mahin/mahin-cli-v2/cleaner"
-	"github.com/mahin/mahin-cli-v2/db"
-	"github.com/mahin/mahin-cli-v2/tmdb"
+	"github.com/alimtvnetwork/movie-cli-v3/cleaner"
+	"github.com/alimtvnetwork/movie-cli-v3/db"
+	"github.com/alimtvnetwork/movie-cli-v3/tmdb"
 )
 
 var movieSearchCmd = &cobra.Command{

@@ -8,7 +8,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/mahin/mahin-cli-v2/version"
+	"github.com/alimtvnetwork/movie-cli-v3/version"
 )
 
 var rootCmd = &cobra.Command{
@@ -42,7 +42,7 @@ System:
   movie version                             Show version info
   movie self-update                         Update via git pull
 
-Documentation: https://github.com/mahin/mahin-cli-v2`, version.Short()),
+Documentation: https://github.com/alimtvnetwork/movie-cli-v3`, version.Short()),
 	Version: version.Short(),
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Printf("movie-cli %s\n\n", version.Short())

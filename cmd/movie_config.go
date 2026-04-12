@@ -7,7 +7,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/mahin/mahin-cli-v2/db"
+	"github.com/alimtvnetwork/movie-cli-v3/db"
 )
 
 var movieConfigCmd = &cobra.Command{
