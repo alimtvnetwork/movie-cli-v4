@@ -9,6 +9,48 @@ All notable changes to this project will be documented in this file.
 - **`run.ps1` version summary** — now reports the binary that was just built/deployed instead of accidentally showing an older `movie` found earlier in `PATH`
 - **Deployed changelog visibility** — `run.ps1` now copies `CHANGELOG.md` beside the deployed binary and verifies `movie changelog --latest`
 
+## v0.2.4
+
+### Fixed
+- **`GetConfig` false warnings** — `movie_info.go` and `movie_scan.go` now explicitly ignore `sql: no rows in result set` from `GetConfig`, preventing false-positive error messages when config keys are unset
+- **Indentation fix** — corrected misleading indentation in `movie_scan.go` error block
+
+### Changed
+- **JSON export completeness** — `movie_export.go` now includes all 6 previously missing metadata fields: `Runtime`, `Language`, `Budget`, `Revenue`, `TrailerURL`, `Tagline`
+
+## v0.2.3
+
+### Fixed
+- **`db/media.go` silent scan error** — `TopGenres` now returns a wrapped error on `rows.Scan` failure instead of silently using `continue`
+- **`movie_info.go` poster error swallowed** — `DownloadPoster` failures now logged to stderr
+- **`movie_scan.go` poster error swallowed** — `DownloadPoster` failures now logged to stderr
+- **`movie_scan.go` subdirectory read error** — `os.ReadDir` failures in subdirectory scanning now logged instead of silently skipped
+- **`movie_undo.go` permission error masked** — `os.Stat` now distinguishes permission errors from file-not-found and logs them separately
+
+## v0.2.2
+
+### Fixed
+- **`movie_search.go` unchecked `GetConfig`** — API key lookup now checks for errors before proceeding
+- **`movie_suggest.go` unchecked `GetConfig`** — API key lookup now checks for errors and handles `sql: no rows` correctly
+- **`movie_resolve.go` unbounded query** — `resolveByTitle` now uses `LIMIT 1` to prevent scanning full table
+- **`db/media.go` missing `rows.Err()` check** — `TopGenres` now checks `rows.Err()` after iteration loop
+
+### Changed
+- **`movie_search.go` duplicate detail fetch removed** — eliminated redundant `GetMovieDetails`/`GetTVDetails` calls that were already handled by shared `fetchMovieDetails`/`fetchTVDetails` helpers
+
+## v0.2.1
+
+### Fixed
+- **`movie_move.go` unchecked error** — `database.GetConfig("movies_dir")` error now handled instead of silently ignored
+- **`movie_move.go` unchecked error** — `database.GetConfig("tv_dir")` error now handled instead of silently ignored
+- **`movie_move_helpers.go` cross-drive cleanup** — copy+delete fallback now removes the source file after successful copy
+- **`movie_rename.go` unchecked `InsertMoveHistory`** — rename history logging error now reported to stderr
+- **`movie_play.go` unchecked `exec.Command` error** — player launch error now reported to stderr
+- **`movie_stats.go` unchecked `CountMedia`** — movie/TV count errors now handled instead of silently returning zero
+- **`movie_watch.go` unchecked `GetConfig`** — API key lookup now checks for errors before proceeding
+- **`tmdb/client.go` unchecked `json.NewDecoder` error** — HTTP response body decoding errors now properly returned
+- **`updater/updater.go` unchecked exec errors** — `git pull` and `go build` errors now returned instead of silently ignored
+
 ## v1.0.0
 
 ### Added
