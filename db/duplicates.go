@@ -122,7 +122,7 @@ func (d *DB) FindDuplicatesByFileSize() ([]DuplicateGroup, error) {
 			continue
 		}
 		groups = append(groups, DuplicateGroup{
-			Key:   humanSize(size),
+			Key:   HumanSize(size),
 			Items: items,
 		})
 	}
@@ -165,7 +165,8 @@ func formatInt(n int) string {
 	return fmt.Sprintf("%d", n)
 }
 
-func humanSize(b int64) string {
+// humanSize formats bytes into human-readable form (shared with cmd package).
+func HumanSize(b int64) string {
 	const (
 		gb = 1024 * 1024 * 1024
 		mb = 1024 * 1024

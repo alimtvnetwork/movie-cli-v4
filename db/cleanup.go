@@ -2,7 +2,10 @@
 // SHARED: used by cmd/movie_cleanup.go
 package db
 
-import "os"
+import (
+	"fmt"
+	"os"
+)
 
 // StaleEntry represents a media record whose file is missing from disk.
 type StaleEntry struct {
@@ -41,8 +44,12 @@ func (d *DB) FindStaleEntries(limit int) ([]StaleEntry, error) {
 		if path == "" {
 			continue
 		}
-		if _, err := os.Stat(path); os.IsNotExist(err) {
-			stale = append(stale, StaleEntry{Media: m, FilePath: path})
+		if _, statErr := os.Stat(path); statErr != nil {
+			if os.IsNotExist(statErr) {
+				stale = append(stale, StaleEntry{Media: m, FilePath: path})
+			} else {
+				fmt.Fprintf(os.Stderr, "⚠️  Cannot stat %s: %v\n", path, statErr)
+			}
 		}
 	}
 	return stale, nil

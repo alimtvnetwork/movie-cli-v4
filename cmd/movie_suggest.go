@@ -41,7 +41,7 @@ func runMovieSuggest(cmd *cobra.Command, args []string) {
 	defer database.Close()
 
 	apiKey, err := database.GetConfig("tmdb_api_key")
-	if err != nil {
+	if err != nil && err.Error() != "sql: no rows in result set" {
 		fmt.Fprintf(os.Stderr, "⚠️  Config read error: %v\n", err)
 	}
 	if apiKey == "" {
@@ -171,6 +171,7 @@ func suggestByType(database *db.DB, client *tmdb.Client, mediaType string, count
 			}
 			recs, recErr := client.GetRecommendations(existing[idx].TmdbID, mediaType, 1)
 			if recErr != nil {
+				fmt.Fprintf(os.Stderr, "⚠️  Recommendations error for TMDb ID %d: %v\n", existing[idx].TmdbID, recErr)
 				continue
 			}
 			for i := range recs {

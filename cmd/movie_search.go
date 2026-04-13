@@ -35,9 +35,9 @@ func runMovieSearch(cmd *cobra.Command, args []string) {
 	}
 	defer database.Close()
 
-	// Get TMDb API key
+	// Get TMDb API key (GetConfig returns "" with nil error when key is absent)
 	apiKey, cfgErr := database.GetConfig("tmdb_api_key")
-	if cfgErr != nil {
+	if cfgErr != nil && cfgErr.Error() != "sql: no rows in result set" {
 		fmt.Fprintf(os.Stderr, "⚠️  Config read error: %v\n", cfgErr)
 	}
 	if apiKey == "" {
@@ -145,7 +145,9 @@ func runMovieSearch(cmd *cobra.Command, args []string) {
 			fmt.Fprintf(os.Stderr, "⚠️  Cannot create thumbnail dir: %v\n", mkdirErr)
 		}
 		thumbPath := filepath.Join(thumbDir, slug+".jpg")
-		if dlErr := client.DownloadPoster(selected.PosterPath, thumbPath); dlErr == nil {
+		if dlErr := client.DownloadPoster(selected.PosterPath, thumbPath); dlErr != nil {
+			fmt.Fprintf(os.Stderr, "⚠️  Thumbnail download failed: %v\n", dlErr)
+		} else {
 			m.ThumbnailPath = thumbPath
 			fmt.Println("🖼️  Thumbnail saved")
 		}
