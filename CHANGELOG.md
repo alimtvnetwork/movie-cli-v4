@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## v1.15.0
+
+### Added
+- **`movie stats --format table`** — output library statistics as a formatted key-value table with sections for counts, storage, genres, and ratings
+
+## v1.14.0
+
+### Changed
+- **Refactored `movie_info.go`** — extracted `fetchMovieDetails` and `fetchTVDetails` into `cmd/movie_fetch_details.go`
+
 ## v1.13.0
 
 ### Fixed
