@@ -19,13 +19,14 @@ var movieStatsCmd = &cobra.Command{
 	Short: "Show library statistics",
 	Long: `Display total counts, top genres, and average ratings.
 
-Use --format json to output stats as JSON to stdout for piping.`,
+Use --format json to output stats as JSON to stdout for piping.
+Use --format table to output stats as a formatted table.`,
 	Run: runMovieStats,
 }
 
 func init() {
 	movieStatsCmd.Flags().StringVar(&statsFormat, "format", "default",
-		"output format: default or json")
+		"output format: default, table, or json")
 }
 
 // statsJSONOutput is the JSON structure for --format json.
@@ -79,6 +80,8 @@ func runMovieStats(cmd *cobra.Command, args []string) {
 
 	if statsFormat == "json" {
 		printStatsJSON(database, totalMovies, totalTV, total)
+	} else if statsFormat == "table" {
+		printStatsTable(database, totalMovies, totalTV, total)
 	} else {
 		printStatsDefault(database, totalMovies, totalTV, total)
 	}
