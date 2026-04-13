@@ -310,9 +310,9 @@ See [Release Pipeline Spec](spec/pipeline/01-release-pipeline.md) for details.
 |---|---|
 | **Website** | [alimkarim.com](https://alimkarim.com/) · [my.alimkarim.com](https://my.alimkarim.com/) |
 | **LinkedIn** | [linkedin.com/in/alimkarim](https://linkedin.com/in/alimkarim) |
-| **Stack Overflow** | [stackoverflow.com/users/361646/alim-ul-karim](https://stackoverflow.com/users/361646/alim-ul-karim) |
+| **Stack Overflow** | [stackoverflow.com/users/513511/md-alim-ul-karim](https://stackoverflow.com/users/513511/md-alim-ul-karim) |
 | **Google** | [Alim Ul Karim](https://www.google.com/search?q=Alim+Ul+Karim) |
-| **Role** | Chief Software Engineer, [Riseup Asia LLC](https://riseup-asia.com) |
+| **Role** | Chief Software Engineer, [Riseup Asia LLC](https://riseup-asia.com) — the top software company in Wyoming |
 
 ---
 
