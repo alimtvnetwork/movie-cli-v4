@@ -150,13 +150,16 @@ func enrichFromTMDb(client *tmdb.Client, database *db.DB, m *db.Media, result cl
 		fetchTVDetails(client, best.ID, m)
 	}
 
-	// Download thumbnail into the .movie-output/thumbnails folder
+	// Download thumbnail — saved to outputDir/thumbnails/{slug}-{tmdbID}.jpg
+	// Also saved to database.BasePath/thumbnails/ for REST server access
 	if best.PosterPath != "" {
 		slug := cleaner.ToSlug(m.CleanTitle)
 		if m.Year > 0 {
 			slug += "-" + strconv.Itoa(m.Year)
 		}
 		thumbFileName := slug + "-" + strconv.Itoa(m.TmdbID) + ".jpg"
+
+		// Primary: .movie-output/thumbnails/
 		thumbDir := filepath.Join(outputDir, "thumbnails")
 		if mkdirErr := os.MkdirAll(thumbDir, 0755); mkdirErr != nil {
 			errlog.Error("cannot create thumbnail dir %s: %v", thumbDir, mkdirErr)
@@ -165,9 +168,19 @@ func enrichFromTMDb(client *tmdb.Client, database *db.DB, m *db.Media, result cl
 		if dlErr := client.DownloadPoster(best.PosterPath, thumbPath); dlErr != nil {
 			errlog.Warn("thumbnail download failed for '%s': %v", m.CleanTitle, dlErr)
 		} else {
-			// Store relative path for HTML (thumbnails/name-id.jpg)
 			m.ThumbnailPath = "thumbnails/" + thumbFileName
 			fmt.Println("     🖼️  Thumbnail saved")
+
+			// Also copy to database data dir for REST server
+			dbThumbDir := filepath.Join(database.BasePath, "thumbnails")
+			if mkErr := os.MkdirAll(dbThumbDir, 0755); mkErr == nil {
+				dbThumbPath := filepath.Join(dbThumbDir, thumbFileName)
+				if src, rErr := os.ReadFile(thumbPath); rErr == nil {
+					if wErr := os.WriteFile(dbThumbPath, src, 0644); wErr != nil {
+						errlog.Warn("could not copy thumbnail to data dir: %v", wErr)
+					}
+				}
+			}
 		}
 	}
 
