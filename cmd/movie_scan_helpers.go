@@ -101,5 +101,11 @@ func printScanFooter(scanDir, outputDir string, scannedItems []db.Media,
 		} else {
 			fmt.Printf("\n📋 Summary saved: %s\n", filepath.Join(outputDir, "summary.json"))
 		}
+		if htmlErr := writeHTMLReport(outputDir, scanDir, scannedItems,
+			totalFiles, movieCount, tvCount, skipped); htmlErr != nil {
+			fmt.Fprintf(os.Stderr, "⚠️  Could not write report.html: %v\n", htmlErr)
+		} else {
+			fmt.Printf("🌐 Report saved: %s\n", filepath.Join(outputDir, "report.html"))
+		}
 	}
 }
