@@ -6,9 +6,35 @@ type MoveRecord struct {
 	ToPath           string
 	OriginalFileName string
 	NewFileName      string
+	MovedAt          string
 	ID               int64
 	MediaID          int64
 	Undone           bool
+}
+
+// ListMoveHistory returns all move records ordered by most recent first.
+func (d *DB) ListMoveHistory(limit int) ([]MoveRecord, error) {
+	if limit <= 0 {
+		limit = 1000
+	}
+	rows, err := d.Query(`
+		SELECT id, media_id, from_path, to_path, original_file_name, new_file_name, moved_at, undone
+		FROM move_history ORDER BY moved_at DESC LIMIT ?`, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var records []MoveRecord
+	for rows.Next() {
+		var r MoveRecord
+		if scanErr := rows.Scan(&r.ID, &r.MediaID, &r.FromPath, &r.ToPath,
+			&r.OriginalFileName, &r.NewFileName, &r.MovedAt, &r.Undone); scanErr != nil {
+			return nil, scanErr
+		}
+		records = append(records, r)
+	}
+	return records, rows.Err()
 }
 
 // InsertMoveHistory logs a move operation.
