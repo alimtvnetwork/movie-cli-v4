@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/alimtvnetwork/movie-cli-v3/db"
+	"github.com/alimtvnetwork/movie-cli-v3/errlog"
 )
 
 var historyFormat string
@@ -32,14 +33,14 @@ func init() {
 func runMovieHistory(cmd *cobra.Command, args []string) {
 	database, err := db.Open()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "❌ Database error: %v\n", err)
+		errlog.Error("Database error: %v", err)
 		return
 	}
 	defer database.Close()
 
 	records, listErr := database.ListMoveHistory(0)
 	if listErr != nil {
-		fmt.Fprintf(os.Stderr, "❌ Error reading history: %v\n", listErr)
+		errlog.Error("Error reading history: %v", listErr)
 		return
 	}
 
@@ -109,6 +110,6 @@ func printHistoryJSON(records []db.MoveRecord) {
 	enc := json.NewEncoder(os.Stdout)
 	enc.SetIndent("", "  ")
 	if encErr := enc.Encode(items); encErr != nil {
-		fmt.Fprintf(os.Stderr, "❌ JSON encode error: %v\n", encErr)
+		errlog.Error("JSON encode error: %v", encErr)
 	}
 }

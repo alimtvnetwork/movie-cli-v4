@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/alimtvnetwork/movie-cli-v3/db"
+	"github.com/alimtvnetwork/movie-cli-v3/errlog"
 	"github.com/alimtvnetwork/movie-cli-v3/tmdb"
 )
 
@@ -38,7 +39,7 @@ func init() {
 func runMovieSearch(cmd *cobra.Command, args []string) {
 	database, err := db.Open()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "❌ Database error: %v\n", err)
+		errlog.Error("Database error: %v", err)
 		return
 	}
 	defer database.Close()
@@ -46,14 +47,13 @@ func runMovieSearch(cmd *cobra.Command, args []string) {
 	// Get TMDb API key (GetConfig returns "" with nil error when key is absent)
 	apiKey, cfgErr := database.GetConfig("tmdb_api_key")
 	if cfgErr != nil && cfgErr.Error() != "sql: no rows in result set" {
-		fmt.Fprintf(os.Stderr, "⚠️  Config read error: %v\n", cfgErr)
+		errlog.Warn("Config read error: %v", cfgErr)
 	}
 	if apiKey == "" {
 		apiKey = os.Getenv("TMDB_API_KEY")
 	}
 	if apiKey == "" {
-		fmt.Fprintln(os.Stderr, "❌ No TMDb API key configured.")
-		fmt.Fprintln(os.Stderr, "   Set it with: movie config set tmdb_api_key YOUR_KEY")
+		errlog.Error("No TMDb API key configured. Set it with: movie config set tmdb_api_key YOUR_KEY")
 		return
 	}
 
@@ -66,7 +66,7 @@ func runMovieSearch(cmd *cobra.Command, args []string) {
 	// Search TMDb API
 	results, searchErr := client.SearchMulti(query)
 	if searchErr != nil {
-		fmt.Fprintf(os.Stderr, "❌ TMDb search error: %v\n", searchErr)
+		errlog.Error("TMDb search error: %v", searchErr)
 		return
 	}
 

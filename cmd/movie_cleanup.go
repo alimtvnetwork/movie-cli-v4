@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/alimtvnetwork/movie-cli-v3/db"
+	"github.com/alimtvnetwork/movie-cli-v3/errlog"
 )
 
 var cleanupDryRun bool
@@ -35,14 +36,14 @@ func init() {
 func runMovieCleanup(cmd *cobra.Command, args []string) {
 	database, err := db.Open()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "❌ Database error: %v\n", err)
+		errlog.Error("Database error: %v", err)
 		return
 	}
 	defer database.Close()
 
 	stale, err := database.FindStaleEntries(10000)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "❌ Error scanning for stale entries: %v\n", err)
+		errlog.Error("Error scanning for stale entries: %v", err)
 		return
 	}
 
@@ -78,7 +79,7 @@ func runMovieCleanup(cmd *cobra.Command, args []string) {
 	deleted := 0
 	for _, s := range stale {
 		if err := database.DeleteMedia(s.Media.ID); err != nil {
-			fmt.Fprintf(os.Stderr, "  ⚠️  Failed to delete ID %d: %v\n", s.Media.ID, err)
+			errlog.Warn("Failed to delete ID %d: %v", s.Media.ID, err)
 			continue
 		}
 		deleted++

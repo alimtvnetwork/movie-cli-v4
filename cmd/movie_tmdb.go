@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/alimtvnetwork/movie-cli-v3/db"
+	"github.com/alimtvnetwork/movie-cli-v3/errlog"
 )
 
 type tmdbCredentials struct {
@@ -44,12 +45,12 @@ func resolveScanTMDbCredentials(database *db.DB) tmdbCredentials {
 
 	if creds.APIKey != "" {
 		if err := database.SetConfig("tmdb_api_key", creds.APIKey); err != nil {
-			fmt.Fprintf(os.Stderr, "⚠️  Could not save tmdb_api_key: %v\n", err)
+			errlog.Warn("Could not save tmdb_api_key: %v", err)
 		}
 	}
 	if creds.Token != "" {
 		if err := database.SetConfig("tmdb_token", creds.Token); err != nil {
-			fmt.Fprintf(os.Stderr, "⚠️  Could not save tmdb_token: %v\n", err)
+			errlog.Warn("Could not save tmdb_token: %v", err)
 		}
 	}
 
@@ -84,7 +85,7 @@ func readTMDbConfigValue(database *db.DB, key string) string {
 	val, err := database.GetConfig(key)
 	if err != nil {
 		if err.Error() != "sql: no rows in result set" {
-			fmt.Fprintf(os.Stderr, "⚠️  Config read error for %s: %v\n", key, err)
+			errlog.Warn("Config read error for %s: %v", key, err)
 		}
 		return ""
 	}

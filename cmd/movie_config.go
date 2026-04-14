@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/alimtvnetwork/movie-cli-v3/db"
+	"github.com/alimtvnetwork/movie-cli-v3/errlog"
 )
 
 var movieConfigCmd = &cobra.Command{
@@ -36,7 +37,7 @@ Examples:
 func runMovieConfig(cmd *cobra.Command, args []string) {
 	database, err := db.Open()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "❌ Database error: %v\n", err)
+		errlog.Error("Database error: %v", err)
 		return
 	}
 	defer database.Close()
@@ -68,13 +69,13 @@ func runMovieConfig(cmd *cobra.Command, args []string) {
 		}
 		key, value := args[1], args[2]
 		if setErr := database.SetConfig(key, value); setErr != nil {
-			fmt.Fprintf(os.Stderr, "❌ Error: %v\n", setErr)
+			errlog.Error("Config set error: %v", setErr)
 			return
 		}
 		fmt.Printf("  ✅ %s = %s\n", key, value)
 
 	default:
-		fmt.Fprintf(os.Stderr, "❌ Unknown action: %s. Use 'get' or 'set'.\n", action)
+		errlog.Error("Unknown action: %s. Use 'get' or 'set'.", action)
 	}
 }
 

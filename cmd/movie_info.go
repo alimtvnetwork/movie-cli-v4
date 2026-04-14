@@ -19,6 +19,7 @@ import (
 
 	"github.com/alimtvnetwork/movie-cli-v3/cleaner"
 	"github.com/alimtvnetwork/movie-cli-v3/db"
+	"github.com/alimtvnetwork/movie-cli-v3/errlog"
 	"github.com/alimtvnetwork/movie-cli-v3/tmdb"
 )
 
@@ -48,7 +49,7 @@ func init() {
 func runMovieInfo(cmd *cobra.Command, args []string) {
 	database, err := db.Open()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "❌ Database error: %v\n", err)
+		errlog.Error("Database error: %v", err)
 		return
 	}
 	defer database.Close()
@@ -75,21 +76,20 @@ func runMovieInfo(cmd *cobra.Command, args []string) {
 
 	apiKey, cfgErr := database.GetConfig("tmdb_api_key")
 	if cfgErr != nil && cfgErr.Error() != "sql: no rows in result set" {
-		fmt.Fprintf(os.Stderr, "⚠️  Config read error: %v\n", cfgErr)
+		errlog.Warn("Config read error: %v", cfgErr)
 	}
 	if apiKey == "" {
 		apiKey = os.Getenv("TMDB_API_KEY")
 	}
 	if apiKey == "" {
-		fmt.Fprintln(os.Stderr, "❌ No TMDb API key configured.")
-		fmt.Fprintln(os.Stderr, "   Set it with: movie config set tmdb_api_key YOUR_KEY")
+		errlog.Error("No TMDb API key configured. Set it with: movie config set tmdb_api_key YOUR_KEY")
 		return
 	}
 
 	client := tmdb.NewClient(apiKey)
 	tmdbResults, searchErr := client.SearchMulti(query)
 	if searchErr != nil {
-		fmt.Fprintf(os.Stderr, "❌ TMDb search error: %v\n", searchErr)
+		errlog.Error("TMDb search error: %v", searchErr)
 		return
 	}
 	if len(tmdbResults) == 0 {
@@ -111,7 +111,7 @@ func runMovieInfo(cmd *cobra.Command, args []string) {
 	// Check if this TMDb ID already exists in DB (avoid duplicates)
 	existing, existErr := database.GetMediaByTmdbID(selected.ID)
 	if existErr != nil && existErr.Error() != "sql: no rows in result set" {
-		fmt.Fprintf(os.Stderr, "⚠️  DB lookup error: %v\n", existErr)
+		errlog.Warn("DB lookup error: %v", existErr)
 	}
 	if existing != nil {
 		if infoFormat == "json" {
@@ -154,11 +154,11 @@ func runMovieInfo(cmd *cobra.Command, args []string) {
 		}
 		thumbDir := filepath.Join(database.BasePath, "thumbnails", slug)
 		if mkdirErr := os.MkdirAll(thumbDir, 0755); mkdirErr != nil {
-			fmt.Fprintf(os.Stderr, "⚠️  Cannot create thumbnail dir: %v\n", mkdirErr)
+			errlog.Warn("Cannot create thumbnail dir: %v", mkdirErr)
 		}
 		thumbPath := filepath.Join(thumbDir, slug+".jpg")
 		if dlErr := client.DownloadPoster(selected.PosterPath, thumbPath); dlErr != nil {
-			fmt.Fprintf(os.Stderr, "⚠️  Thumbnail download failed: %v\n", dlErr)
+			errlog.Warn("Thumbnail download failed: %v", dlErr)
 		} else {
 			m.ThumbnailPath = thumbPath
 		}
@@ -171,7 +171,7 @@ func runMovieInfo(cmd *cobra.Command, args []string) {
 			insertErr = database.UpdateMediaByTmdbID(m)
 		}
 		if insertErr != nil {
-			fmt.Fprintf(os.Stderr, "❌ DB error: %v\n", insertErr)
+			errlog.Error("DB error: %v", insertErr)
 			return
 		}
 	}

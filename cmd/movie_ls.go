@@ -11,6 +11,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/alimtvnetwork/movie-cli-v3/db"
+	"github.com/alimtvnetwork/movie-cli-v3/errlog"
 )
 
 var lsFormat string
@@ -55,7 +56,7 @@ type lsJSONItem struct {
 func runMovieLs(cmd *cobra.Command, args []string) {
 	database, err := db.Open()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "❌ Database error: %v\n", err)
+		errlog.Error("Database error: %v", err)
 		return
 	}
 	defer database.Close()
@@ -73,7 +74,7 @@ func runMovieLs(cmd *cobra.Command, args []string) {
 func runMovieLsJSON(database *db.DB) {
 	allMedia, err := database.ListMedia(0, 100000)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "❌ Database error: %v\n", err)
+		errlog.Error("Database error: %v", err)
 		return
 	}
 
@@ -103,14 +104,14 @@ func runMovieLsJSON(database *db.DB) {
 	enc := json.NewEncoder(os.Stdout)
 	enc.SetIndent("", "  ")
 	if encErr := enc.Encode(items); encErr != nil {
-		fmt.Fprintf(os.Stderr, "❌ JSON encode error: %v\n", encErr)
+		errlog.Error("JSON encode error: %v", encErr)
 	}
 }
 
 func runMovieLsInteractive(database *db.DB) {
 	pageSizeStr, cfgErr := database.GetConfig("page_size")
 	if cfgErr != nil && cfgErr.Error() != "sql: no rows in result set" {
-		fmt.Fprintf(os.Stderr, "⚠️  Config read error (page_size): %v\n", cfgErr)
+		errlog.Warn("Config read error (page_size): %v", cfgErr)
 	}
 	pageSize, _ := strconv.Atoi(pageSizeStr)
 	if pageSize <= 0 {
@@ -119,7 +120,7 @@ func runMovieLsInteractive(database *db.DB) {
 
 	total, countErr := database.CountMedia("")
 	if countErr != nil {
-		fmt.Fprintf(os.Stderr, "❌ Database error: %v\n", countErr)
+		errlog.Error("Database error: %v", countErr)
 		return
 	}
 	if total == 0 {
@@ -133,7 +134,7 @@ func runMovieLsInteractive(database *db.DB) {
 	for {
 		media, listErr := database.ListMedia(offset, pageSize)
 		if listErr != nil {
-			fmt.Fprintf(os.Stderr, "❌ Error: %v\n", listErr)
+			errlog.Error("Error: %v", listErr)
 			return
 		}
 

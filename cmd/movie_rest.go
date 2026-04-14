@@ -61,14 +61,14 @@ func init() {
 func runMovieRest(cmd *cobra.Command, args []string) {
 	database, err := db.Open()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "❌ Database error: %v\n", err)
+		errlog.Error("Database error: %v", err)
 		return
 	}
 	defer database.Close()
 
 	// Initialize error logger — writes to data/logs/error.txt + DB
 	if initErr := errlog.Init(database.BasePath, "rest"); initErr != nil {
-		fmt.Fprintf(os.Stderr, "⚠️  Could not init error logger: %v\n", initErr)
+		errlog.Warn("Could not init error logger: %v", initErr)
 	} else {
 		defer errlog.Close()
 		errlog.SetDBWriter(func(e errlog.Entry) {
@@ -76,7 +76,7 @@ func runMovieRest(cmd *cobra.Command, args []string) {
 				e.Timestamp, string(e.Level), e.Source, e.Function,
 				e.Command, e.WorkDir, e.Message, e.StackTrace,
 			); dbErr != nil {
-				fmt.Fprintf(os.Stderr, "⚠️  Could not write error to DB: %v\n", dbErr)
+				errlog.Warn("Could not write error to DB: %v", dbErr)
 			}
 		})
 	}
@@ -141,7 +141,7 @@ func runMovieRest(cmd *cobra.Command, args []string) {
 	}
 
 	if srvErr := http.ListenAndServe(addr, mux); srvErr != nil {
-		fmt.Fprintf(os.Stderr, "❌ Server error: %v\n", srvErr)
+		errlog.Error("Server error: %v", srvErr)
 	}
 }
 
@@ -157,7 +157,7 @@ func openBrowser(url string) {
 		cmd = exec.Command("xdg-open", url)
 	}
 	if err := cmd.Start(); err != nil {
-		fmt.Fprintf(os.Stderr, "⚠️  Could not open browser: %v\n", err)
+		errlog.Warn("Could not open browser: %v", err)
 	}
 }
 
@@ -222,7 +222,9 @@ func handleMediaByID(w http.ResponseWriter, r *http.Request, database *db.DB) {
 		for key, val := range updates {
 			switch key {
 			case "title", "genre", "director", "description", "tagline":
-				database.Exec("UPDATE media SET "+key+" = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?", val, id)
+				if _, execErr := database.Exec("UPDATE media SET "+key+" = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?", val, id); execErr != nil {
+					errlog.Error("DB update error for media %d field %s: %v", id, key, execErr)
+				}
 			}
 		}
 		m, _ := database.GetMediaByID(id)

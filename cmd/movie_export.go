@@ -11,6 +11,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/alimtvnetwork/movie-cli-v3/db"
+	"github.com/alimtvnetwork/movie-cli-v3/errlog"
 )
 
 var exportOutput string
@@ -80,7 +81,7 @@ func toExportMediaJSON(m db.Media) exportMediaJSON {
 func runExport(cmd *cobra.Command, args []string) {
 	database, err := db.Open()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "❌ Database error: %v\n", err)
+		errlog.Error("Database error: %v", err)
 		return
 	}
 	defer database.Close()
@@ -88,7 +89,7 @@ func runExport(cmd *cobra.Command, args []string) {
 	// Fetch all media (large limit)
 	items, err := database.ListMedia(0, 100000)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "❌ Failed to read media: %v\n", err)
+		errlog.Error("Failed to read media: %v", err)
 		return
 	}
 
@@ -105,7 +106,7 @@ func runExport(cmd *cobra.Command, args []string) {
 
 	data, err := json.MarshalIndent(out, "", "  ")
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "❌ JSON encoding error: %v\n", err)
+		errlog.Error("JSON encoding error: %v", err)
 		return
 	}
 
@@ -117,12 +118,12 @@ func runExport(cmd *cobra.Command, args []string) {
 
 	// Ensure directory exists
 	if err := os.MkdirAll(filepath.Dir(outPath), 0755); err != nil {
-		fmt.Fprintf(os.Stderr, "❌ Cannot create directory: %v\n", err)
+		errlog.Error("Cannot create directory: %v", err)
 		return
 	}
 
 	if err := os.WriteFile(outPath, data, 0644); err != nil {
-		fmt.Fprintf(os.Stderr, "❌ Failed to write file: %v\n", err)
+		errlog.Error("Failed to write file: %v", err)
 		return
 	}
 
