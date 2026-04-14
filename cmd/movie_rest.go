@@ -4,6 +4,7 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
+	"html/template"
 	"net/http"
 	"os"
 	"os/exec"
@@ -14,6 +15,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/alimtvnetwork/movie-cli-v3/db"
+	"github.com/alimtvnetwork/movie-cli-v3/templates"
 )
 
 var restPort int
@@ -65,9 +67,16 @@ func runMovieRest(cmd *cobra.Command, args []string) {
 
 	mux := http.NewServeMux()
 
+	// Serve live HTML report at root
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/" {
+			http.NotFound(w, r)
+			return
+		}
+		serveHTMLReport(w, database, restPort)
+	})
+
 	// Routes with sub-paths must be registered before the parent catch-all.
-	// Go's ServeMux matches longest prefix first, so /api/media/ catches
-	// both /api/media/{id} and /api/media/{id}/similar|watched.
 	mux.HandleFunc("/api/tags", corsWrap(func(w http.ResponseWriter, r *http.Request) {
 		handleTags(w, r, database)
 	}))
@@ -75,7 +84,6 @@ func runMovieRest(cmd *cobra.Command, args []string) {
 		handleListMedia(w, r, database)
 	}))
 	mux.HandleFunc("/api/media/", corsWrap(func(w http.ResponseWriter, r *http.Request) {
-		// Sub-route dispatch: /api/media/{id}/similar, /api/media/{id}/watched
 		path := strings.TrimPrefix(r.URL.Path, "/api/media/")
 		parts := strings.SplitN(path, "/", 2)
 		if len(parts) == 2 {
@@ -99,6 +107,7 @@ func runMovieRest(cmd *cobra.Command, args []string) {
 	fmt.Printf("\n🚀 Movie CLI REST server running on %s\n", url)
 	fmt.Println("   Press Ctrl+C to stop\n")
 	fmt.Printf("   Endpoints:\n")
+	fmt.Printf("     GET    /                       HTML library report\n")
 	fmt.Printf("     GET    /api/media\n")
 	fmt.Printf("     GET    /api/media/{id}\n")
 	fmt.Printf("     DELETE /api/media/{id}\n")
@@ -222,4 +231,70 @@ func handleStats(w http.ResponseWriter, r *http.Request, database *db.DB) {
 func writeJSON(w http.ResponseWriter, data interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(data)
+}
+
+// serveHTMLReport renders the HTML report template with live data from the database.
+func serveHTMLReport(w http.ResponseWriter, database *db.DB, port int) {
+	tmplBytes, err := templates.FS.ReadFile("report.html")
+	if err != nil {
+		http.Error(w, "template not found", http.StatusInternalServerError)
+		return
+	}
+
+	tmpl, parseErr := template.New("report").Parse(string(tmplBytes))
+	if parseErr != nil {
+		http.Error(w, "template parse error", http.StatusInternalServerError)
+		return
+	}
+
+	items, listErr := database.ListMedia(0, 10000)
+	if listErr != nil {
+		http.Error(w, "database error", http.StatusInternalServerError)
+		return
+	}
+
+	movies, tv := 0, 0
+	reportItems := make([]htmlReportItem, 0, len(items))
+	for _, m := range items {
+		if m.Type == "movie" {
+			movies++
+		} else {
+			tv++
+		}
+		var genres []string
+		if m.Genre != "" {
+			for _, g := range splitGenres(m.Genre) {
+				genres = append(genres, g)
+			}
+		}
+		reportItems = append(reportItems, htmlReportItem{
+			ID:            m.ID,
+			Title:         m.Title,
+			Year:          m.Year,
+			Type:          m.Type,
+			Genre:         m.Genre,
+			GenreList:     genres,
+			Director:      m.Director,
+			CastList:      m.CastList,
+			Description:   m.Description,
+			Tagline:       m.Tagline,
+			TmdbRating:    m.TmdbRating,
+			ImdbRating:    m.ImdbRating,
+			Runtime:       m.Runtime,
+			ThumbnailPath: m.ThumbnailPath,
+		})
+	}
+
+	data := htmlReportData{
+		ScannedFolder: "Library",
+		ScannedAt:     "Live",
+		TotalFiles:    len(items),
+		Movies:        movies,
+		TVShows:       tv,
+		Port:          port,
+		Items:         reportItems,
+	}
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	tmpl.Execute(w, data)
 }
