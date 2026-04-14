@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
 
 	"github.com/alimtvnetwork/movie-cli-v3/cleaner"
@@ -128,7 +129,17 @@ func processVideoFile(
 
 // enrichFromTMDb fetches metadata, details, and thumbnail from TMDb.
 func enrichFromTMDb(client *tmdb.Client, database *db.DB, m *db.Media, result cleaner.Result, outputDir string) {
-	searchQuery := result.CleanTitle
+	// Build search query — strip trailing year from clean title to avoid duplication
+	// e.g. cleaner may produce "The Housemaid 2025" with Year=2025
+	searchTitle := result.CleanTitle
+	if result.Year > 0 {
+		yearStr := strconv.Itoa(result.Year)
+		// Remove trailing year if already present in title
+		re := regexp.MustCompile(`\s+` + regexp.QuoteMeta(yearStr) + `$`)
+		searchTitle = re.ReplaceAllString(searchTitle, "")
+	}
+
+	searchQuery := searchTitle
 	if result.Year > 0 {
 		searchQuery += " " + strconv.Itoa(result.Year)
 	}
