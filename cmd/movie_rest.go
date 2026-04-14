@@ -8,9 +8,11 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -83,13 +85,19 @@ func runMovieRest(cmd *cobra.Command, args []string) {
 
 	mux := http.NewServeMux()
 
+	// Serve thumbnails from the data directory
+	thumbDir := filepath.Join(database.BasePath, "thumbnails")
+	mux.Handle("/thumbnails/", http.StripPrefix("/thumbnails/", http.FileServer(http.Dir(thumbDir))))
+
 	// Serve live HTML report at root
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/" {
+		if r.URL.Path != "/" && !strings.HasPrefix(r.URL.Path, "/thumbnails/") {
 			http.NotFound(w, r)
 			return
 		}
-		serveHTMLReport(w, database, restPort)
+		if r.URL.Path == "/" {
+			serveHTMLReport(w, database, restPort)
+		}
 	})
 
 	// Routes with sub-paths must be registered before the parent catch-all.
@@ -136,11 +144,12 @@ func runMovieRest(cmd *cobra.Command, args []string) {
 	fmt.Printf("     DELETE /api/tags\n")
 	fmt.Printf("     GET    /api/stats\n\n")
 
-	if restOpen {
+	if restOpen || scanRest {
 		go openBrowser(url)
 	}
 
-	if srvErr := http.ListenAndServe(addr, mux); srvErr != nil {
+	handler := logMiddleware(mux)
+	if srvErr := http.ListenAndServe(addr, handler); srvErr != nil {
 		errlog.Error("Server error: %v", srvErr)
 	}
 }
@@ -287,6 +296,11 @@ func serveHTMLReport(w http.ResponseWriter, database *db.DB, port int) {
 				genres = append(genres, g)
 			}
 		}
+		thumbSrc := ""
+		if m.ThumbnailPath != "" {
+			// For REST-served HTML, use /thumbnails/ route
+			thumbSrc = "/thumbnails/" + filepath.Base(m.ThumbnailPath)
+		}
 		reportItems = append(reportItems, htmlReportItem{
 			ID:            m.ID,
 			Title:         m.Title,
@@ -301,7 +315,7 @@ func serveHTMLReport(w http.ResponseWriter, database *db.DB, port int) {
 			TmdbRating:    m.TmdbRating,
 			ImdbRating:    m.ImdbRating,
 			Runtime:       m.Runtime,
-			ThumbnailPath: m.ThumbnailPath,
+			ThumbnailPath: thumbSrc,
 		})
 	}
 
@@ -319,4 +333,25 @@ func serveHTMLReport(w http.ResponseWriter, database *db.DB, port int) {
 	if err := tmpl.Execute(w, data); err != nil {
 		errlog.Error("template render error: %v", err)
 	}
+}
+
+// logMiddleware wraps an http.Handler and logs every request via errlog.
+func logMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+		lrw := &loggingResponseWriter{ResponseWriter: w, statusCode: http.StatusOK}
+		next.ServeHTTP(lrw, r)
+		duration := time.Since(start)
+		errlog.Info("[REST] %s %s → %d (%s)", r.Method, r.URL.Path, lrw.statusCode, duration)
+	})
+}
+
+type loggingResponseWriter struct {
+	http.ResponseWriter
+	statusCode int
+}
+
+func (lrw *loggingResponseWriter) WriteHeader(code int) {
+	lrw.statusCode = code
+	lrw.ResponseWriter.WriteHeader(code)
 }

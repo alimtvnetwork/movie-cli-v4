@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## v1.30.0
+
+### Added
+- **`--rest` flag for `movie scan`** — starts REST server and opens HTML report in browser after scan completes
+- **`--port` flag for `movie scan`** — customize REST server port when using `--rest`
+- **REST API request logging** — every HTTP request logged via `errlog.Info` with method, path, status, duration
+- **Thumbnails in output folder** — saved to `.movie-output/thumbnails/{slug}-{id}.jpg` with relative paths
+- **Thumbnails served via REST** — `/thumbnails/` route serves poster images for the HTML report
+- **Gitmap-style CLI output** — box header, numbered items with type icons (🎬/📺), ratings, tree-style output files
+- **CLI output spec** — `spec/10-cli-output-spec.md` documents the full output format
+
+### Changed
+- Thumbnail naming: `{slug}-{tmdbID}.jpg` flat in `thumbnails/` dir (was nested subdirectories)
+- Thumbnail path stored as relative (`thumbnails/xxx.jpg`) for portability
+- REST HTML report uses `/thumbnails/` route for images instead of absolute file paths
+- Scan output modernized: numbered items, category icons, structured sections
+
 ## v1.28.0
 
 ### Added

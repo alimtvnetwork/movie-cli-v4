@@ -29,12 +29,16 @@ func processVideoFile(
 
 	result := cleaner.Clean(vf.Name)
 	if !useTable {
-		fmt.Printf("  📄 %s\n", vf.Name)
-		fmt.Printf("     → %s", result.CleanTitle)
+		typeIcon := "🎬"
+		if result.Type == "tv" {
+			typeIcon = "📺"
+		}
+		fmt.Printf("\n  %d. %s %s", *totalFiles, typeIcon, result.CleanTitle)
 		if result.Year > 0 {
 			fmt.Printf(" (%d)", result.Year)
 		}
 		fmt.Printf(" [%s]\n", result.Type)
+		fmt.Printf("     └─ %s\n", vf.Name)
 	}
 
 	// Check if already in DB by path
@@ -86,7 +90,7 @@ func processVideoFile(
 
 	// Fetch metadata from TMDb
 	if hasTMDb {
-		enrichFromTMDb(client, database, m, result)
+		enrichFromTMDb(client, database, m, result, outputDir)
 	}
 
 	// Insert into database
@@ -123,7 +127,7 @@ func processVideoFile(
 }
 
 // enrichFromTMDb fetches metadata, details, and thumbnail from TMDb.
-func enrichFromTMDb(client *tmdb.Client, database *db.DB, m *db.Media, result cleaner.Result) {
+func enrichFromTMDb(client *tmdb.Client, database *db.DB, m *db.Media, result cleaner.Result, outputDir string) {
 	searchQuery := result.CleanTitle
 	if result.Year > 0 {
 		searchQuery += " " + strconv.Itoa(result.Year)
@@ -150,24 +154,39 @@ func enrichFromTMDb(client *tmdb.Client, database *db.DB, m *db.Media, result cl
 		fetchTVDetails(client, best.ID, m)
 	}
 
-	// Download thumbnail
+	// Download thumbnail — saved to outputDir/thumbnails/{slug}-{tmdbID}.jpg
+	// Also saved to database.BasePath/thumbnails/ for REST server access
 	if best.PosterPath != "" {
 		slug := cleaner.ToSlug(m.CleanTitle)
 		if m.Year > 0 {
 			slug += "-" + strconv.Itoa(m.Year)
 		}
-		thumbDir := filepath.Join(database.BasePath, "thumbnails", slug)
+		thumbFileName := slug + "-" + strconv.Itoa(m.TmdbID) + ".jpg"
+
+		// Primary: .movie-output/thumbnails/
+		thumbDir := filepath.Join(outputDir, "thumbnails")
 		if mkdirErr := os.MkdirAll(thumbDir, 0755); mkdirErr != nil {
 			errlog.Error("cannot create thumbnail dir %s: %v", thumbDir, mkdirErr)
 		}
-		thumbPath := filepath.Join(thumbDir, slug+".jpg")
+		thumbPath := filepath.Join(thumbDir, thumbFileName)
 		if dlErr := client.DownloadPoster(best.PosterPath, thumbPath); dlErr != nil {
 			errlog.Warn("thumbnail download failed for '%s': %v", m.CleanTitle, dlErr)
 		} else {
-			m.ThumbnailPath = thumbPath
+			m.ThumbnailPath = "thumbnails/" + thumbFileName
 			fmt.Println("     🖼️  Thumbnail saved")
+
+			// Also copy to database data dir for REST server
+			dbThumbDir := filepath.Join(database.BasePath, "thumbnails")
+			if mkErr := os.MkdirAll(dbThumbDir, 0755); mkErr == nil {
+				dbThumbPath := filepath.Join(dbThumbDir, thumbFileName)
+				if src, rErr := os.ReadFile(thumbPath); rErr == nil {
+					if wErr := os.WriteFile(dbThumbPath, src, 0644); wErr != nil {
+						errlog.Warn("could not copy thumbnail to data dir: %v", wErr)
+					}
+				}
+			}
 		}
 	}
 
-	fmt.Printf("     ✅ TMDb: %s (⭐ %.1f)\n", m.Title, m.TmdbRating)
+	fmt.Printf("     ⭐ %.1f  %s\n", m.TmdbRating, m.Title)
 }

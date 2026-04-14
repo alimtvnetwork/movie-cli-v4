@@ -18,6 +18,8 @@ var scanRecursive bool
 var scanDepth int
 var scanDryRun bool
 var scanFormat string
+var scanRest bool
+var scanRestPort int
 
 var movieScanCmd = &cobra.Command{
 	Use:   "scan [folder]",
@@ -43,7 +45,9 @@ Examples:
   movie scan -r --depth 2         Scan only 2 levels deep
   movie scan --dry-run            Preview files without writing to DB
   movie scan --format table       Show results as a formatted table
-  movie scan --format json        Output results as JSON to stdout`,
+  movie scan --format json        Output results as JSON to stdout
+  movie scan --rest               Scan and start REST server + open browser
+  movie scan --rest --port 9000   Scan and start REST on custom port`,
 	Args: cobra.MaximumNArgs(1),
 	Run:  runMovieScan,
 }
@@ -57,6 +61,10 @@ func init() {
 		"preview what would be scanned without writing to DB or .movie-output")
 	movieScanCmd.Flags().StringVar(&scanFormat, "format", "default",
 		"output format: default, table, or json")
+	movieScanCmd.Flags().BoolVar(&scanRest, "rest", false,
+		"start REST server and open HTML report in browser after scan")
+	movieScanCmd.Flags().IntVar(&scanRestPort, "port", 8086,
+		"port for REST server when using --rest")
 }
 
 func runMovieScan(cmd *cobra.Command, args []string) {
@@ -149,6 +157,14 @@ func runMovieScan(cmd *cobra.Command, args []string) {
 	} else {
 		printScanFooter(scanDir, outputDir, scannedItems, totalFiles, movieCount, tvCount, skipped)
 	}
+
+	// Start REST server if --rest was specified
+	if scanRest && !scanDryRun {
+		restPort = scanRestPort
+		fmt.Printf("\n🚀 Starting REST server on http://localhost:%d ...\n", restPort)
+		go openBrowser(fmt.Sprintf("http://localhost:%d", restPort))
+		runMovieRest(cmd, []string{})
+	}
 }
 
 // runDryRunScan handles the dry-run scanning loop for all output formats.
@@ -172,13 +188,16 @@ func runDryRunScan(videoFiles []videoFile, useJSON, useTable bool,
 		for _, vf := range videoFiles {
 			*totalFiles++
 			result := cleaner.Clean(vf.Name)
-			fmt.Printf("  📄 %s\n", vf.Name)
-			fmt.Printf("     → %s", result.CleanTitle)
+			typeIcon := "🎬"
+			if result.Type == "tv" {
+				typeIcon = "📺"
+			}
+			fmt.Printf("\n  %d. %s %s", *totalFiles, typeIcon, result.CleanTitle)
 			if result.Year > 0 {
 				fmt.Printf(" (%d)", result.Year)
 			}
 			fmt.Printf(" [%s]\n", result.Type)
-			fmt.Printf("     📂 %s\n\n", vf.FullPath)
+			fmt.Printf("     └─ %s\n", vf.Name)
 			if result.Type == "movie" {
 				*movieCount++
 			} else {
