@@ -33,12 +33,12 @@ func processVideoFile(
 		if result.Type == "tv" {
 			typeIcon = "📺"
 		}
-		fmt.Printf("\n  %d/%s %s %s", *totalFiles, "%d", typeIcon, result.CleanTitle)
+		fmt.Printf("\n  %d. %s %s", *totalFiles, typeIcon, result.CleanTitle)
 		if result.Year > 0 {
 			fmt.Printf(" (%d)", result.Year)
 		}
 		fmt.Printf(" [%s]\n", result.Type)
-		fmt.Printf("       └─ %s\n", vf.Name)
+		fmt.Printf("     └─ %s\n", vf.Name)
 	}
 
 	// Check if already in DB by path
