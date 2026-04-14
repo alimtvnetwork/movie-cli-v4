@@ -65,9 +65,16 @@ func runMovieRest(cmd *cobra.Command, args []string) {
 
 	mux := http.NewServeMux()
 
+	// Serve live HTML report at root
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/" {
+			http.NotFound(w, r)
+			return
+		}
+		serveHTMLReport(w, database, restPort)
+	})
+
 	// Routes with sub-paths must be registered before the parent catch-all.
-	// Go's ServeMux matches longest prefix first, so /api/media/ catches
-	// both /api/media/{id} and /api/media/{id}/similar|watched.
 	mux.HandleFunc("/api/tags", corsWrap(func(w http.ResponseWriter, r *http.Request) {
 		handleTags(w, r, database)
 	}))
@@ -75,7 +82,6 @@ func runMovieRest(cmd *cobra.Command, args []string) {
 		handleListMedia(w, r, database)
 	}))
 	mux.HandleFunc("/api/media/", corsWrap(func(w http.ResponseWriter, r *http.Request) {
-		// Sub-route dispatch: /api/media/{id}/similar, /api/media/{id}/watched
 		path := strings.TrimPrefix(r.URL.Path, "/api/media/")
 		parts := strings.SplitN(path, "/", 2)
 		if len(parts) == 2 {
@@ -88,7 +94,7 @@ func runMovieRest(cmd *cobra.Command, args []string) {
 				return
 			}
 		}
-		handleMediaByID(w, r, database)
+		handleMediaByID(w, r)
 	}))
 	mux.HandleFunc("/api/stats", corsWrap(func(w http.ResponseWriter, r *http.Request) {
 		handleStats(w, r, database)
