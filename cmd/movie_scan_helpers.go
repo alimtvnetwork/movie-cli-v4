@@ -96,7 +96,7 @@ func printScanHeader(scanDir, outputDir string) {
 
 // printScanFooter prints the summary after scanning completes (gitmap-style).
 func printScanFooter(scanDir, outputDir string, scannedItems []db.Media,
-	totalFiles, movieCount, tvCount, skipped int) {
+	totalFiles, movieCount, tvCount, skipped, removed int) {
 	fmt.Println()
 	fmt.Println("  ■ Summary")
 	fmt.Println("  ──────────────────────────────────────────")
@@ -108,8 +108,15 @@ func printScanFooter(scanDir, outputDir string, scannedItems []db.Media,
 	fmt.Printf("     Total files: %d\n", totalFiles)
 	fmt.Printf("     Movies:      %d\n", movieCount)
 	fmt.Printf("     TV Shows:    %d\n", tvCount)
+	newCount := totalFiles - skipped
+	if newCount > 0 {
+		fmt.Printf("     New:         %d\n", newCount)
+	}
 	if skipped > 0 {
-		fmt.Printf("     Skipped:     %d (already in DB)\n", skipped)
+		fmt.Printf("     Existing:    %d (already in DB)\n", skipped)
+	}
+	if removed > 0 {
+		fmt.Printf("     Removed:     %d (files no longer on disk)\n", removed)
 	}
 	if scanDryRun {
 		fmt.Println("\n  💡 Run without --dry-run to actually scan and save.")
