@@ -18,7 +18,7 @@ var scanWatchInterval int
 
 // runWatchLoop polls the scan directory for new video files at a fixed interval.
 // It keeps a set of already-seen file paths and processes only new ones.
-func runWatchLoop(scanDir, outputDir string, database *db.DB, creds tmdbCreds) {
+func runWatchLoop(scanDir, outputDir string, database *db.DB, creds tmdbCredentials) {
 	seen := make(map[string]bool)
 
 	// Seed with existing files so we don't re-process them
