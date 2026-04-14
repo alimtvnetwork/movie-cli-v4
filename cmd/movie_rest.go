@@ -94,7 +94,7 @@ func runMovieRest(cmd *cobra.Command, args []string) {
 				return
 			}
 		}
-		handleMediaByID(w, r)
+		handleMediaByID(w, r, database)
 	}))
 	mux.HandleFunc("/api/stats", corsWrap(func(w http.ResponseWriter, r *http.Request) {
 		handleStats(w, r, database)
