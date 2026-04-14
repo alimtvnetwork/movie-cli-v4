@@ -12,6 +12,7 @@ Spec resequenced: foundation 01-06, app at 08, app-issues at 09. CI/CD at 12, se
 Error spec flattened: spec/02-error-manage-spec/ (no nested subfolder).
 cmd/ has 21 files, db/ has 6 files (including tags.go).
 CI pipeline follows gitmap-v2 patterns: SHA dedup, parallel matrix, vulncheck, cross-compile.
+Data folder at `<binary-dir>/data/`, resolved via os.Executable(). NOT cwd-relative.
 
 ## Memories
 - [Project overview](mem://01-project-overview) — Go CLI, command tree (21 cmds), architecture, file structure
@@ -23,3 +24,4 @@ CI pipeline follows gitmap-v2 patterns: SHA dedup, parallel matrix, vulncheck, c
 - [Timestamp bug](mem://issues/01-timestamp-bug) — Fixed: hardcoded "now" → RFC3339
 - [Duplicate TMDb fetch](mem://issues/02-duplicate-tmdb-fetch) — Fixed: shared helpers
 - [Large files](mem://issues/03-large-files) — Fixed: split to <200 lines
+- [Data folder location](mem://features/data-folder-location) — Data folder relative to binary, not cwd
