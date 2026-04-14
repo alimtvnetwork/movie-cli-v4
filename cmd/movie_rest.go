@@ -83,13 +83,19 @@ func runMovieRest(cmd *cobra.Command, args []string) {
 
 	mux := http.NewServeMux()
 
+	// Serve thumbnails from the data directory
+	thumbDir := filepath.Join(database.BasePath, "thumbnails")
+	mux.Handle("/thumbnails/", http.StripPrefix("/thumbnails/", http.FileServer(http.Dir(thumbDir))))
+
 	// Serve live HTML report at root
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/" {
+		if r.URL.Path != "/" && !strings.HasPrefix(r.URL.Path, "/thumbnails/") {
 			http.NotFound(w, r)
 			return
 		}
-		serveHTMLReport(w, database, restPort)
+		if r.URL.Path == "/" {
+			serveHTMLReport(w, database, restPort)
+		}
 	})
 
 	// Routes with sub-paths must be registered before the parent catch-all.
