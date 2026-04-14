@@ -185,3 +185,57 @@ func handleWatched(w http.ResponseWriter, r *http.Request, database *db.DB) {
 		"title":    m.Title,
 	})
 }
+
+// handleLogs handles GET /api/logs — returns error logs with optional filtering.
+//
+//	Query params:
+//	  level  — filter by level: ERROR, WARN, INFO (optional)
+//	  limit  — max entries to return (default 50, max 500)
+//	  search — substring match on message (optional)
+func handleLogs(w http.ResponseWriter, r *http.Request, database *db.DB) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	limitStr := r.URL.Query().Get("limit")
+	limit := 50
+	if limitStr != "" {
+		if parsed, err := strconv.Atoi(limitStr); err == nil && parsed > 0 {
+			limit = parsed
+		}
+	}
+	if limit > 500 {
+		limit = 500
+	}
+
+	entries, err := database.RecentErrorLogs(limit)
+	if err != nil {
+		errlog.Error("Failed to read error logs: %v", err)
+		http.Error(w, "database error", http.StatusInternalServerError)
+		return
+	}
+
+	// Filter by level
+	level := strings.ToUpper(r.URL.Query().Get("level"))
+	search := strings.ToLower(r.URL.Query().Get("search"))
+
+	if level != "" || search != "" {
+		var filtered []map[string]string
+		for _, e := range entries {
+			if level != "" && e["level"] != level {
+				continue
+			}
+			if search != "" && !strings.Contains(strings.ToLower(e["message"]), search) {
+				continue
+			}
+			filtered = append(filtered, e)
+		}
+		entries = filtered
+	}
+
+	writeJSON(w, map[string]interface{}{
+		"total":   len(entries),
+		"entries": entries,
+	})
+}
