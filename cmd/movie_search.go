@@ -5,13 +5,10 @@ package cmd
 import (
 	"fmt"
 	"os"
-	"path/filepath"
-	"strconv"
 	"strings"
 
 	"github.com/spf13/cobra"
 
-	"github.com/alimtvnetwork/movie-cli-v3/cleaner"
 	"github.com/alimtvnetwork/movie-cli-v3/db"
 	"github.com/alimtvnetwork/movie-cli-v3/tmdb"
 )
