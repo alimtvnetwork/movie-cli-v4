@@ -296,6 +296,11 @@ func serveHTMLReport(w http.ResponseWriter, database *db.DB, port int) {
 				genres = append(genres, g)
 			}
 		}
+		thumbSrc := ""
+		if m.ThumbnailPath != "" {
+			// For REST-served HTML, use /thumbnails/ route
+			thumbSrc = "/thumbnails/" + filepath.Base(m.ThumbnailPath)
+		}
 		reportItems = append(reportItems, htmlReportItem{
 			ID:            m.ID,
 			Title:         m.Title,
@@ -310,7 +315,7 @@ func serveHTMLReport(w http.ResponseWriter, database *db.DB, port int) {
 			TmdbRating:    m.TmdbRating,
 			ImdbRating:    m.ImdbRating,
 			Runtime:       m.Runtime,
-			ThumbnailPath: m.ThumbnailPath,
+			ThumbnailPath: thumbSrc,
 		})
 	}
 

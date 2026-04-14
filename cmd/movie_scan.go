@@ -45,7 +45,9 @@ Examples:
   movie scan -r --depth 2         Scan only 2 levels deep
   movie scan --dry-run            Preview files without writing to DB
   movie scan --format table       Show results as a formatted table
-  movie scan --format json        Output results as JSON to stdout`,
+  movie scan --format json        Output results as JSON to stdout
+  movie scan --rest               Scan and start REST server + open browser
+  movie scan --rest --port 9000   Scan and start REST on custom port`,
 	Args: cobra.MaximumNArgs(1),
 	Run:  runMovieScan,
 }
