@@ -3,6 +3,7 @@ package db
 import (
 	"database/sql"
 	"fmt"
+	"path/filepath"
 )
 
 // mediaColumns is the standard SELECT column list for media queries.
