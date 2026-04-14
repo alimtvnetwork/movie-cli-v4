@@ -123,7 +123,7 @@ func processVideoFile(
 }
 
 // enrichFromTMDb fetches metadata, details, and thumbnail from TMDb.
-func enrichFromTMDb(client *tmdb.Client, database *db.DB, m *db.Media, result cleaner.Result) {
+func enrichFromTMDb(client *tmdb.Client, database *db.DB, m *db.Media, result cleaner.Result, outputDir string) {
 	searchQuery := result.CleanTitle
 	if result.Year > 0 {
 		searchQuery += " " + strconv.Itoa(result.Year)
