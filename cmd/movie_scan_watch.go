@@ -74,39 +74,3 @@ func runWatchLoop(scanDir, outputDir string, database *db.DB, creds tmdbCredenti
 	}
 }
 
-// isVideoFileInDir checks if a path is a video file within the scan directory.
-func isVideoFileInDir(path, scanDir string) bool {
-	rel, err := filepath.Rel(scanDir, path)
-	if err != nil || rel == "." {
-		return false
-	}
-	return cleaner.IsVideoFile(filepath.Base(path))
-}
-
-// ignoreWatchDir returns true for directories the watcher should skip.
-func ignoreWatchDir(name string) bool {
-	return name == ".movie-output" ||
-		(len(name) > 0 && name[0] == '.')
-}
-
-// watchPrintNewFile prints a discovered file in watch mode.
-func watchPrintNewFile(index int, vf videoFile) {
-	result := cleaner.Clean(vf.Name)
-	typeIcon := "🎬"
-	if result.Type == "tv" {
-		typeIcon = "📺"
-	}
-	fmt.Printf("  %d. %s %s", index, typeIcon, result.CleanTitle)
-	if result.Year > 0 {
-		fmt.Printf(" (%d)", result.Year)
-	}
-	fmt.Printf(" [%s]\n", result.Type)
-	fmt.Printf("     └─ %s\n", vf.Name)
-}
-
-// ensureWatchOutputDirs creates output dirs if they don't exist yet.
-func ensureWatchOutputDirs(outputDir string) {
-	if err := os.MkdirAll(filepath.Join(outputDir, "thumbnails"), 0755); err != nil {
-		errlog.Warn("watch: could not ensure output dirs: %v", err)
-	}
-}
