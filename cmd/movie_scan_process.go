@@ -150,21 +150,23 @@ func enrichFromTMDb(client *tmdb.Client, database *db.DB, m *db.Media, result cl
 		fetchTVDetails(client, best.ID, m)
 	}
 
-	// Download thumbnail
+	// Download thumbnail into the .movie-output/thumbnails folder
 	if best.PosterPath != "" {
 		slug := cleaner.ToSlug(m.CleanTitle)
 		if m.Year > 0 {
 			slug += "-" + strconv.Itoa(m.Year)
 		}
-		thumbDir := filepath.Join(database.BasePath, "thumbnails", slug)
+		thumbFileName := slug + "-" + strconv.Itoa(m.TmdbID) + ".jpg"
+		thumbDir := filepath.Join(m.OutputDir, "thumbnails")
 		if mkdirErr := os.MkdirAll(thumbDir, 0755); mkdirErr != nil {
 			errlog.Error("cannot create thumbnail dir %s: %v", thumbDir, mkdirErr)
 		}
-		thumbPath := filepath.Join(thumbDir, slug+".jpg")
+		thumbPath := filepath.Join(thumbDir, thumbFileName)
 		if dlErr := client.DownloadPoster(best.PosterPath, thumbPath); dlErr != nil {
 			errlog.Warn("thumbnail download failed for '%s': %v", m.CleanTitle, dlErr)
 		} else {
-			m.ThumbnailPath = thumbPath
+			// Store relative path for HTML (thumbnails/name-id.jpg)
+			m.ThumbnailPath = "thumbnails/" + thumbFileName
 			fmt.Println("     🖼️  Thumbnail saved")
 		}
 	}
