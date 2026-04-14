@@ -5,11 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"os"
 	"strconv"
 	"strings"
 
 	"github.com/alimtvnetwork/movie-cli-v3/db"
+	"github.com/alimtvnetwork/movie-cli-v3/errlog"
 	"github.com/alimtvnetwork/movie-cli-v3/tmdb"
 )
 
@@ -121,11 +121,11 @@ func handleSimilar(w http.ResponseWriter, r *http.Request, database *db.DB) {
 	// Get TMDb credentials — missing keys are not fatal (empty string = no auth)
 	apiKey, keyErr := database.GetConfig("tmdb_api_key")
 	if keyErr != nil {
-		fmt.Fprintf(os.Stderr, "⚠️  Could not read tmdb_api_key: %v\n", keyErr)
+		errlog.Warn("Could not read tmdb_api_key: %v", keyErr)
 	}
 	token, tokErr := database.GetConfig("tmdb_token")
 	if tokErr != nil {
-		fmt.Fprintf(os.Stderr, "⚠️  Could not read tmdb_token: %v\n", tokErr)
+		errlog.Warn("Could not read tmdb_token: %v", tokErr)
 	}
 	client := tmdb.NewClientWithToken(apiKey, token)
 
@@ -171,12 +171,12 @@ func handleWatched(w http.ResponseWriter, r *http.Request, database *db.DB) {
 
 	// Update watchlist status if in watchlist
 	if _, wlErr := database.Exec("UPDATE watchlist SET status = 'watched', watched_at = CURRENT_TIMESTAMP WHERE tmdb_id = ?", m.TmdbID); wlErr != nil {
-		fmt.Fprintf(os.Stderr, "⚠️  Watchlist update error: %v\n", wlErr)
+		errlog.Error("watchlist update error for media %d: %v", id, wlErr)
 	}
 
 	// Also add a "watched" tag
 	if tagErr := database.AddTag(int(id), "watched"); tagErr != nil {
-		fmt.Fprintf(os.Stderr, "⚠️  Could not add watched tag: %v\n", tagErr)
+		errlog.Warn("could not add watched tag for media %d: %v", id, tagErr)
 	}
 
 	writeJSON(w, map[string]interface{}{

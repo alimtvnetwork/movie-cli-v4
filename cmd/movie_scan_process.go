@@ -9,6 +9,7 @@ import (
 
 	"github.com/alimtvnetwork/movie-cli-v3/cleaner"
 	"github.com/alimtvnetwork/movie-cli-v3/db"
+	"github.com/alimtvnetwork/movie-cli-v3/errlog"
 	"github.com/alimtvnetwork/movie-cli-v3/tmdb"
 )
 
@@ -39,7 +40,7 @@ func processVideoFile(
 	// Check if already in DB by path
 	existing, searchErr := database.SearchMedia(result.CleanTitle)
 	if searchErr != nil {
-		fmt.Fprintf(os.Stderr, "     ⚠️  DB search error: %v\n", searchErr)
+		errlog.Warn("DB search error for '%s': %v", result.CleanTitle, searchErr)
 	}
 	for i := range existing {
 		if existing[i].OriginalFilePath == vf.FullPath {
@@ -65,7 +66,7 @@ func processVideoFile(
 
 	fi, fiErr := os.Stat(vf.FullPath)
 	if fiErr != nil {
-		fmt.Fprintf(os.Stderr, "  ⚠️  Cannot stat file: %v\n", fiErr)
+		errlog.Error("cannot stat file %s: %v", vf.FullPath, fiErr)
 		return false
 	}
 
@@ -93,15 +94,15 @@ func processVideoFile(
 	if insertErr != nil {
 		if m.TmdbID > 0 {
 			if updateErr := database.UpdateMediaByTmdbID(m); updateErr != nil {
-				fmt.Fprintf(os.Stderr, "     ⚠️  DB update error: %v\n", updateErr)
+				errlog.Error("DB update error for '%s': %v", m.Title, updateErr)
 			}
 		} else {
-			fmt.Fprintf(os.Stderr, "     ❌ DB error: %v\n", insertErr)
+			errlog.Error("DB insert error for '%s': %v", m.Title, insertErr)
 		}
 	}
 
 	if jsonErr := writeMediaJSON(outputDir, m); jsonErr != nil {
-		fmt.Fprintf(os.Stderr, "     ⚠️  JSON write error: %v\n", jsonErr)
+		errlog.Warn("JSON write error for '%s': %v", m.Title, jsonErr)
 	}
 
 	*scannedItems = append(*scannedItems, *m)
@@ -130,7 +131,7 @@ func enrichFromTMDb(client *tmdb.Client, database *db.DB, m *db.Media, result cl
 
 	tmdbResults, tmdbErr := client.SearchMulti(searchQuery)
 	if tmdbErr != nil || len(tmdbResults) == 0 {
-		fmt.Println("     ⚠️  No TMDb match found")
+		errlog.Warn("no TMDb match for '%s': %v", searchQuery, tmdbErr)
 		return
 	}
 
@@ -157,11 +158,11 @@ func enrichFromTMDb(client *tmdb.Client, database *db.DB, m *db.Media, result cl
 		}
 		thumbDir := filepath.Join(database.BasePath, "thumbnails", slug)
 		if mkdirErr := os.MkdirAll(thumbDir, 0755); mkdirErr != nil {
-			fmt.Fprintf(os.Stderr, "     ⚠️  Cannot create thumbnail dir: %v\n", mkdirErr)
+			errlog.Error("cannot create thumbnail dir %s: %v", thumbDir, mkdirErr)
 		}
 		thumbPath := filepath.Join(thumbDir, slug+".jpg")
 		if dlErr := client.DownloadPoster(best.PosterPath, thumbPath); dlErr != nil {
-			fmt.Fprintf(os.Stderr, "     ⚠️  Thumbnail download failed: %v\n", dlErr)
+			errlog.Warn("thumbnail download failed for '%s': %v", m.CleanTitle, dlErr)
 		} else {
 			m.ThumbnailPath = thumbPath
 			fmt.Println("     🖼️  Thumbnail saved")

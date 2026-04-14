@@ -15,6 +15,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/alimtvnetwork/movie-cli-v3/db"
+	"github.com/alimtvnetwork/movie-cli-v3/errlog"
 	"github.com/alimtvnetwork/movie-cli-v3/templates"
 )
 
@@ -64,6 +65,21 @@ func runMovieRest(cmd *cobra.Command, args []string) {
 		return
 	}
 	defer database.Close()
+
+	// Initialize error logger — writes to data/logs/error.txt + DB
+	if initErr := errlog.Init(database.BasePath, "rest"); initErr != nil {
+		fmt.Fprintf(os.Stderr, "⚠️  Could not init error logger: %v\n", initErr)
+	} else {
+		defer errlog.Close()
+		errlog.SetDBWriter(func(e errlog.Entry) {
+			if dbErr := database.InsertErrorLog(
+				e.Timestamp, string(e.Level), e.Source, e.Function,
+				e.Command, e.WorkDir, e.Message, e.StackTrace,
+			); dbErr != nil {
+				fmt.Fprintf(os.Stderr, "⚠️  Could not write error to DB: %v\n", dbErr)
+			}
+		})
+	}
 
 	mux := http.NewServeMux()
 
@@ -231,7 +247,7 @@ func handleStats(w http.ResponseWriter, r *http.Request, database *db.DB) {
 func writeJSON(w http.ResponseWriter, data interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(data); err != nil {
-		fmt.Fprintf(os.Stderr, "⚠️  JSON encode error: %v\n", err)
+		errlog.Error("JSON encode error: %v", err)
 	}
 }
 
@@ -299,6 +315,6 @@ func serveHTMLReport(w http.ResponseWriter, database *db.DB, port int) {
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	if err := tmpl.Execute(w, data); err != nil {
-		fmt.Fprintf(os.Stderr, "⚠️  Template render error: %v\n", err)
+		errlog.Error("template render error: %v", err)
 	}
 }
