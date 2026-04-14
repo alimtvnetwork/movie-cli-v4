@@ -3,12 +3,12 @@ package cmd
 
 import (
 	"fmt"
-	"os"
 	"strconv"
 
 	"github.com/spf13/cobra"
 
 	"github.com/alimtvnetwork/movie-cli-v3/db"
+	"github.com/alimtvnetwork/movie-cli-v3/errlog"
 )
 
 var movieWatchCmd = &cobra.Command{
@@ -83,7 +83,7 @@ func runWatchAdd(cmd *cobra.Command, args []string) {
 	defer database.Close()
 
 	if err := database.AddToWatchlist(media.TmdbID, media.Title, media.Year, media.Type, media.ID); err != nil {
-		fmt.Fprintf(os.Stderr, "❌ Error: %v\n", err)
+		errlog.Error("Error: %v", err)
 		return
 	}
 	fmt.Printf("📋 Added to watchlist: %s (%d)\n", media.Title, media.Year)
@@ -97,7 +97,7 @@ func runWatchDone(cmd *cobra.Command, args []string) {
 	defer database.Close()
 
 	if err := database.MarkWatched(media.TmdbID); err != nil {
-		fmt.Fprintf(os.Stderr, "❌ Error: %v\n", err)
+		errlog.Error("Error: %v", err)
 		return
 	}
 	fmt.Printf("✅ Marked as watched: %s (%d)\n", media.Title, media.Year)
@@ -111,7 +111,7 @@ func runWatchUndo(cmd *cobra.Command, args []string) {
 	defer database.Close()
 
 	if err := database.MarkToWatch(media.TmdbID); err != nil {
-		fmt.Fprintf(os.Stderr, "❌ Error: %v\n", err)
+		errlog.Error("Error: %v", err)
 		return
 	}
 	fmt.Printf("⏪ Reverted to to-watch: %s (%d)\n", media.Title, media.Year)
@@ -125,7 +125,7 @@ func runWatchRm(cmd *cobra.Command, args []string) {
 	defer database.Close()
 
 	if err := database.RemoveFromWatchlist(media.TmdbID); err != nil {
-		fmt.Fprintf(os.Stderr, "❌ Error: %v\n", err)
+		errlog.Error("Error: %v", err)
 		return
 	}
 	fmt.Printf("🗑️  Removed from watchlist: %s (%d)\n", media.Title, media.Year)
@@ -134,7 +134,7 @@ func runWatchRm(cmd *cobra.Command, args []string) {
 func runWatchLs(cmd *cobra.Command, args []string) {
 	database, err := db.Open()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "❌ Database error: %v\n", err)
+		errlog.Error("Database error: %v", err)
 		return
 	}
 	defer database.Close()
@@ -148,7 +148,7 @@ func runWatchLs(cmd *cobra.Command, args []string) {
 
 	entries, err := database.ListWatchlist(status)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "❌ Error: %v\n", err)
+		errlog.Error("Error: %v", err)
 		return
 	}
 
@@ -189,19 +189,19 @@ func runWatchLs(cmd *cobra.Command, args []string) {
 func openAndGetMedia(idArg string) (*db.DB, *db.Media) {
 	id, err := strconv.ParseInt(idArg, 10, 64)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "❌ Invalid ID: %s\n", idArg)
+		errlog.Error("Invalid ID: %s", idArg)
 		return nil, nil
 	}
 
 	database, err := db.Open()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "❌ Database error: %v\n", err)
+		errlog.Error("Database error: %v", err)
 		return nil, nil
 	}
 
 	media, err := database.GetMediaByID(id)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "❌ Media not found: %v\n", err)
+		errlog.Error("Media not found: %v", err)
 		database.Close()
 		return nil, nil
 	}

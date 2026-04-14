@@ -9,6 +9,7 @@ import (
 
 	"github.com/alimtvnetwork/movie-cli-v3/cleaner"
 	"github.com/alimtvnetwork/movie-cli-v3/db"
+	"github.com/alimtvnetwork/movie-cli-v3/errlog"
 	"github.com/alimtvnetwork/movie-cli-v3/tmdb"
 )
 
@@ -61,12 +62,12 @@ func downloadSearchThumbnail(client *tmdb.Client, database *db.DB, selected tmdb
 
 	thumbDir := filepath.Join(database.BasePath, "thumbnails", slug)
 	if mkdirErr := os.MkdirAll(thumbDir, 0755); mkdirErr != nil {
-		fmt.Fprintf(os.Stderr, "⚠️  Cannot create thumbnail dir: %v\n", mkdirErr)
+		errlog.Warn("Cannot create thumbnail dir: %v", mkdirErr)
 	}
 
 	thumbPath := filepath.Join(thumbDir, slug+".jpg")
 	if dlErr := client.DownloadPoster(selected.PosterPath, thumbPath); dlErr != nil {
-		fmt.Fprintf(os.Stderr, "⚠️  Thumbnail download failed: %v\n", dlErr)
+		errlog.Warn("Thumbnail download failed: %v", dlErr)
 	} else {
 		m.ThumbnailPath = thumbPath
 		fmt.Println("🖼️  Thumbnail saved")
@@ -77,7 +78,7 @@ func downloadSearchThumbnail(client *tmdb.Client, database *db.DB, selected tmdb
 func persistMedia(database *db.DB, m *db.Media) {
 	jsonDir := filepath.Join(database.BasePath, "json", m.Type)
 	if mkdirErr := os.MkdirAll(jsonDir, 0755); mkdirErr != nil {
-		fmt.Fprintf(os.Stderr, "⚠️  Cannot create JSON dir: %v\n", mkdirErr)
+		errlog.Warn("Cannot create JSON dir: %v", mkdirErr)
 	}
 
 	_, insertErr := database.InsertMedia(m)
@@ -87,10 +88,10 @@ func persistMedia(database *db.DB, m *db.Media) {
 			if updateErr == nil {
 				fmt.Printf("🔄 Updated existing record for: %s\n", m.Title)
 			} else {
-				fmt.Fprintf(os.Stderr, "❌ DB error: %v\n", updateErr)
+				errlog.Error("DB error: %v", updateErr)
 			}
 		} else {
-			fmt.Fprintf(os.Stderr, "❌ DB error: %v\n", insertErr)
+			errlog.Error("DB error: %v", insertErr)
 		}
 	}
 }

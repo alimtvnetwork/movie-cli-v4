@@ -3,11 +3,11 @@ package cmd
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/spf13/cobra"
 
 	"github.com/alimtvnetwork/movie-cli-v3/db"
+	"github.com/alimtvnetwork/movie-cli-v3/errlog"
 )
 
 var movieDBCmd = &cobra.Command{
@@ -20,7 +20,7 @@ var movieDBCmd = &cobra.Command{
 func runMovieDB(cmd *cobra.Command, args []string) {
 	database, err := db.Open()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "❌ Database error: %v\n", err)
+		errlog.Error("Database error: %v", err)
 		return
 	}
 	defer database.Close()

@@ -12,6 +12,7 @@ import (
 
 	"github.com/alimtvnetwork/movie-cli-v3/cleaner"
 	"github.com/alimtvnetwork/movie-cli-v3/db"
+	"github.com/alimtvnetwork/movie-cli-v3/errlog"
 )
 
 var movieRenameCmd = &cobra.Command{
@@ -25,14 +26,14 @@ Example: Scream.2022.1080p.WEBRip.x264-RARBG.mkv → Scream (2022).mkv`,
 func runMovieRename(cmd *cobra.Command, args []string) {
 	database, err := db.Open()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "❌ Database error: %v\n", err)
+		errlog.Error("Database error: %v", err)
 		return
 	}
 	defer database.Close()
 
 	media, listErr := database.ListMedia(0, 10000)
 	if listErr != nil {
-		fmt.Fprintf(os.Stderr, "❌ Failed to read media: %v\n", listErr)
+		errlog.Error("Failed to read media: %v", listErr)
 		return
 	}
 	if len(media) == 0 {
@@ -94,15 +95,15 @@ func runMovieRename(cmd *cobra.Command, args []string) {
 	success := 0
 	for i := range items {
 		if moveErr := MoveFile(items[i].oldPath, items[i].newPath); moveErr != nil {
-			fmt.Fprintf(os.Stderr, "  ❌ Failed: %s → %v\n", items[i].oldName, moveErr)
+			errlog.Error("Failed: %s → %v", items[i].oldName, moveErr)
 			continue
 		}
 		if updateErr := database.UpdateMediaPath(items[i].media.ID, items[i].newPath); updateErr != nil {
-			fmt.Fprintf(os.Stderr, "  ⚠️  DB update path error: %v\n", updateErr)
+			errlog.Warn("DB update path error: %v", updateErr)
 		}
 		if histErr := database.InsertMoveHistory(items[i].media.ID, items[i].oldPath, items[i].newPath,
 			items[i].oldName, items[i].newName); histErr != nil {
-			fmt.Fprintf(os.Stderr, "  ⚠️  DB history error: %v\n", histErr)
+			errlog.Warn("DB history error: %v", histErr)
 		}
 		fmt.Printf("  ✅ %s → %s\n", items[i].oldName, items[i].newName)
 		success++

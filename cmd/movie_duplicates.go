@@ -4,11 +4,11 @@ package cmd
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/spf13/cobra"
 
 	"github.com/alimtvnetwork/movie-cli-v3/db"
+	"github.com/alimtvnetwork/movie-cli-v3/errlog"
 )
 
 var duplicatesByFlag string
@@ -39,7 +39,7 @@ func init() {
 func runMovieDuplicates(cmd *cobra.Command, args []string) {
 	database, err := db.Open()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "❌ Database error: %v\n", err)
+		errlog.Error("Database error: %v", err)
 		return
 	}
 	defer database.Close()
@@ -58,12 +58,12 @@ func runMovieDuplicates(cmd *cobra.Command, args []string) {
 		label = "File Size"
 		groups, err = database.FindDuplicatesByFileSize()
 	default:
-		fmt.Fprintf(os.Stderr, "❌ Unknown detection method: %s (use tmdb, filename, or size)\n", duplicatesByFlag)
+		errlog.Error("Unknown detection method: %s (use tmdb, filename, or size)", duplicatesByFlag)
 		return
 	}
 
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "❌ Error finding duplicates: %v\n", err)
+		errlog.Error("Error finding duplicates: %v", err)
 		return
 	}
 

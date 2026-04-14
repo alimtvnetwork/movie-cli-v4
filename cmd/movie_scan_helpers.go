@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/alimtvnetwork/movie-cli-v3/db"
+	"github.com/alimtvnetwork/movie-cli-v3/errlog"
 )
 
 // resolveScanDir determines and validates the scan directory from args.
@@ -97,13 +98,13 @@ func printScanFooter(scanDir, outputDir string, scannedItems []db.Media,
 		fmt.Printf("   Output:      %s\n", outputDir)
 		if summaryErr := writeScanSummary(outputDir, scanDir, scannedItems,
 			totalFiles, movieCount, tvCount, skipped); summaryErr != nil {
-			fmt.Fprintf(os.Stderr, "⚠️  Could not write summary.json: %v\n", summaryErr)
+			errlog.Warn("Could not write summary.json: %v", summaryErr)
 		} else {
 			fmt.Printf("\n📋 Summary saved: %s\n", filepath.Join(outputDir, "summary.json"))
 		}
 		if htmlErr := writeHTMLReport(outputDir, scanDir, scannedItems,
 			totalFiles, movieCount, tvCount, skipped); htmlErr != nil {
-			fmt.Fprintf(os.Stderr, "⚠️  Could not write report.html: %v\n", htmlErr)
+			errlog.Warn("Could not write report.html: %v", htmlErr)
 		} else {
 			fmt.Printf("🌐 Report saved: %s\n", filepath.Join(outputDir, "report.html"))
 		}

@@ -11,6 +11,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/alimtvnetwork/movie-cli-v3/db"
+	"github.com/alimtvnetwork/movie-cli-v3/errlog"
 )
 
 var moviePlayCmd = &cobra.Command{
@@ -24,29 +25,29 @@ var moviePlayCmd = &cobra.Command{
 func runMoviePlay(cmd *cobra.Command, args []string) {
 	database, err := db.Open()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "❌ Database error: %v\n", err)
+		errlog.Error("Database error: %v", err)
 		return
 	}
 	defer database.Close()
 
 	id, err := strconv.ParseInt(args[0], 10, 64)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "❌ Invalid ID.")
+		errlog.Error("Invalid ID.")
 		return
 	}
 
 	m, err := database.GetMediaByID(id)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "❌ Media not found: %v\n", err)
+		errlog.Error("Media not found: %v", err)
 		return
 	}
 
 	filePath := m.CurrentFilePath
 	if _, statErr := os.Stat(filePath); statErr != nil {
 		if os.IsNotExist(statErr) {
-			fmt.Fprintf(os.Stderr, "❌ File not found: %s\n", filePath)
+			errlog.Error("File not found: %s", filePath)
 		} else {
-			fmt.Fprintf(os.Stderr, "❌ Cannot access file %s: %v\n", filePath, statErr)
+			errlog.Error("Cannot access file %s: %v", filePath, statErr)
 		}
 		return
 	}
@@ -66,12 +67,12 @@ func runMoviePlay(cmd *cobra.Command, args []string) {
 	case "windows":
 		openCmd = exec.Command("cmd", "/c", "start", "", filePath)
 	default:
-		fmt.Fprintf(os.Stderr, "❌ Unsupported OS: %s\n", runtime.GOOS)
+		errlog.Error("Unsupported OS: %s", runtime.GOOS)
 		return
 	}
 
 	if err := openCmd.Start(); err != nil {
-		fmt.Fprintf(os.Stderr, "❌ Cannot open player: %v\n", err)
+		errlog.Error("Cannot open player: %v", err)
 		return
 	}
 }

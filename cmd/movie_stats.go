@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/alimtvnetwork/movie-cli-v3/db"
+	"github.com/alimtvnetwork/movie-cli-v3/errlog"
 )
 
 var statsFormat string
@@ -56,7 +57,7 @@ type statsGenre struct {
 func runMovieStats(cmd *cobra.Command, args []string) {
 	database, err := db.Open()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "❌ Database error: %v\n", err)
+		errlog.Error("Database error: %v", err)
 		return
 	}
 	defer database.Close()
@@ -65,7 +66,7 @@ func runMovieStats(cmd *cobra.Command, args []string) {
 	totalTV, _ := database.CountMedia("tv")
 	total, err := database.CountMedia("")
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "❌ Database error: %v\n", err)
+		errlog.Error("Database error: %v", err)
 		return
 	}
 
@@ -143,7 +144,7 @@ func printStatsJSON(database *db.DB, totalMovies, totalTV, total int) {
 	enc := json.NewEncoder(os.Stdout)
 	enc.SetIndent("", "  ")
 	if encErr := enc.Encode(out); encErr != nil {
-		fmt.Fprintf(os.Stderr, "❌ JSON encode error: %v\n", encErr)
+		errlog.Error("JSON encode error: %v", encErr)
 	}
 }
 
@@ -158,7 +159,7 @@ func printStatsDefault(database *db.DB, totalMovies, totalTV, total int) {
 	// File size stats
 	totalSize, largestSize, smallestSize, sizeErr := database.FileSizeStats()
 	if sizeErr != nil {
-		fmt.Fprintf(os.Stderr, "⚠️  File size stats error: %v\n", sizeErr)
+		errlog.Warn("File size stats error: %v", sizeErr)
 	} else if totalSize > 0 {
 		fmt.Println("  💾 Storage:")
 		fmt.Printf("     Total Size:    %s\n", humanSize(totalSize))
@@ -173,7 +174,7 @@ func printStatsDefault(database *db.DB, totalMovies, totalTV, total int) {
 	// Top genres
 	genres, genreErr := database.TopGenres(10)
 	if genreErr != nil {
-		fmt.Fprintf(os.Stderr, "⚠️  Genre stats error: %v\n", genreErr)
+		errlog.Warn("Genre stats error: %v", genreErr)
 	} else if len(genres) > 0 {
 		type gc struct {
 			name  string
@@ -207,7 +208,7 @@ func printStatsDefault(database *db.DB, totalMovies, totalTV, total int) {
 
 	allMedia, listErr := database.ListMedia(0, 10000)
 	if listErr != nil {
-		fmt.Fprintf(os.Stderr, "⚠️  List media error: %v\n", listErr)
+		errlog.Warn("List media error: %v", listErr)
 	}
 	for i := range allMedia {
 		if allMedia[i].ImdbRating > 0 {

@@ -30,6 +30,7 @@ import (
 
 	"github.com/alimtvnetwork/movie-cli-v3/cleaner"
 	"github.com/alimtvnetwork/movie-cli-v3/db"
+	"github.com/alimtvnetwork/movie-cli-v3/errlog"
 )
 
 // expandHome replaces ~ with actual home directory.
@@ -58,7 +59,7 @@ func listVideoFiles(dir string) ([]os.FileInfo, error) {
 		}
 		info, infoErr := entry.Info()
 		if infoErr != nil {
-			fmt.Fprintf(os.Stderr, "  ⚠️  Cannot stat %s: %v\n", entry.Name(), infoErr)
+			errlog.Warn("Cannot stat %s: %v", entry.Name(), infoErr)
 			continue
 		}
 		files = append(files, info)
@@ -79,7 +80,7 @@ func promptSourceDirectory(scanner interface {
 }, database *db.DB, home string) string {
 	scanDir, cfgErr := database.GetConfig("scan_dir")
 	if cfgErr != nil && cfgErr.Error() != "sql: no rows in result set" {
-		fmt.Fprintf(os.Stderr, "⚠️  Config read error (scan_dir): %v\n", cfgErr)
+		errlog.Warn("Config read error (scan_dir): %v", cfgErr)
 	}
 	scanDir = expandHome(scanDir, home)
 
@@ -118,7 +119,7 @@ func promptSourceDirectory(scanner interface {
 	}
 	choice, err := strconv.Atoi(strings.TrimSpace(scanner.Text()))
 	if err != nil || choice < 1 || choice > len(options)+1 {
-		fmt.Fprintln(os.Stderr, "❌ Invalid choice")
+		errlog.Error("Invalid choice")
 		return ""
 	}
 
@@ -140,15 +141,15 @@ func promptDestination(scanner interface {
 }, database *db.DB, home string) string {
 	moviesDir, cfgErr := database.GetConfig("movies_dir")
 	if cfgErr != nil && cfgErr.Error() != "sql: no rows in result set" {
-		fmt.Fprintf(os.Stderr, "⚠️  Config read error (movies_dir): %v\n", cfgErr)
+		errlog.Warn("Config read error (movies_dir): %v", cfgErr)
 	}
 	tvDir, cfgErr := database.GetConfig("tv_dir")
 	if cfgErr != nil && cfgErr.Error() != "sql: no rows in result set" {
-		fmt.Fprintf(os.Stderr, "⚠️  Config read error (tv_dir): %v\n", cfgErr)
+		errlog.Warn("Config read error (tv_dir): %v", cfgErr)
 	}
 	archiveDir, cfgErr := database.GetConfig("archive_dir")
 	if cfgErr != nil && cfgErr.Error() != "sql: no rows in result set" {
-		fmt.Fprintf(os.Stderr, "⚠️  Config read error (archive_dir): %v\n", cfgErr)
+		errlog.Warn("Config read error (archive_dir): %v", cfgErr)
 	}
 	moviesDir = expandHome(moviesDir, home)
 	tvDir = expandHome(tvDir, home)
@@ -192,7 +193,7 @@ func promptDestination(scanner interface {
 		}
 		return expandHome(strings.TrimSpace(scanner.Text()), home)
 	default:
-		fmt.Fprintln(os.Stderr, "❌ Invalid choice")
+		errlog.Error("Invalid choice")
 		return ""
 	}
 }
@@ -257,11 +258,11 @@ func crossDeviceMove(src, dst string) error {
 }
 
 // saveHistoryLog writes a JSON move record to the history log.
-// All errors are logged to stderr — never swallowed.
+// All errors are logged via errlog — never swallowed.
 func saveHistoryLog(basePath, title string, year int, fromPath, toPath string) {
 	historyDir := filepath.Join(basePath, "json", "history")
 	if err := os.MkdirAll(historyDir, 0755); err != nil {
-		fmt.Fprintf(os.Stderr, "  ⚠️  Cannot create history dir: %v\n", err)
+		errlog.Warn("Cannot create history dir: %v", err)
 		return
 	}
 
@@ -275,13 +276,13 @@ func saveHistoryLog(basePath, title string, year int, fromPath, toPath string) {
 
 	data, err := json.MarshalIndent(record, "", "  ")
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "  ⚠️  Cannot marshal history JSON: %v\n", err)
+		errlog.Warn("Cannot marshal history JSON: %v", err)
 		return
 	}
 
 	filename := fmt.Sprintf("move-%s.json", time.Now().UTC().Format("20060102-150405"))
 	historyPath := filepath.Join(historyDir, filename)
 	if writeErr := os.WriteFile(historyPath, data, 0644); writeErr != nil {
-		fmt.Fprintf(os.Stderr, "  ⚠️  Cannot write history file: %v\n", writeErr)
+		errlog.Warn("Cannot write history file: %v", writeErr)
 	}
 }

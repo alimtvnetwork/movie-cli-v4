@@ -13,6 +13,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/alimtvnetwork/movie-cli-v3/db"
+	"github.com/alimtvnetwork/movie-cli-v3/errlog"
 	"github.com/alimtvnetwork/movie-cli-v3/tmdb"
 )
 
@@ -35,21 +36,20 @@ func runMovieSuggest(cmd *cobra.Command, args []string) {
 
 	database, err := db.Open()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "❌ Database error: %v\n", err)
+		errlog.Error("Database error: %v", err)
 		return
 	}
 	defer database.Close()
 
 	apiKey, err := database.GetConfig("tmdb_api_key")
 	if err != nil && err.Error() != "sql: no rows in result set" {
-		fmt.Fprintf(os.Stderr, "⚠️  Config read error: %v\n", err)
+		errlog.Warn("Config read error: %v", err)
 	}
 	if apiKey == "" {
 		apiKey = os.Getenv("TMDB_API_KEY")
 	}
 	if apiKey == "" {
-		fmt.Fprintln(os.Stderr, "❌ TMDb API key required for suggestions.")
-		fmt.Fprintln(os.Stderr, "   Set with: movie config set tmdb_api_key YOUR_KEY")
+		errlog.Error("TMDb API key required for suggestions. Set with: movie config set tmdb_api_key YOUR_KEY")
 		return
 	}
 
@@ -95,7 +95,7 @@ func suggestByType(database *db.DB, client *tmdb.Client, mediaType string, count
 	// Get top genres from library
 	genres, err := database.TopGenres(5)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "⚠️  Genre analysis error: %v\n", err)
+		errlog.Warn("Genre analysis error: %v", err)
 		fmt.Println("⚠️  Showing trending instead.")
 		showTrending(client, mediaType, count)
 		return
@@ -135,7 +135,7 @@ func suggestByType(database *db.DB, client *tmdb.Client, mediaType string, count
 	// Get existing media to avoid duplicates
 	existing, existErr := database.MediaByType(mediaType, 1000)
 	if existErr != nil {
-		fmt.Fprintf(os.Stderr, "⚠️  DB error: %v\n", existErr)
+		errlog.Warn("DB error: %v", existErr)
 	}
 	existingIDs := make(map[int]bool)
 	for i := range existing {
@@ -157,7 +157,7 @@ func suggestByType(database *db.DB, client *tmdb.Client, mediaType string, count
 		fmt.Printf("  🎭 Discovering %s %s...\n", g.name, typeName)
 		discovered, discErr := client.DiscoverByGenre(mediaType, genreID, 1)
 		if discErr != nil {
-			fmt.Fprintf(os.Stderr, "     ⚠️  Discover error: %v\n", discErr)
+			errlog.Warn("Discover error: %v", discErr)
 			continue
 		}
 		for i := range discovered {
@@ -177,7 +177,7 @@ func suggestByType(database *db.DB, client *tmdb.Client, mediaType string, count
 			}
 			recs, recErr := client.GetRecommendations(existing[idx].TmdbID, mediaType, 1)
 			if recErr != nil {
-				fmt.Fprintf(os.Stderr, "⚠️  Recommendations error for TMDb ID %d: %v\n", existing[idx].TmdbID, recErr)
+				errlog.Warn("Recommendations error for TMDb ID %d: %v", existing[idx].TmdbID, recErr)
 				continue
 			}
 			for i := range recs {
@@ -193,7 +193,7 @@ func suggestByType(database *db.DB, client *tmdb.Client, mediaType string, count
 	if len(suggestions) < count {
 		trending, trendErr := client.Trending(mediaType)
 		if trendErr != nil {
-			fmt.Fprintf(os.Stderr, "⚠️  Trending fetch error: %v\n", trendErr)
+			errlog.Warn("Trending fetch error: %v", trendErr)
 		}
 		for i := range trending {
 			if !existingIDs[trending[i].ID] && len(suggestions) < count {
@@ -216,11 +216,11 @@ func suggestRandom(client *tmdb.Client, count int) {
 	// Mix movie and TV trending
 	movieTrending, err := client.Trending("movie")
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "⚠️  Movie trending error: %v\n", err)
+		errlog.Warn("Movie trending error: %v", err)
 	}
 	tvTrending, err := client.Trending("tv")
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "⚠️  TV trending error: %v\n", err)
+		errlog.Warn("TV trending error: %v", err)
 	}
 
 	all := make([]tmdb.SearchResult, 0, len(movieTrending)+len(tvTrending))
@@ -244,7 +244,7 @@ func suggestRandom(client *tmdb.Client, count int) {
 func showTrending(client *tmdb.Client, mediaType string, count int) {
 	trending, err := client.Trending(mediaType)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "❌ TMDb error: %v\n", err)
+		errlog.Error("TMDb error: %v", err)
 		return
 	}
 	if len(trending) > count {

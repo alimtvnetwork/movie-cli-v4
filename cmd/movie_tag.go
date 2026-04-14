@@ -3,11 +3,11 @@ package cmd
 
 import (
 	"fmt"
-	"os"
 	"strconv"
 	"strings"
 
 	"github.com/alimtvnetwork/movie-cli-v3/db"
+	"github.com/alimtvnetwork/movie-cli-v3/errlog"
 	"github.com/spf13/cobra"
 )
 
@@ -29,34 +29,34 @@ var tagAddCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		d, err := db.Open()
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "❌ Database error: %v\n", err)
+			errlog.Error("Database error: %v", err)
 			return
 		}
 		defer d.Close()
 
 		id, err := strconv.Atoi(args[0])
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "❌ Invalid ID: %s\n", args[0])
+			errlog.Error("Invalid ID: %s", args[0])
 			return
 		}
 		tag := strings.TrimSpace(args[1])
 		if tag == "" {
-			fmt.Fprintln(os.Stderr, "❌ Tag cannot be empty")
+			errlog.Error("Tag cannot be empty")
 			return
 		}
 
 		media, err := d.GetMediaByID(int64(id))
 		if err != nil || media == nil {
-			fmt.Fprintf(os.Stderr, "❌ Media not found with ID %d\n", id)
+			errlog.Error("Media not found with ID %d", id)
 			return
 		}
 
 		err = d.AddTag(id, tag)
 		if err != nil {
 			if strings.Contains(err.Error(), "UNIQUE constraint") {
-				fmt.Fprintf(os.Stderr, "❌ Tag \"%s\" already exists on \"%s\"\n", tag, media.Title)
+				errlog.Error("Tag \"%s\" already exists on \"%s\"", tag, media.Title)
 			} else {
-				fmt.Fprintf(os.Stderr, "❌ Error adding tag: %v\n", err)
+				errlog.Error("Error adding tag: %v", err)
 			}
 			return
 		}
@@ -77,31 +77,31 @@ var tagRemoveCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		d, err := db.Open()
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "❌ Database error: %v\n", err)
+			errlog.Error("Database error: %v", err)
 			return
 		}
 		defer d.Close()
 
 		id, err := strconv.Atoi(args[0])
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "❌ Invalid ID: %s\n", args[0])
+			errlog.Error("Invalid ID: %s", args[0])
 			return
 		}
 		tag := strings.TrimSpace(args[1])
 
 		media, err := d.GetMediaByID(int64(id))
 		if err != nil || media == nil {
-			fmt.Fprintf(os.Stderr, "❌ Media not found with ID %d\n", id)
+			errlog.Error("Media not found with ID %d", id)
 			return
 		}
 
 		removed, err := d.RemoveTag(id, tag)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "❌ Error removing tag: %v\n", err)
+			errlog.Error("Error removing tag: %v", err)
 			return
 		}
 		if !removed {
-			fmt.Fprintf(os.Stderr, "❌ Tag \"%s\" not found on \"%s\"\n", tag, media.Title)
+			errlog.Error("Tag \"%s\" not found on \"%s\"", tag, media.Title)
 			return
 		}
 
@@ -121,7 +121,7 @@ var tagListCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		d, err := db.Open()
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "❌ Database error: %v\n", err)
+			errlog.Error("Database error: %v", err)
 			return
 		}
 		defer d.Close()
@@ -129,19 +129,19 @@ var tagListCmd = &cobra.Command{
 		if len(args) == 1 {
 			id, err := strconv.Atoi(args[0])
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "❌ Invalid ID: %s\n", args[0])
+				errlog.Error("Invalid ID: %s", args[0])
 				return
 			}
 
 			media, err := d.GetMediaByID(int64(id))
 			if err != nil || media == nil {
-				fmt.Fprintf(os.Stderr, "❌ Media not found with ID %d\n", id)
+				errlog.Error("Media not found with ID %d", id)
 				return
 			}
 
 			tags, err := d.GetTagsByMediaID(id)
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "❌ Error reading tags: %v\n", err)
+				errlog.Error("Error reading tags: %v", err)
 				return
 			}
 
@@ -162,7 +162,7 @@ var tagListCmd = &cobra.Command{
 		} else {
 			tagCounts, err := d.GetAllTagCounts()
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "❌ Error reading tags: %v\n", err)
+				errlog.Error("Error reading tags: %v", err)
 				return
 			}
 

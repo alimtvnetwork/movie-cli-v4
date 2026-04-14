@@ -13,6 +13,7 @@ import (
 
 	"github.com/alimtvnetwork/movie-cli-v3/cleaner"
 	"github.com/alimtvnetwork/movie-cli-v3/db"
+	"github.com/alimtvnetwork/movie-cli-v3/errlog"
 )
 
 var moveAllFlag bool
@@ -39,7 +40,7 @@ func init() {
 func runMovieMove(cmd *cobra.Command, args []string) {
 	database, err := db.Open()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "❌ Database error: %v\n", err)
+		errlog.Error("Database error: %v", err)
 		return
 	}
 	defer database.Close()
@@ -47,7 +48,7 @@ func runMovieMove(cmd *cobra.Command, args []string) {
 	scanner := bufio.NewScanner(os.Stdin)
 	home, homeErr := os.UserHomeDir()
 	if homeErr != nil {
-		fmt.Fprintf(os.Stderr, "❌ Cannot determine home directory: %v\n", homeErr)
+		errlog.Error("Cannot determine home directory: %v", homeErr)
 		return
 	}
 
@@ -65,18 +66,18 @@ func runMovieMove(cmd *cobra.Command, args []string) {
 	// Validate directory
 	info, statErr := os.Stat(sourceDir)
 	if statErr != nil {
-		fmt.Fprintf(os.Stderr, "❌ Cannot access directory: %v\n", statErr)
+		errlog.Error("Cannot access directory: %v", statErr)
 		return
 	}
 	if !info.IsDir() {
-		fmt.Fprintf(os.Stderr, "❌ Path is not a directory: %s\n", sourceDir)
+		errlog.Error("Path is not a directory: %s", sourceDir)
 		return
 	}
 
 	// Step 2: List video files in the directory
 	files, listErr := listVideoFiles(sourceDir)
 	if listErr != nil {
-		fmt.Fprintf(os.Stderr, "❌ %v\n", listErr)
+		errlog.Error("%v", listErr)
 		return
 	}
 	if len(files) == 0 {
@@ -96,11 +97,11 @@ func runMovieMove(cmd *cobra.Command, args []string) {
 func runBatchMove(database *db.DB, scanner *bufio.Scanner, sourceDir string, files []os.FileInfo, home string) {
 	moviesDir, cfgErr := database.GetConfig("movies_dir")
 	if cfgErr != nil && cfgErr.Error() != "sql: no rows in result set" {
-		fmt.Fprintf(os.Stderr, "⚠️  Config read error (movies_dir): %v\n", cfgErr)
+		errlog.Warn("Config read error (movies_dir): %v", cfgErr)
 	}
 	tvDir, cfgErr := database.GetConfig("tv_dir")
 	if cfgErr != nil && cfgErr.Error() != "sql: no rows in result set" {
-		fmt.Fprintf(os.Stderr, "⚠️  Config read error (tv_dir): %v\n", cfgErr)
+		errlog.Warn("Config read error (tv_dir): %v", cfgErr)
 	}
 	moviesDir = expandHome(moviesDir, home)
 	tvDir = expandHome(tvDir, home)
@@ -178,14 +179,14 @@ func runBatchMove(database *db.DB, scanner *bufio.Scanner, sourceDir string, fil
 	for i := range moves {
 		// Create destination directory
 		if mkdirErr := os.MkdirAll(moves[i].destDir, 0755); mkdirErr != nil {
-			fmt.Fprintf(os.Stderr, "  ❌ Cannot create dir %s: %v\n", moves[i].destDir, mkdirErr)
+			errlog.Error("Cannot create dir %s: %v", moves[i].destDir, mkdirErr)
 			failed++
 			continue
 		}
 
 		// Move file
 		if moveErr := MoveFile(moves[i].srcPath, moves[i].destPath); moveErr != nil {
-			fmt.Fprintf(os.Stderr, "  ❌ Failed: %s — %v\n", moves[i].fileInfo.Name(), moveErr)
+			errlog.Error("Failed to move %s: %v", moves[i].fileInfo.Name(), moveErr)
 			failed++
 			continue
 		}
@@ -227,7 +228,7 @@ func runInteractiveMove(database *db.DB, scanner *bufio.Scanner, sourceDir strin
 	}
 	choice, parseErr := strconv.Atoi(strings.TrimSpace(scanner.Text()))
 	if parseErr != nil || choice < 1 || choice > len(files) {
-		fmt.Fprintln(os.Stderr, "❌ Invalid selection")
+		errlog.Error("Invalid selection")
 		return
 	}
 
@@ -270,13 +271,13 @@ func runInteractiveMove(database *db.DB, scanner *bufio.Scanner, sourceDir strin
 
 	// Create destination directory
 	if mkdirErr := os.MkdirAll(destDir, 0755); mkdirErr != nil {
-		fmt.Fprintf(os.Stderr, "  ❌ Cannot create directory: %v\n", mkdirErr)
+		errlog.Error("Cannot create directory: %v", mkdirErr)
 		return
 	}
 
 	// Move the file
 	if moveErr := MoveFile(selectedPath, destPath); moveErr != nil {
-		fmt.Fprintf(os.Stderr, "  ❌ Move failed: %v\n", moveErr)
+		errlog.Error("Move failed: %v", moveErr)
 		return
 	}
 
@@ -294,7 +295,7 @@ func trackMove(database *db.DB, result cleaner.Result, fileInfo os.FileInfo, src
 	var mediaID int64
 	existing, searchErr := database.SearchMedia(result.CleanTitle)
 	if searchErr != nil {
-		fmt.Fprintf(os.Stderr, "  ⚠️  DB search error: %v\n", searchErr)
+		errlog.Warn("DB search error: %v", searchErr)
 	}
 	for i := range existing {
 		if existing[i].CurrentFilePath == srcPath || existing[i].OriginalFilePath == srcPath {
@@ -318,18 +319,18 @@ func trackMove(database *db.DB, result cleaner.Result, fileInfo os.FileInfo, src
 		var insertErr error
 		mediaID, insertErr = database.InsertMedia(m)
 		if insertErr != nil {
-			fmt.Fprintf(os.Stderr, "  ❌ DB insert error: %v\n", insertErr)
+			errlog.Error("DB insert error: %v", insertErr)
 		}
 	} else {
 		if updateErr := database.UpdateMediaPath(mediaID, destPath); updateErr != nil {
-			fmt.Fprintf(os.Stderr, "  ❌ DB update path error: %v\n", updateErr)
+			errlog.Error("DB update path error: %v", updateErr)
 		}
 	}
 
 	if mediaID > 0 {
 		if histErr := database.InsertMoveHistory(mediaID, srcPath, destPath,
 			fileInfo.Name(), cleanName); histErr != nil {
-			fmt.Fprintf(os.Stderr, "  ⚠️  DB history error: %v\n", histErr)
+			errlog.Warn("DB history error: %v", histErr)
 		}
 	}
 
