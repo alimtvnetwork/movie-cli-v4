@@ -125,6 +125,9 @@ func runMovieRest(cmd *cobra.Command, args []string) {
 	mux.HandleFunc("/api/stats", corsWrap(func(w http.ResponseWriter, r *http.Request) {
 		handleStats(w, r, database)
 	}))
+	mux.HandleFunc("/api/logs", corsWrap(func(w http.ResponseWriter, r *http.Request) {
+		handleLogs(w, r, database)
+	}))
 
 	addr := fmt.Sprintf(":%d", restPort)
 	url := fmt.Sprintf("http://localhost:%d", restPort)
@@ -142,7 +145,8 @@ func runMovieRest(cmd *cobra.Command, args []string) {
 	fmt.Printf("     GET    /api/tags?media_id={id}\n")
 	fmt.Printf("     POST   /api/tags\n")
 	fmt.Printf("     DELETE /api/tags\n")
-	fmt.Printf("     GET    /api/stats\n\n")
+	fmt.Printf("     GET    /api/stats\n")
+	fmt.Printf("     GET    /api/logs?level=ERROR&limit=50\n\n")
 
 	if restOpen || scanRest {
 		go openBrowser(url)
