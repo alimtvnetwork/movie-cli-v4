@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## v1.25.0
+
+### Added
+- **HTML report: tag management** — add/remove tags per card with inline input; tags shown as purple pills with ✕ to remove
+- **HTML report: mark watched** — 👁 button marks a movie as watched via REST API; card gets green border and "watched" tag
+- **HTML report: similar movies** — 🔍 button opens a modal with TMDb recommendations (poster, title, year, rating, description)
+- **HTML report: watched filter** — new "✅ Watched" filter button in the toolbar
+- **HTML report: tags auto-load** — when REST server is detected, all tags load automatically on page open
+
 ## v1.24.0
 
 ### Added

@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Movie CLI — Library Report</title>
 <style>
-  :root { --bg: #0f172a; --card: #1e293b; --text: #e2e8f0; --muted: #94a3b8; --accent: #3b82f6; --danger: #ef4444; --success: #22c55e; --border: #334155; }
+  :root { --bg: #0f172a; --card: #1e293b; --text: #e2e8f0; --muted: #94a3b8; --accent: #3b82f6; --danger: #ef4444; --success: #22c55e; --border: #334155; --warn: #f59e0b; --purple: #a78bfa; }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; }
   .container { max-width: 1200px; margin: 0 auto; padding: 2rem 1rem; }
@@ -17,13 +17,15 @@
   .stat .num { font-size: 1.5rem; font-weight: 700; color: var(--accent); }
   .stat .label { font-size: 0.8rem; color: var(--muted); text-transform: uppercase; }
   .filters { display: flex; gap: 0.5rem; justify-content: center; margin-bottom: 1.5rem; flex-wrap: wrap; }
-  .filters button { background: var(--card); border: 1px solid var(--border); color: var(--text); padding: 0.4rem 1rem; border-radius: 6px; cursor: pointer; font-size: 0.85rem; }
+  .filters button { background: var(--card); border: 1px solid var(--border); color: var(--text); padding: 0.4rem 1rem; border-radius: 6px; cursor: pointer; font-size: 0.85rem; transition: all 0.15s; }
+  .filters button:hover { border-color: var(--accent); }
   .filters button.active { background: var(--accent); border-color: var(--accent); }
   .search { text-align: center; margin-bottom: 1.5rem; }
   .search input { background: var(--card); border: 1px solid var(--border); color: var(--text); padding: 0.6rem 1rem; border-radius: 6px; width: 100%; max-width: 400px; font-size: 0.95rem; }
-  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1.5rem; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 1.5rem; }
   .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; display: flex; flex-direction: column; transition: transform 0.2s; }
   .card:hover { transform: translateY(-2px); }
+  .card.watched { border-color: var(--success); }
   .card-top { display: flex; gap: 1rem; padding: 1rem; }
   .card-thumb { width: 100px; min-height: 150px; border-radius: 6px; object-fit: cover; background: var(--border); flex-shrink: 0; }
   .card-thumb-placeholder { width: 100px; min-height: 150px; border-radius: 6px; background: var(--border); display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 2rem; flex-shrink: 0; }
@@ -33,17 +35,47 @@
   .card-rating { color: #fbbf24; font-weight: 600; }
   .card-genre { display: flex; flex-wrap: wrap; gap: 0.3rem; margin-bottom: 0.5rem; }
   .card-genre span { background: var(--bg); padding: 0.15rem 0.5rem; border-radius: 4px; font-size: 0.7rem; color: var(--muted); }
+  .card-tags { display: flex; flex-wrap: wrap; gap: 0.3rem; margin-top: 0.4rem; }
+  .card-tags .tag { background: var(--purple); color: #fff; padding: 0.1rem 0.45rem; border-radius: 4px; font-size: 0.65rem; cursor: pointer; display: inline-flex; align-items: center; gap: 0.2rem; }
+  .card-tags .tag:hover { opacity: 0.8; }
+  .card-tags .tag .tag-x { font-size: 0.55rem; opacity: 0.7; }
+  .card-tags .tag .tag-x:hover { opacity: 1; }
   .card-desc { font-size: 0.8rem; color: var(--muted); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+  .card-middle { padding: 0 1rem 0.5rem; }
+  .tag-input { display: flex; gap: 0.3rem; margin-top: 0.4rem; }
+  .tag-input input { background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.7rem; width: 100px; }
+  .tag-input button { background: var(--accent); border: none; color: #fff; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.7rem; cursor: pointer; }
   .card-bottom { padding: 0.75rem 1rem; border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
   .card-bottom .director { font-size: 0.75rem; color: var(--muted); }
-  .card-actions { display: flex; gap: 0.5rem; }
-  .card-actions button { background: none; border: 1px solid var(--border); color: var(--muted); padding: 0.25rem 0.6rem; border-radius: 4px; cursor: pointer; font-size: 0.75rem; }
+  .card-actions { display: flex; gap: 0.4rem; }
+  .card-actions button { background: none; border: 1px solid var(--border); color: var(--muted); padding: 0.25rem 0.6rem; border-radius: 4px; cursor: pointer; font-size: 0.75rem; transition: all 0.15s; }
   .card-actions button:hover { border-color: var(--accent); color: var(--accent); }
   .card-actions button.delete:hover { border-color: var(--danger); color: var(--danger); }
+  .card-actions button.watched-btn:hover { border-color: var(--success); color: var(--success); }
+  .card-actions button.similar-btn:hover { border-color: var(--warn); color: var(--warn); }
+  .card-actions button.is-watched { border-color: var(--success); color: var(--success); background: rgba(34,197,94,0.1); }
   .card.removed { opacity: 0.3; pointer-events: none; }
   .rest-banner { background: var(--card); border: 1px solid var(--accent); border-radius: 8px; padding: 1rem; text-align: center; margin-bottom: 1.5rem; font-size: 0.85rem; }
   .rest-banner code { background: var(--bg); padding: 0.2rem 0.5rem; border-radius: 4px; }
   .toast { position: fixed; bottom: 1rem; right: 1rem; background: var(--success); color: #fff; padding: 0.75rem 1.5rem; border-radius: 8px; font-size: 0.85rem; display: none; z-index: 100; }
+
+  /* Similar modal */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: none; z-index: 50; align-items: center; justify-content: center; }
+  .modal-overlay.show { display: flex; }
+  .modal { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto; }
+  .modal h2 { font-size: 1.2rem; margin-bottom: 1rem; }
+  .modal-close { float: right; background: none; border: none; color: var(--muted); font-size: 1.2rem; cursor: pointer; }
+  .modal-close:hover { color: var(--text); }
+  .similar-list { display: flex; flex-direction: column; gap: 0.75rem; }
+  .similar-item { display: flex; gap: 0.75rem; padding: 0.75rem; background: var(--bg); border-radius: 8px; }
+  .similar-item img { width: 50px; height: 75px; object-fit: cover; border-radius: 4px; flex-shrink: 0; }
+  .similar-item-info { flex: 1; }
+  .similar-item-title { font-weight: 600; font-size: 0.9rem; }
+  .similar-item-meta { font-size: 0.75rem; color: var(--muted); }
+  .similar-item-desc { font-size: 0.75rem; color: var(--muted); margin-top: 0.25rem; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .similar-loading { text-align: center; padding: 2rem; color: var(--muted); }
+  .similar-empty { text-align: center; padding: 2rem; color: var(--muted); }
+
   @media (max-width: 600px) { .grid { grid-template-columns: 1fr; } .card-top { flex-direction: column; align-items: center; text-align: center; } }
 </style>
 </head>
@@ -62,7 +94,7 @@
   </div>
 
   <div class="rest-banner" id="restBanner">
-    💡 To enable interactive features (delete, mark), run: <code>movie rest</code> (default port <strong>{{.Port}}</strong>)
+    💡 To enable interactive features, run: <code>movie rest</code> (default port <strong>{{.Port}}</strong>)
   </div>
 
   <div class="search"><input type="text" id="searchInput" placeholder="Search by title..." /></div>
@@ -71,6 +103,7 @@
     <button class="active" onclick="filterType('all', this)">All</button>
     <button onclick="filterType('movie', this)">Movies</button>
     <button onclick="filterType('tv', this)">TV Shows</button>
+    <button onclick="filterType('watched', this)">✅ Watched</button>
   </div>
 
   <div class="grid" id="grid">
@@ -98,12 +131,21 @@
           {{if .Description}}<div class="card-desc">{{.Description}}</div>{{end}}
         </div>
       </div>
+      <div class="card-middle">
+        <div class="card-tags" id="tags-{{.ID}}"></div>
+        <div class="tag-input">
+          <input type="text" id="tag-input-{{.ID}}" placeholder="Add tag..." onkeydown="if(event.key==='Enter')addTag({{.ID}})" />
+          <button onclick="addTag({{.ID}})">+</button>
+        </div>
+      </div>
       <div class="card-bottom">
         <div>
           {{if .Director}}<span class="director">🎬 {{.Director}}</span>{{end}}
           {{if .CastList}}<span class="director"> · 🎭 {{.CastList}}</span>{{end}}
         </div>
         <div class="card-actions">
+          <button onclick="markWatched({{.ID}}, this)" class="watched-btn" title="Mark as watched">👁</button>
+          <button onclick="showSimilar({{.ID}}, '{{.Title}}')" class="similar-btn" title="Find similar">🔍</button>
           <button onclick="deleteMedia({{.ID}}, this)" class="delete" title="Remove from library">🗑</button>
         </div>
       </div>
@@ -112,29 +154,178 @@
   </div>
 </div>
 
+<!-- Similar Movies Modal -->
+<div class="modal-overlay" id="similarModal" onclick="if(event.target===this)closeSimilar()">
+  <div class="modal">
+    <button class="modal-close" onclick="closeSimilar()">✕</button>
+    <h2 id="similarTitle">Similar to...</h2>
+    <div id="similarContent" class="similar-list"></div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
 const API_PORT = {{.Port}};
 const API_BASE = 'http://localhost:' + API_PORT;
+let restAvailable = false;
 
-function showToast(msg) {
+function showToast(msg, isError) {
   const t = document.getElementById('toast');
   t.textContent = msg;
+  t.style.background = isError ? 'var(--danger)' : 'var(--success)';
   t.style.display = 'block';
   setTimeout(() => t.style.display = 'none', 2500);
+}
+
+function restRequired() {
+  if (!restAvailable) {
+    showToast('REST server not running. Start with: movie rest', true);
+    return true;
+  }
+  return false;
 }
 
 async function checkRest() {
   try {
     const r = await fetch(API_BASE + '/api/stats', { signal: AbortSignal.timeout(1000) });
     if (r.ok) {
+      restAvailable = true;
       document.getElementById('restBanner').style.display = 'none';
+      loadAllTags();
     }
   } catch(e) { /* REST not running */ }
 }
 
+// --- Tags ---
+async function loadAllTags() {
+  document.querySelectorAll('.card').forEach(async card => {
+    const id = card.dataset.id;
+    try {
+      const r = await fetch(API_BASE + '/api/tags?media_id=' + id);
+      if (r.ok) {
+        const data = await r.json();
+        renderTags(id, data.tags || []);
+      }
+    } catch(e) {}
+  });
+}
+
+function renderTags(mediaId, tags) {
+  const container = document.getElementById('tags-' + mediaId);
+  if (!container) return;
+  container.innerHTML = tags.map(t =>
+    `<span class="tag" onclick="removeTag(${mediaId}, '${t}')">${t}<span class="tag-x">✕</span></span>`
+  ).join('');
+  // Mark card as watched if it has the watched tag
+  const card = container.closest('.card');
+  if (tags.includes('watched')) {
+    card.classList.add('watched');
+    const btn = card.querySelector('.watched-btn');
+    if (btn) btn.classList.add('is-watched');
+  }
+}
+
+async function addTag(mediaId) {
+  if (restRequired()) return;
+  const input = document.getElementById('tag-input-' + mediaId);
+  const tag = input.value.trim().toLowerCase();
+  if (!tag) return;
+  try {
+    const r = await fetch(API_BASE + '/api/tags', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ media_id: mediaId, tag: tag })
+    });
+    if (r.ok) {
+      input.value = '';
+      showToast('Tag "' + tag + '" added');
+      // Refresh tags
+      const tr = await fetch(API_BASE + '/api/tags?media_id=' + mediaId);
+      if (tr.ok) { const d = await tr.json(); renderTags(mediaId, d.tags || []); }
+    } else {
+      showToast('Tag already exists or error', true);
+    }
+  } catch(e) { showToast('Failed to add tag', true); }
+}
+
+async function removeTag(mediaId, tag) {
+  if (restRequired()) return;
+  try {
+    const r = await fetch(API_BASE + '/api/tags', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ media_id: mediaId, tag: tag })
+    });
+    if (r.ok) {
+      showToast('Tag "' + tag + '" removed');
+      const tr = await fetch(API_BASE + '/api/tags?media_id=' + mediaId);
+      if (tr.ok) { const d = await tr.json(); renderTags(mediaId, d.tags || []); }
+    }
+  } catch(e) { showToast('Failed to remove tag', true); }
+}
+
+// --- Mark Watched ---
+async function markWatched(id, btn) {
+  if (restRequired()) return;
+  try {
+    const r = await fetch(API_BASE + '/api/media/' + id + '/watched', { method: 'PATCH' });
+    if (r.ok) {
+      btn.classList.add('is-watched');
+      btn.closest('.card').classList.add('watched');
+      showToast('Marked as watched');
+      // Refresh tags to show the "watched" tag
+      const tr = await fetch(API_BASE + '/api/tags?media_id=' + id);
+      if (tr.ok) { const d = await tr.json(); renderTags(id, d.tags || []); }
+    } else {
+      showToast('Error: ' + (await r.text()), true);
+    }
+  } catch(e) { showToast('Failed to mark watched', true); }
+}
+
+// --- Similar ---
+async function showSimilar(id, title) {
+  if (restRequired()) return;
+  const modal = document.getElementById('similarModal');
+  const content = document.getElementById('similarContent');
+  document.getElementById('similarTitle').textContent = 'Similar to "' + title + '"';
+  content.innerHTML = '<div class="similar-loading">Loading recommendations...</div>';
+  modal.classList.add('show');
+
+  try {
+    const r = await fetch(API_BASE + '/api/media/' + id + '/similar');
+    if (!r.ok) { content.innerHTML = '<div class="similar-empty">Could not fetch recommendations</div>'; return; }
+    const data = await r.json();
+    const items = data.similar || [];
+    if (items.length === 0) {
+      content.innerHTML = '<div class="similar-empty">No recommendations found</div>';
+      return;
+    }
+    content.innerHTML = items.slice(0, 10).map(s => {
+      const poster = s.poster_path ? 'https://image.tmdb.org/t/p/w92' + s.poster_path : '';
+      const year = (s.release_date || s.first_air_date || '').substring(0, 4);
+      const rating = s.vote_average ? '⭐ ' + s.vote_average.toFixed(1) : '';
+      return `<div class="similar-item">
+        ${poster ? `<img src="${poster}" alt="${s.title || s.name}" />` : ''}
+        <div class="similar-item-info">
+          <div class="similar-item-title">${s.title || s.name || 'Unknown'}</div>
+          <div class="similar-item-meta">${year} ${rating}</div>
+          ${s.overview ? `<div class="similar-item-desc">${s.overview}</div>` : ''}
+        </div>
+      </div>`;
+    }).join('');
+  } catch(e) {
+    content.innerHTML = '<div class="similar-empty">REST server error</div>';
+  }
+}
+
+function closeSimilar() {
+  document.getElementById('similarModal').classList.remove('show');
+}
+
+// --- Delete ---
 async function deleteMedia(id, btn) {
+  if (restRequired()) return;
   if (!confirm('Remove this item from the library?')) return;
   try {
     const r = await fetch(API_BASE + '/api/media/' + id, { method: 'DELETE' });
@@ -142,18 +333,19 @@ async function deleteMedia(id, btn) {
       btn.closest('.card').classList.add('removed');
       showToast('Removed from library');
     } else {
-      showToast('Error: ' + (await r.text()));
+      showToast('Error: ' + (await r.text()), true);
     }
-  } catch(e) {
-    showToast('REST server not running. Start with: movie rest');
-  }
+  } catch(e) { showToast('Failed to delete', true); }
 }
 
+// --- Filters ---
 function filterType(type, btn) {
   document.querySelectorAll('.filters button').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
   document.querySelectorAll('.card').forEach(c => {
-    c.style.display = (type === 'all' || c.dataset.type === type) ? '' : 'none';
+    if (type === 'all') { c.style.display = ''; }
+    else if (type === 'watched') { c.style.display = c.classList.contains('watched') ? '' : 'none'; }
+    else { c.style.display = c.dataset.type === type ? '' : 'none'; }
   });
 }
 
@@ -163,6 +355,8 @@ document.getElementById('searchInput').addEventListener('input', function() {
     c.style.display = c.dataset.title.toLowerCase().includes(q) ? '' : 'none';
   });
 });
+
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSimilar(); });
 
 checkRest();
 </script>
