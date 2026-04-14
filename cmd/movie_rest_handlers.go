@@ -117,9 +117,15 @@ func handleSimilar(w http.ResponseWriter, r *http.Request, database *db.DB) {
 		return
 	}
 
-	// Get TMDb credentials
-	apiKey, _ := database.GetConfig("tmdb_api_key")
-	token, _ := database.GetConfig("tmdb_token")
+	// Get TMDb credentials — missing keys are not fatal (empty string = no auth)
+	apiKey, keyErr := database.GetConfig("tmdb_api_key")
+	if keyErr != nil {
+		fmt.Fprintf(os.Stderr, "⚠️  Could not read tmdb_api_key: %v\n", keyErr)
+	}
+	token, tokErr := database.GetConfig("tmdb_token")
+	if tokErr != nil {
+		fmt.Fprintf(os.Stderr, "⚠️  Could not read tmdb_token: %v\n", tokErr)
+	}
 	client := tmdb.NewClientWithToken(apiKey, token)
 
 	results, recErr := client.GetRecommendations(m.TmdbID, m.Type, 1)
@@ -163,10 +169,14 @@ func handleWatched(w http.ResponseWriter, r *http.Request, database *db.DB) {
 	}
 
 	// Update watchlist status if in watchlist
-	database.Exec("UPDATE watchlist SET status = 'watched', watched_at = CURRENT_TIMESTAMP WHERE tmdb_id = ?", m.TmdbID)
+	if _, wlErr := database.Exec("UPDATE watchlist SET status = 'watched', watched_at = CURRENT_TIMESTAMP WHERE tmdb_id = ?", m.TmdbID); wlErr != nil {
+		fmt.Fprintf(os.Stderr, "⚠️  Watchlist update error: %v\n", wlErr)
+	}
 
 	// Also add a "watched" tag
-	_ = database.AddTag(int(id), "watched")
+	if tagErr := database.AddTag(int(id), "watched"); tagErr != nil {
+		fmt.Fprintf(os.Stderr, "⚠️  Could not add watched tag: %v\n", tagErr)
+	}
 
 	writeJSON(w, map[string]interface{}{
 		"status":   "marked_watched",
