@@ -116,10 +116,17 @@ movie-cli
 
 ### Base Directory
 
-All data resides in `./data/`:
+All data resides in `<binary-dir>/data/` — always relative to where the CLI
+binary physically resides on disk, **not** the current working directory.
+
+This means:
+- If the binary is at `E:\bin-run\movie.exe`, data lives in `E:\bin-run\data\`.
+- If the binary is at `/usr/local/bin/movie`, data lives in `/usr/local/bin/data/`.
+- Symlinks are resolved so the real physical location is used.
+- The data folder is created automatically on first run if it does not exist.
 
 ```
-./data/
+<binary-dir>/data/
 ├── movie.db                   # SQLite database (WAL mode)
 ├── thumbnails/
 │   └── <slug>/
@@ -131,6 +138,17 @@ All data resides in `./data/`:
         └── <slug>/
             └── move-log.json  # Append-only move operation log
 ```
+
+### Build & Deploy Data Co-location
+
+When `run.ps1` deploys the binary, the `data/` folder is automatically
+co-located next to the binary. The deploy step:
+1. Copies the built binary to the deploy path (e.g., `E:\bin-run\movie.exe`)
+2. The binary itself resolves its own location via `os.Executable()` at runtime
+3. All data operations use `<binary-dir>/data/` — no environment variables needed
+
+This ensures the database, thumbnails, and JSON files are always found
+regardless of which directory the user runs the command from.
 
 ### Database Schema
 

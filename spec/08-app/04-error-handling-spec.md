@@ -143,8 +143,8 @@ GIVEN the database file is corrupted (SQLITE_CORRUPT)
 WHEN any command attempts to open the database
 THEN the error message includes:
   - The full path to the database file
-  - Suggestion: "Delete ~/data/movie.db and re-scan your library"
-  - Note: "Thumbnails in ~/data/thumbnails/ are preserved"
+  - Suggestion: "Delete <binary-dir>/data/movie.db and re-scan your library"
+  - Note: "Thumbnails in <binary-dir>/data/thumbnails/ are preserved"
 ```
 
 ### 3.4 Migration Failure

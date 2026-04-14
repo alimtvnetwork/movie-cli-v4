@@ -18,10 +18,30 @@ type DB struct {
 	BasePath string // path to data directory
 }
 
+// exeDir returns the directory where the running binary is located.
+// Symlinks are resolved so the real physical location is used.
+func exeDir() (string, error) {
+	exe, err := os.Executable()
+	if err != nil {
+		return "", fmt.Errorf("cannot locate executable: %w", err)
+	}
+	exe, err = filepath.EvalSymlinks(exe)
+	if err != nil {
+		return "", fmt.Errorf("cannot resolve symlinks for executable: %w", err)
+	}
+	return filepath.Dir(exe), nil
+}
+
 // Open opens (or creates) the SQLite database and runs migrations.
-// The database is stored in ./data/movie.db relative to the working directory.
+// The database is stored in <binary-dir>/data/movie.db — always relative
+// to where the CLI binary physically resides, not the working directory.
 func Open() (*DB, error) {
-	base := filepath.Join(".", "data")
+	binDir, dirErr := exeDir()
+	if dirErr != nil {
+		return nil, dirErr
+	}
+
+	base := filepath.Join(binDir, "data")
 	dirs := []string{
 		base,
 		filepath.Join(base, "json", "movie"),
