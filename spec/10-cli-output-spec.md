@@ -46,6 +46,8 @@ A double-line box banner showing the version is printed at the top:
 | `--format`      |       | string | `default` | Output format: `default`, `table`, or `json`       |
 | `--rest`        |       | bool   | `false`   | Start REST server + open browser after scan        |
 | `--port`        |       | int    | `8086`    | Port for REST server when using `--rest`           |
+| `--watch`       | `-w`  | bool   | `false`   | Poll for new files after initial scan              |
+| `--interval`    |       | int    | `10`      | Polling interval in seconds for `--watch`          |
 
 ### Flag Interactions & Edge Cases
 
@@ -56,6 +58,9 @@ A double-line box banner showing the version is printed at the top:
 | `--format table --rest`   | Table printed first, then REST server starts.               |
 | `--format json --dry-run` | JSON printed to stdout. No files written. No REST.          |
 | `--depth` without `-r`    | `--depth` is silently ignored.                              |
+| `--watch --dry-run`       | `--watch` is silently ignored (nothing to watch).           |
+| `--watch --rest`          | REST runs foreground; watch polls in background goroutine.  |
+| `--interval` without `-w` | `--interval` is silently ignored.                           |
 
 ---
 
@@ -168,6 +173,41 @@ When `--rest` is specified, after the scan completes:
 The server starts, the default browser opens the HTML report, and the CLI
 blocks until Ctrl+C is pressed. All REST requests are logged to the error
 log system (see Section 11).
+
+---
+
+## 6a. Watch Mode Section (--watch flag)
+
+When `--watch` (`-w`) is specified, after the initial scan completes the CLI
+enters a polling loop that checks for new video files at a fixed interval.
+
+### Initial Output
+
+```
+  👁️  Watching for new files (every 10s) — press Ctrl+C to stop
+  ──────────────────────────────────────────
+```
+
+### When New Files Are Detected
+
+```
+  🔔 Detected 2 new file(s) at 14:32:05
+
+  1. 🎬 Interstellar (2014) [movie]
+     └─ Interstellar.2014.1080p.BluRay.mkv
+     ⭐ 8.7  Interstellar
+
+  ✅ Processed: 2 files (2 movies, 0 TV)
+```
+
+### Rules
+- The "seen" set is seeded from the initial scan so existing files are not re-processed
+- Each watch cycle that finds new files logs a scan history entry to the database
+- The interval message shows the configured `--interval` value (default 10)
+- Timestamps use 24-hour `HH:MM:SS` format
+- If `--rest` is also active, watch runs as a background goroutine
+- If `--dry-run` is active, `--watch` is silently ignored
+- The loop runs until the process receives SIGINT (Ctrl+C)
 
 ---
 
