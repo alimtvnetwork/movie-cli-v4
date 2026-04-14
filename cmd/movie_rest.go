@@ -8,9 +8,11 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -142,11 +144,12 @@ func runMovieRest(cmd *cobra.Command, args []string) {
 	fmt.Printf("     DELETE /api/tags\n")
 	fmt.Printf("     GET    /api/stats\n\n")
 
-	if restOpen {
+	if restOpen || scanRest {
 		go openBrowser(url)
 	}
 
-	if srvErr := http.ListenAndServe(addr, mux); srvErr != nil {
+	handler := logMiddleware(mux)
+	if srvErr := http.ListenAndServe(addr, handler); srvErr != nil {
 		errlog.Error("Server error: %v", srvErr)
 	}
 }
