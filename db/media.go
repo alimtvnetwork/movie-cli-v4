@@ -47,6 +47,13 @@ type Media struct {
 	LanguageId       int
 	CollectionId     int
 	ScanHistoryId    int
+
+	// Compat fields — populated from views or for legacy cmd code.
+	// These are NOT stored in the Media table directly.
+	Genre    string `json:"genre,omitempty"`    // aggregated from MediaGenre+Genre
+	CastList string `json:"cast_list,omitempty"` // aggregated from MediaCast+Cast
+	Language string `json:"language,omitempty"` // resolved from Language.Code
+	FileSize int64  `json:"file_size,omitempty"` // computed: FileSizeMb * 1024 * 1024
 }
 
 // InsertMedia inserts a new media record and returns the ID.
