@@ -166,14 +166,14 @@ erDiagram
         TEXT WatchedAt "NULLABLE"
     }
 
-    %% ─── Config (config.db) ───
+    %% ─── Config ───
 
     Config {
         TEXT ConfigKey PK "NOT NULL"
         TEXT ConfigValue "NOT NULL"
     }
 
-    %% ─── Error Log (error-log.db) ───
+    %% ─── Error Log ───
 
     ErrorLog {
         INTEGER ErrorLogId PK "AUTOINCREMENT"
