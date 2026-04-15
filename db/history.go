@@ -64,6 +64,25 @@ func (d *DB) MarkMoveUndone(id int64) error {
 	return err
 }
 
+// MarkMoveRedone marks a move_history record as not undone (for redo).
+func (d *DB) MarkMoveRedone(id int64) error {
+	_, err := d.Exec("UPDATE move_history SET undone = 0 WHERE id = ?", id)
+	return err
+}
+
+// GetLastUndoneMove returns the most recent undone move (for redo).
+func (d *DB) GetLastUndoneMove() (*MoveRecord, error) {
+	row := d.QueryRow(`
+		SELECT id, media_id, from_path, to_path, original_file_name, new_file_name, moved_at, undone
+		FROM move_history WHERE undone = 1 ORDER BY moved_at DESC LIMIT 1`)
+	r := &MoveRecord{}
+	err := row.Scan(&r.ID, &r.MediaID, &r.FromPath, &r.ToPath, &r.OriginalFileName, &r.NewFileName, &r.MovedAt, &r.Undone)
+	if err != nil {
+		return nil, err
+	}
+	return r, nil
+}
+
 // ScanRecord represents a row in scan_history.
 type ScanRecord struct {
 	ID         int64
