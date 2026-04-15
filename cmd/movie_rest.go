@@ -132,7 +132,7 @@ func runMovieRest(cmd *cobra.Command, args []string) {
 	addr := fmt.Sprintf(":%d", restPort)
 	url := fmt.Sprintf("http://localhost:%d", restPort)
 	fmt.Printf("\n🚀 Movie CLI REST server running on %s\n", url)
-	fmt.Println("   Press Ctrl+C to stop\n")
+	fmt.Println("   Press Ctrl+C to stop")
 	fmt.Printf("   Endpoints:\n")
 	fmt.Printf("     GET    /                       HTML library report\n")
 	fmt.Printf("     GET    /api/media\n")

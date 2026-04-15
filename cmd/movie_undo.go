@@ -404,7 +404,7 @@ func executeMoveUndo(database *db.DB, m *db.MoveRecord) error {
 
 	// Update media path
 	if err := database.UpdateMediaPath(m.MediaID, m.FromPath); err != nil {
-		errlog.Warn("Could not update media path: %v", m.ID, err)
+		errlog.Warn(fmt.Sprintf("Could not update media path (ID %d): %v", m.ID, err))
 	}
 
 	return nil
