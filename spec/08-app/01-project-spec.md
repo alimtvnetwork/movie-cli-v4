@@ -127,10 +127,7 @@ This means:
 
 ```
 <binary-dir>/data/
-├── media.db                   # Media & operations database (WAL mode)
-├── watchlist.db               # Watchlist database
-├── config.db                  # Key-value CLI settings
-├── error-log.db               # Structured error log database
+├── mahin.db                   # Single SQLite database (WAL mode)
 ├── config/
 │   └── (CLI configuration files)
 ├── log/
@@ -158,16 +155,16 @@ co-located next to the binary. The deploy step:
 This ensures the database, thumbnails, and JSON files are always found
 regardless of which directory the user runs the command from.
 
-### Database Schema — Split DB Pattern
+### Database Schema
 
-The CLI uses the **Split DB** pattern with multiple SQLite databases per bounded context. All databases use WAL mode.
+The CLI uses a **single SQLite database** (`mahin.db`) with all tables. All databases use WAL mode.
 
-| Database File | Bounded Context | Key Tables |
-|---------------|----------------|------------|
-| `media.db` | Media & Operations | Media, Genre, MediaGenre, Cast, MediaCast, Language, Tag, ScanFolder, ScanHistory, MoveHistory, ActionHistory, FileAction |
-| `watchlist.db` | Watch Tracking | Watchlist |
-| `config.db` | Configuration | Config |
-| `error-log.db` | Error Logging | ErrorLog |
+| Table Group | Key Tables |
+|-------------|------------|
+| Media & Operations | Media, Genre, MediaGenre, Cast, MediaCast, Language, Collection, Tag, MediaTag, ScanFolder, ScanHistory, MoveHistory, ActionHistory, FileAction |
+| Watch Tracking | Watchlist |
+| Configuration | Config |
+| Error Logging | ErrorLog |
 
 > **Full schema documentation:** [Database Design Spec](./06-database-design/04-database-design-spec.md)  
 > **ER diagram:** [DB Schema Diagram](./06-database-design/01-db-schema-diagram.mmd)  
