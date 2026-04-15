@@ -127,6 +127,9 @@ func runMovieScan(cmd *cobra.Command, args []string) {
 	useTable := scanFormat == "table"
 	useTMDb := creds.HasAuth()
 
+	// Generate batch ID for action_history tracking
+	scanBatchID := generateBatchID()
+
 	if useTable {
 		printScanTableHeader()
 	}
@@ -142,12 +145,25 @@ func runMovieScan(cmd *cobra.Command, args []string) {
 			diskPaths[vf.FullPath] = true
 		}
 		var removeIDs []int64
+		var removeMedia []*db.Media
 		for i := range existingMedia {
 			if !diskPaths[existingMedia[i].OriginalFilePath] {
 				removeIDs = append(removeIDs, existingMedia[i].ID)
+				removeMedia = append(removeMedia, &existingMedia[i])
 			}
 		}
 		if len(removeIDs) > 0 {
+			// Snapshot each removed entry before deletion for undo support
+			for _, rm := range removeMedia {
+				snapshot, snapErr := db.MediaToJSON(rm)
+				if snapErr != nil {
+					errlog.Warn("Could not snapshot media %d for undo: %v", rm.ID, snapErr)
+					continue
+				}
+				detail := fmt.Sprintf("Scan removed: %s (%s)", rm.CleanTitle, rm.OriginalFilePath)
+				database.InsertActionSimple(db.ActionScanRemove, rm.ID, snapshot, detail, scanBatchID)
+			}
+
 			delCount, delErr := database.DeleteMediaByIDs(removeIDs)
 			if delErr != nil {
 				errlog.Warn("Could not remove %d stale entries: %v", len(removeIDs), delErr)
