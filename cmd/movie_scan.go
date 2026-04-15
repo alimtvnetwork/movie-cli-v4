@@ -245,7 +245,7 @@ func runMovieScan(cmd *cobra.Command, args []string) {
 			}
 			processVideoFile(vf, database, client, useTMDb, outputDir,
 				&totalFiles, &movieCount, &tvCount, &skipped, &scannedItems,
-				useTable || useJSON)
+				useTable || useJSON, scanBatchID)
 		}
 		if useJSON {
 			for i := range scannedItems {

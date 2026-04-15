@@ -26,6 +26,7 @@ func processVideoFile(
 	totalFiles, movieCount, tvCount, skipped *int,
 	scannedItems *[]db.Media,
 	useTable bool,
+	batchID string,
 ) bool {
 	*totalFiles++
 
