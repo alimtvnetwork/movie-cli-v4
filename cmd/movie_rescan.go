@@ -4,6 +4,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strconv"
 
@@ -14,6 +15,56 @@ import (
 	"github.com/alimtvnetwork/movie-cli-v3/errlog"
 	"github.com/alimtvnetwork/movie-cli-v3/tmdb"
 )
+
+// regenerateReports rebuilds HTML report and summary.json for every scan
+// directory that has media in the DB.
+func regenerateReports(database *db.DB) {
+	allMedia, err := database.ListAllMedia()
+	if err != nil {
+		errlog.Warn("Could not list media for report regeneration: %v", err)
+		return
+	}
+	if len(allMedia) == 0 {
+		return
+	}
+
+	// Group media by scan directory (parent of .movie-output)
+	dirMap := make(map[string][]db.Media)
+	for _, m := range allMedia {
+		if m.OriginalFilePath == "" {
+			continue
+		}
+		scanDir := filepath.Dir(m.OriginalFilePath)
+		dirMap[scanDir] = append(dirMap[scanDir], m)
+	}
+
+	for scanDir, items := range dirMap {
+		outputDir := filepath.Join(scanDir, ".movie-output")
+		if _, statErr := os.Stat(outputDir); os.IsNotExist(statErr) {
+			continue // no .movie-output folder — skip
+		}
+
+		movieCount, tvCount := 0, 0
+		for _, m := range items {
+			if m.Type == "movie" {
+				movieCount++
+			} else {
+				tvCount++
+			}
+		}
+
+		if summaryErr := writeScanSummary(outputDir, scanDir, items,
+			len(items), movieCount, tvCount, 0); summaryErr != nil {
+			errlog.Warn("Could not regenerate summary.json for %s: %v", scanDir, summaryErr)
+		}
+		if htmlErr := writeHTMLReport(outputDir, scanDir, items,
+			len(items), movieCount, tvCount, 0); htmlErr != nil {
+			errlog.Warn("Could not regenerate report.html for %s: %v", scanDir, htmlErr)
+		} else {
+			fmt.Printf("🌐 Regenerated report.html → %s\n", filepath.Join(outputDir, "report.html"))
+		}
+	}
+}
 
 var rescanAll bool
 var rescanLimit int
@@ -170,4 +221,9 @@ func runMovieRescan(cmd *cobra.Command, args []string) {
 	fmt.Printf("   Updated:  %d\n", updated)
 	fmt.Printf("   Failed:   %d\n", failed)
 	fmt.Printf("   Total:    %d\n\n", len(entries))
+
+	// Regenerate HTML reports for affected scan directories
+	if updated > 0 {
+		regenerateReports(database)
+	}
 }
