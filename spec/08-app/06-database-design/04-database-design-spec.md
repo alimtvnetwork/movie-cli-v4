@@ -403,7 +403,7 @@ CREATE INDEX IdxMediaGenre_GenreId ON MediaGenre(GenreId);
 
 ---
 
-### 3.9 MediaCast (Join Table — N-M)
+### 3.10 MediaCast (Join Table — N-M)
 
 **Purpose:** Links media to cast members with role and ordering. Many-to-many relationship.  
 **Expected volume:** ~10,000-500,000 rows (avg 10 cast per media)
@@ -434,7 +434,7 @@ CREATE INDEX IdxMediaCast_CastId ON MediaCast(CastId);
 
 ---
 
-### 3.10 Tag
+### 3.11 Tag
 
 **Purpose:** User-assigned tags per media item.  
 **Expected volume:** ~500-5,000 rows
@@ -461,7 +461,7 @@ CREATE INDEX IdxTag_MediaId ON Tag(MediaId);
 
 ---
 
-### 3.11 MoveHistory
+### 3.12 MoveHistory
 
 **Purpose:** Tracks all file move/rename operations with undo support. Each entry references a FileAction type.  
 **Expected volume:** ~500-10,000 rows
@@ -500,7 +500,7 @@ CREATE INDEX IdxMoveHistory_IsUndone ON MoveHistory(IsUndone);
 
 ---
 
-### 3.12 ActionHistory
+### 3.13 ActionHistory
 
 **Purpose:** Unified audit log for all reversible operations beyond file moves (scan adds, deletes, restores, metadata updates).  
 **Expected volume:** ~1,000-50,000 rows
