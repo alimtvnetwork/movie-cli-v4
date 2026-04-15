@@ -95,6 +95,7 @@
 - [x] CI pipeline (lint, test, vuln scan) ✅ 10-Apr-2026 — ci.yml + vulncheck.yml + spec/12-ci-cd-pipeline/
 - [x] CI/CD pipeline spec documentation ✅ 10-Apr-2026 — spec/12-ci-cd-pipeline/ (3 docs)
 - [x] Self-update/release spec documentation ✅ 10-Apr-2026 — spec/13-self-update-app-update/ (6 docs)
+- [x] README update with all commands ✅ 15-Apr-2026 — all 29 commands documented
 
 ---
 
@@ -105,6 +106,5 @@ Pick one of these to implement next:
 1. **Acceptance criteria** (S06) — Add GIVEN/WHEN/THEN to spec for all commands
 2. **Shared helper docs** (S07) — Add code comments marking shared helpers
 3. **File size stats** (S10) — Add size info to `movie stats`
-4. **README update** (S12) — Document all features in README.md
 
 *Tell me which task to implement.*
