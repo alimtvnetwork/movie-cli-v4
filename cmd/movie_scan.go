@@ -263,7 +263,10 @@ func runMovieScan(cmd *cobra.Command, args []string) {
 	}
 
 	if !scanDryRun {
-		if histErr := database.InsertScanHistory(scanDir, totalFiles, movieCount, tvCount); histErr != nil {
+		folderId, folderErr := database.UpsertScanFolder(scanDir)
+		if folderErr != nil {
+			fmt.Fprintf(os.Stderr, "⚠️  Could not register scan folder: %v\n", folderErr)
+		} else if histErr := database.InsertScanHistory(int(folderId), totalFiles, movieCount, tvCount, 0, 0, 0, 0, 0); histErr != nil {
 			fmt.Fprintf(os.Stderr, "⚠️  Could not log scan history: %v\n", histErr)
 		}
 	}

@@ -1,10 +1,9 @@
-// watchlist.go — CRUD for the watchlist table (to-watch / watched tracking).
-// SHARED: used by cmd/movie_watch.go
+// watchlist.go — CRUD for the Watchlist table.
 package db
 
 import "database/sql"
 
-// WatchlistEntry represents a row in the watchlist table.
+// WatchlistEntry represents a row in the Watchlist table.
 type WatchlistEntry struct {
 	ID        int64
 	MediaID   sql.NullInt64
@@ -24,13 +23,13 @@ func (d *DB) AddToWatchlist(tmdbID int, title string, year int, mediaType string
 		mid = sql.NullInt64{Int64: mediaID, Valid: true}
 	}
 	_, err := d.Exec(`
-		INSERT INTO watchlist (tmdb_id, title, year, type, status, media_id)
+		INSERT INTO Watchlist (TmdbId, Title, Year, Type, Status, MediaId)
 		VALUES (?, ?, ?, ?, 'to-watch', ?)
-		ON CONFLICT(tmdb_id) DO UPDATE SET
-			title = excluded.title,
-			year  = excluded.year,
-			type  = excluded.type,
-			media_id = COALESCE(excluded.media_id, watchlist.media_id)`,
+		ON CONFLICT(TmdbId) DO UPDATE SET
+			Title = excluded.Title,
+			Year  = excluded.Year,
+			Type  = excluded.Type,
+			MediaId = COALESCE(excluded.MediaId, Watchlist.MediaId)`,
 		tmdbID, title, year, mediaType, mid)
 	return err
 }
@@ -38,37 +37,37 @@ func (d *DB) AddToWatchlist(tmdbID int, title string, year int, mediaType string
 // MarkWatched updates a watchlist entry to "watched".
 func (d *DB) MarkWatched(tmdbID int) error {
 	_, err := d.Exec(`
-		UPDATE watchlist SET status = 'watched', watched_at = CURRENT_TIMESTAMP
-		WHERE tmdb_id = ?`, tmdbID)
+		UPDATE Watchlist SET Status = 'watched', WatchedAt = datetime('now')
+		WHERE TmdbId = ?`, tmdbID)
 	return err
 }
 
 // MarkToWatch updates a watchlist entry back to "to-watch".
 func (d *DB) MarkToWatch(tmdbID int) error {
 	_, err := d.Exec(`
-		UPDATE watchlist SET status = 'to-watch', watched_at = NULL
-		WHERE tmdb_id = ?`, tmdbID)
+		UPDATE Watchlist SET Status = 'to-watch', WatchedAt = NULL
+		WHERE TmdbId = ?`, tmdbID)
 	return err
 }
 
 // RemoveFromWatchlist deletes a watchlist entry.
 func (d *DB) RemoveFromWatchlist(tmdbID int) error {
-	_, err := d.Exec("DELETE FROM watchlist WHERE tmdb_id = ?", tmdbID)
+	_, err := d.Exec("DELETE FROM Watchlist WHERE TmdbId = ?", tmdbID)
 	return err
 }
 
-// ListWatchlist returns entries filtered by status ("to-watch", "watched", or "" for all).
+// ListWatchlist returns entries filtered by status.
 func (d *DB) ListWatchlist(status string) ([]WatchlistEntry, error) {
 	var rows *sql.Rows
 	var err error
 	if status == "" {
 		rows, err = d.Query(`
-			SELECT id, media_id, tmdb_id, title, year, type, status, added_at, watched_at
-			FROM watchlist ORDER BY added_at DESC`)
+			SELECT WatchlistId, MediaId, TmdbId, Title, Year, Type, Status, AddedAt, WatchedAt
+			FROM Watchlist ORDER BY AddedAt DESC`)
 	} else {
 		rows, err = d.Query(`
-			SELECT id, media_id, tmdb_id, title, year, type, status, added_at, watched_at
-			FROM watchlist WHERE status = ? ORDER BY added_at DESC`, status)
+			SELECT WatchlistId, MediaId, TmdbId, Title, Year, Type, Status, AddedAt, WatchedAt
+			FROM Watchlist WHERE Status = ? ORDER BY AddedAt DESC`, status)
 	}
 	if err != nil {
 		return nil, err
@@ -90,8 +89,8 @@ func (d *DB) ListWatchlist(status string) ([]WatchlistEntry, error) {
 // GetWatchlistByTmdbID returns a single watchlist entry.
 func (d *DB) GetWatchlistByTmdbID(tmdbID int) (*WatchlistEntry, error) {
 	row := d.QueryRow(`
-		SELECT id, media_id, tmdb_id, title, year, type, status, added_at, watched_at
-		FROM watchlist WHERE tmdb_id = ?`, tmdbID)
+		SELECT WatchlistId, MediaId, TmdbId, Title, Year, Type, Status, AddedAt, WatchedAt
+		FROM Watchlist WHERE TmdbId = ?`, tmdbID)
 	var e WatchlistEntry
 	err := row.Scan(&e.ID, &e.MediaID, &e.TmdbID, &e.Title, &e.Year,
 		&e.Type, &e.Status, &e.AddedAt, &e.WatchedAt)

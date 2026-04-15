@@ -119,11 +119,11 @@ func handleSimilar(w http.ResponseWriter, r *http.Request, database *db.DB) {
 	}
 
 	// Get TMDb credentials — missing keys are not fatal (empty string = no auth)
-	apiKey, keyErr := database.GetConfig("tmdb_api_key")
+	apiKey, keyErr := database.GetConfig("TmdbApiKey")
 	if keyErr != nil {
 		errlog.Warn("Could not read tmdb_api_key: %v", keyErr)
 	}
-	token, tokErr := database.GetConfig("tmdb_token")
+	token, tokErr := database.GetConfig("TmdbToken")
 	if tokErr != nil {
 		errlog.Warn("Could not read tmdb_token: %v", tokErr)
 	}

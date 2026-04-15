@@ -8,8 +8,12 @@ import (
 
 func TestMigrate(t *testing.T) {
 	d := openTestDB(t)
-	// Verify tables exist by querying them
-	for _, table := range []string{"media", "move_history", "config", "scan_history", "tags", "media_tags", "watchlist"} {
+	for _, table := range []string{
+		"Media", "MoveHistory", "Config", "ScanHistory", "ScanFolder",
+		"Tag", "MediaTag", "Watchlist", "ErrorLog", "ActionHistory",
+		"Genre", "Cast", "MediaGenre", "MediaCast", "Language",
+		"FileAction", "Collection",
+	} {
 		var name string
 		err := d.QueryRow("SELECT name FROM sqlite_master WHERE type='table' AND name=?", table).Scan(&name)
 		if err != nil {
@@ -20,12 +24,23 @@ func TestMigrate(t *testing.T) {
 
 func TestDefaultConfig(t *testing.T) {
 	d := openTestDB(t)
-	val, err := d.GetConfig("movies_dir")
+	val, err := d.GetConfig("MoviesDir")
 	if err != nil {
 		t.Fatalf("get config: %v", err)
 	}
 	if val != "~/Movies" {
-		t.Errorf("movies_dir = %q, want ~/Movies", val)
+		t.Errorf("MoviesDir = %q, want ~/Movies", val)
+	}
+}
+
+func TestAppVersionInConfig(t *testing.T) {
+	d := openTestDB(t)
+	val, err := d.GetConfig("AppVersion")
+	if err != nil {
+		t.Fatalf("get AppVersion: %v", err)
+	}
+	if val == "" {
+		t.Error("AppVersion should not be empty")
 	}
 }
 
@@ -60,20 +75,20 @@ func TestInsertMediaAllowsMissingTMDbID(t *testing.T) {
 		t.Fatalf("first insert: %v", err)
 	}
 	if _, err := d.InsertMedia(&Media{Title: "Local Two", CleanTitle: "local two", Type: "movie"}); err != nil {
-		t.Fatalf("second insert with empty tmdb_id should store NULL: %v", err)
+		t.Fatalf("second insert with empty TmdbId should store NULL: %v", err)
 	}
 
 	m, err := d.GetMediaByID(id1)
 	if err != nil {
-		t.Fatalf("get by id with null tmdb_id: %v", err)
+		t.Fatalf("get by id with null TmdbId: %v", err)
 	}
 	if m.TmdbID != 0 {
-		t.Errorf("tmdb_id = %d, want 0 for NULL", m.TmdbID)
+		t.Errorf("TmdbId = %d, want 0 for NULL", m.TmdbID)
 	}
 
 	results, err := d.SearchMedia("local")
 	if err != nil {
-		t.Fatalf("search with null tmdb_id rows: %v", err)
+		t.Fatalf("search with null TmdbId rows: %v", err)
 	}
 	if len(results) != 2 {
 		t.Errorf("search returned %d results, want 2", len(results))
@@ -128,7 +143,6 @@ func TestListMedia(t *testing.T) {
 		t.Errorf("got %d items, want 2", len(list))
 	}
 
-	// Second page
 	list2, _ := d.ListMedia(2, 10)
 	if len(list2) != 1 {
 		t.Errorf("page 2: got %d items, want 1", len(list2))
@@ -202,7 +216,6 @@ func TestConfigSetGet(t *testing.T) {
 		t.Errorf("config = %q", val)
 	}
 
-	// Overwrite
 	d.SetConfig("test_key", "new_value")
 	val2, _ := d.GetConfig("test_key")
 	if val2 != "new_value" {
@@ -264,7 +277,7 @@ func TestMoveHistory(t *testing.T) {
 	d := openTestDB(t)
 	id := seedMedia(t, d, "Moved Movie", 200)
 
-	err := d.InsertMoveHistory(id, "/old/path.mkv", "/new/path.mkv", "old.mkv", "new.mkv")
+	err := d.InsertMoveHistory(id, int(FileActionMove), "/old/path.mkv", "/new/path.mkv", "old.mkv", "new.mkv")
 	if err != nil {
 		t.Fatalf("insert history: %v", err)
 	}
@@ -281,7 +294,6 @@ func TestMoveHistory(t *testing.T) {
 		t.Fatalf("undo: %v", err)
 	}
 
-	// No un-undone moves left
 	_, err = d.GetLastMove()
 	if err == nil {
 		t.Error("expected no more un-undone moves")
@@ -292,7 +304,12 @@ func TestMoveHistory(t *testing.T) {
 
 func TestScanHistory(t *testing.T) {
 	d := openTestDB(t)
-	err := d.InsertScanHistory("/downloads", 50, 30, 20)
+	// First create a scan folder
+	folderId, err := d.UpsertScanFolder("/downloads")
+	if err != nil {
+		t.Fatalf("upsert scan folder: %v", err)
+	}
+	err = d.InsertScanHistory(int(folderId), 50, 30, 20, 10, 0, 0, 0, 500)
 	if err != nil {
 		t.Fatalf("insert scan history: %v", err)
 	}
@@ -303,12 +320,10 @@ func TestScanHistory(t *testing.T) {
 func TestWatchlist(t *testing.T) {
 	d := openTestDB(t)
 
-	// Add to watchlist
 	if err := d.AddToWatchlist(550, "Fight Club", 1999, "movie", 0); err != nil {
 		t.Fatalf("add: %v", err)
 	}
 
-	// List to-watch
 	list, err := d.ListWatchlist("to-watch")
 	if err != nil {
 		t.Fatalf("list: %v", err)
@@ -317,7 +332,6 @@ func TestWatchlist(t *testing.T) {
 		t.Errorf("watchlist = %+v", list)
 	}
 
-	// Mark watched
 	if err := d.MarkWatched(550); err != nil {
 		t.Fatalf("mark watched: %v", err)
 	}
@@ -326,20 +340,17 @@ func TestWatchlist(t *testing.T) {
 		t.Errorf("status = %q", entry.Status)
 	}
 
-	// Undo (back to to-watch)
 	d.MarkToWatch(550)
 	entry2, _ := d.GetWatchlistByTmdbID(550)
 	if entry2.Status != "to-watch" {
 		t.Errorf("undo status = %q", entry2.Status)
 	}
 
-	// List all
 	all, _ := d.ListWatchlist("")
 	if len(all) != 1 {
 		t.Errorf("all = %d", len(all))
 	}
 
-	// Remove
 	d.RemoveFromWatchlist(550)
 	after, _ := d.ListWatchlist("")
 	if len(after) != 0 {
@@ -347,12 +358,9 @@ func TestWatchlist(t *testing.T) {
 	}
 }
 
-// ─── Watchlist upsert ───────────────────────────────────────
-
 func TestWatchlistUpsert(t *testing.T) {
 	d := openTestDB(t)
 	d.AddToWatchlist(550, "Fight Club", 1999, "movie", 0)
-	// Re-add should upsert, not error
 	if err := d.AddToWatchlist(550, "Fight Club (Updated)", 1999, "movie", 0); err != nil {
 		t.Fatalf("upsert: %v", err)
 	}
@@ -366,18 +374,18 @@ func TestWatchlistUpsert(t *testing.T) {
 
 func TestFileSizeStats(t *testing.T) {
 	d := openTestDB(t)
-	seedMedia(t, d, "Small", 1) // 700MB from seedMedia
+	seedMedia(t, d, "Small", 1) // 700 MB from seedMedia
 	seedMedia(t, d, "Big", 2)
 
 	total, largest, smallest, err := d.FileSizeStats()
 	if err != nil {
 		t.Fatalf("stats: %v", err)
 	}
-	if total != 700*1024*1024*2 {
-		t.Errorf("total = %d", total)
+	if total != 1400.0 { // 700 + 700
+		t.Errorf("total = %f, want 1400.0", total)
 	}
 	if largest != smallest {
-		t.Errorf("largest=%d smallest=%d (should be equal)", largest, smallest)
+		t.Errorf("largest=%f smallest=%f (should be equal)", largest, smallest)
 	}
 }
 
@@ -385,15 +393,19 @@ func TestFileSizeStats(t *testing.T) {
 
 func TestTopGenres(t *testing.T) {
 	d := openTestDB(t)
-	id1, _ := d.InsertMedia(&Media{
-		Title: "A", CleanTitle: "a", Year: 2024, Type: "movie", TmdbID: 1,
-		Genre: "Action, Drama", OriginalFilePath: "/a.mkv",
-	})
-	_ = id1
-	d.InsertMedia(&Media{
-		Title: "B", CleanTitle: "b", Year: 2024, Type: "movie", TmdbID: 2,
-		Genre: "Action, Comedy", OriginalFilePath: "/b.mkv",
-	})
+	id1 := seedMedia(t, d, "A", 1)
+	id2 := seedMedia(t, d, "B", 2)
+
+	// Insert genres
+	d.Exec("INSERT INTO Genre (Name) VALUES ('Action')")
+	d.Exec("INSERT INTO Genre (Name) VALUES ('Drama')")
+	d.Exec("INSERT INTO Genre (Name) VALUES ('Comedy')")
+
+	// Link genres to media
+	d.Exec("INSERT INTO MediaGenre (MediaId, GenreId) SELECT ?, GenreId FROM Genre WHERE Name = 'Action'", id1)
+	d.Exec("INSERT INTO MediaGenre (MediaId, GenreId) SELECT ?, GenreId FROM Genre WHERE Name = 'Drama'", id1)
+	d.Exec("INSERT INTO MediaGenre (MediaId, GenreId) SELECT ?, GenreId FROM Genre WHERE Name = 'Action'", id2)
+	d.Exec("INSERT INTO MediaGenre (MediaId, GenreId) SELECT ?, GenreId FROM Genre WHERE Name = 'Comedy'", id2)
 
 	genres, err := d.TopGenres(10)
 	if err != nil {
@@ -404,5 +416,35 @@ func TestTopGenres(t *testing.T) {
 	}
 	if genres["Drama"] != 1 {
 		t.Errorf("Drama = %d", genres["Drama"])
+	}
+}
+
+// ─── FileAction Seed ────────────────────────────────────────
+
+func TestFileActionSeeded(t *testing.T) {
+	d := openTestDB(t)
+	var count int
+	if err := d.QueryRow("SELECT COUNT(*) FROM FileAction").Scan(&count); err != nil {
+		t.Fatalf("count FileAction: %v", err)
+	}
+	if count != 14 {
+		t.Errorf("FileAction count = %d, want 14", count)
+	}
+}
+
+// ─── Views ──────────────────────────────────────────────────
+
+func TestViewsExist(t *testing.T) {
+	d := openTestDB(t)
+	for _, view := range []string{
+		"VwMediaDetail", "VwMediaGenreList", "VwMediaCastList",
+		"VwMediaFull", "VwMoveHistoryDetail", "VwActionHistoryDetail",
+		"VwScanHistoryDetail", "VwMediaTag",
+	} {
+		var name string
+		err := d.QueryRow("SELECT name FROM sqlite_master WHERE type='view' AND name=?", view).Scan(&name)
+		if err != nil {
+			t.Errorf("view %q not found: %v", view, err)
+		}
 	}
 }

@@ -45,7 +45,7 @@ func runMovieSearch(cmd *cobra.Command, args []string) {
 	defer database.Close()
 
 	// Get TMDb API key (GetConfig returns "" with nil error when key is absent)
-	apiKey, cfgErr := database.GetConfig("tmdb_api_key")
+	apiKey, cfgErr := database.GetConfig("TmdbApiKey")
 	if cfgErr != nil && cfgErr.Error() != "sql: no rows in result set" {
 		errlog.Warn("Config read error: %v", cfgErr)
 	}

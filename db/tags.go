@@ -1,6 +1,4 @@
 // tags.go — Tag lookup + MediaTag join table helpers.
-//
-// Tags are now a standalone lookup table linked to media via media_tags join.
 package db
 
 import "fmt"
@@ -12,30 +10,25 @@ type TagCount struct {
 }
 
 // AddTag inserts a tag for a media item. Creates the tag if it doesn't exist,
-// then links it via media_tags. Returns UNIQUE constraint error if already linked.
+// then links it via MediaTag.
 func (d *DB) AddTag(mediaID int, tag string) error {
-	// Upsert tag into lookup table
-	_, err := d.Exec(
-		`INSERT OR IGNORE INTO tags (name) VALUES (?)`, tag,
-	)
+	_, err := d.Exec("INSERT OR IGNORE INTO Tag (Name) VALUES (?)", tag)
 	if err != nil {
 		return fmt.Errorf("insert tag %q: %w", tag, err)
 	}
 
-	// Link via join table
-	_, err = d.Exec(
-		`INSERT INTO media_tags (media_id, tag_id)
-		 SELECT ?, id FROM tags WHERE name = ?`,
+	_, err = d.Exec(`
+		INSERT INTO MediaTag (MediaId, TagId)
+		SELECT ?, TagId FROM Tag WHERE Name = ?`,
 		mediaID, tag,
 	)
 	return err
 }
 
 // RemoveTag deletes a tag link from a media item.
-// Returns (true, nil) if deleted, (false, nil) if link didn't exist.
 func (d *DB) RemoveTag(mediaID int, tag string) (bool, error) {
 	result, err := d.Exec(
-		`DELETE FROM media_tags WHERE media_id = ? AND tag_id = (SELECT id FROM tags WHERE name = ?)`,
+		`DELETE FROM MediaTag WHERE MediaId = ? AND TagId = (SELECT TagId FROM Tag WHERE Name = ?)`,
 		mediaID, tag,
 	)
 	if err != nil {
@@ -50,13 +43,11 @@ func (d *DB) RemoveTag(mediaID int, tag string) (bool, error) {
 
 // GetTagsByMediaID returns all tag names for a specific media item.
 func (d *DB) GetTagsByMediaID(mediaID int) ([]string, error) {
-	rows, err := d.Query(
-		`SELECT t.name FROM tags t
-		 INNER JOIN media_tags mt ON t.id = mt.tag_id
-		 WHERE mt.media_id = ?
-		 ORDER BY t.name`,
-		mediaID,
-	)
+	rows, err := d.Query(`
+		SELECT t.Name FROM Tag t
+		INNER JOIN MediaTag mt ON t.TagId = mt.TagId
+		WHERE mt.MediaId = ?
+		ORDER BY t.Name`, mediaID)
 	if err != nil {
 		return nil, fmt.Errorf("query tags: %w", err)
 	}
@@ -73,16 +64,14 @@ func (d *DB) GetTagsByMediaID(mediaID int) ([]string, error) {
 	return tags, rows.Err()
 }
 
-// GetAllTagCounts returns all unique tags with their usage count,
-// ordered by count descending.
+// GetAllTagCounts returns all unique tags with their usage count.
 func (d *DB) GetAllTagCounts() ([]TagCount, error) {
-	rows, err := d.Query(
-		`SELECT t.name, COUNT(*) as cnt
-		 FROM tags t
-		 INNER JOIN media_tags mt ON t.id = mt.tag_id
-		 GROUP BY t.name
-		 ORDER BY cnt DESC, t.name ASC`,
-	)
+	rows, err := d.Query(`
+		SELECT t.Name, COUNT(*) as cnt
+		FROM Tag t
+		INNER JOIN MediaTag mt ON t.TagId = mt.TagId
+		GROUP BY t.Name
+		ORDER BY cnt DESC, t.Name ASC`)
 	if err != nil {
 		return nil, fmt.Errorf("query tag counts: %w", err)
 	}

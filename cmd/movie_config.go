@@ -83,13 +83,13 @@ func showAllConfig(database *db.DB) {
 	fmt.Println("⚙️  Configuration:")
 	fmt.Println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 
-	keys := []string{"movies_dir", "tv_dir", "archive_dir", "scan_dir", "tmdb_api_key", "tmdb_token", "page_size"}
+	keys := []string{"MoviesDir", "TvDir", "ArchiveDir", "ScanDir", "TmdbApiKey", "TmdbToken", "PageSize"}
 	for _, key := range keys {
 		val, err := database.GetConfig(key)
 		if err != nil {
 			val = "(not set)"
 		}
-		if (key == "tmdb_api_key" || key == "tmdb_token") && len(val) > 8 {
+		if (key == "TmdbApiKey" || key == "TmdbToken") && len(val) > 8 {
 			val = val[:4] + "..." + val[len(val)-4:]
 		}
 		fmt.Printf("  %-15s = %s\n", key, val)

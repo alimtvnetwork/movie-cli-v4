@@ -109,7 +109,7 @@ func runMovieLsJSON(database *db.DB) {
 }
 
 func runMovieLsInteractive(database *db.DB) {
-	pageSizeStr, cfgErr := database.GetConfig("page_size")
+	pageSizeStr, cfgErr := database.GetConfig("PageSize")
 	if cfgErr != nil && cfgErr.Error() != "sql: no rows in result set" {
 		errlog.Warn("Config read error (page_size): %v", cfgErr)
 	}

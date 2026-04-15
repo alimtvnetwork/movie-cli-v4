@@ -44,12 +44,12 @@ func resolveScanTMDbCredentials(database *db.DB) tmdbCredentials {
 	fmt.Println()
 
 	if creds.APIKey != "" {
-		if err := database.SetConfig("tmdb_api_key", creds.APIKey); err != nil {
+		if err := database.SetConfig("TmdbApiKey", creds.APIKey); err != nil {
 			errlog.Warn("Could not save tmdb_api_key: %v", err)
 		}
 	}
 	if creds.Token != "" {
-		if err := database.SetConfig("tmdb_token", creds.Token); err != nil {
+		if err := database.SetConfig("TmdbToken", creds.Token); err != nil {
 			errlog.Warn("Could not save tmdb_token: %v", err)
 		}
 	}
@@ -69,8 +69,8 @@ func resolveScanTMDbCredentials(database *db.DB) tmdbCredentials {
 // readTMDbCredentials reads TMDb credentials from config first, then env.
 func readTMDbCredentials(database *db.DB) tmdbCredentials {
 	creds := tmdbCredentials{
-		APIKey: strings.TrimSpace(readTMDbConfigValue(database, "tmdb_api_key")),
-		Token:  strings.TrimSpace(readTMDbConfigValue(database, "tmdb_token")),
+		APIKey: strings.TrimSpace(readTMDbConfigValue(database, "TmdbApiKey")),
+		Token:  strings.TrimSpace(readTMDbConfigValue(database, "TmdbToken")),
 	}
 	if creds.APIKey == "" {
 		creds.APIKey = strings.TrimSpace(os.Getenv("TMDB_API_KEY"))
