@@ -256,7 +256,6 @@ Each migration is a named function registered in order:
 ```go
 type Migration struct {
     Version     string
-    Database    string   // which .db file this targets
     Description string
     Up          func(db *sql.DB) error
 }
@@ -264,16 +263,14 @@ type Migration struct {
 var migrations = []Migration{
     {
         Version:     "2.0.0",
-        Database:    "media.db",
-        Description: "Initial schema — full redesign with Split DB",
-        Up:          migrateMedia200,
+        Description: "Initial schema — full redesign with single DB",
+        Up:          migrate200,
     },
     // Future migrations appended here:
     // {
     //     Version:     "2.1.0",
-    //     Database:    "media.db",
     //     Description: "Add ReleaseDate column to Media",
-    //     Up:          migrateMedia210,
+    //     Up:          migrate210,
     // },
 }
 ```
@@ -301,7 +298,7 @@ var migrations = []Migration{
 | Rule | Description |
 |------|-------------|
 | Forward-only | No down migrations — rollback by creating a new forward migration |
-| One database per migration | Each migration targets exactly one `.db` file |
+| Transaction-wrapped | Every migration runs inside a transaction |
 | Transaction-wrapped | Every migration runs inside a transaction |
 | Idempotent where possible | Use `IF NOT EXISTS` for CREATE, `IF EXISTS` for DROP |
 | Version in SchemaVersion | Every migration inserts a row in SchemaVersion |
