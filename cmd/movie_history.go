@@ -164,16 +164,16 @@ func collectUnifiedRecords(database *db.DB) []unifiedRecord {
 		for _, a := range actions {
 			detail := a.Detail
 			if detail == "" {
-				detail = string(a.ActionType)
+				detail = a.FileActionId.String()
 			}
 			records = append(records, unifiedRecord{
 				Source:    "action",
-				ID:        a.ID,
-				Type:      string(a.ActionType),
+				ID:        a.ActionHistoryId,
+				Type:      a.FileActionId.String(),
 				Detail:    detail,
-				BatchID:   a.BatchID,
+				BatchID:   a.BatchId,
 				Timestamp: a.CreatedAt,
-				Undone:    a.Undone,
+				Undone:    a.IsUndone,
 			})
 		}
 	}
