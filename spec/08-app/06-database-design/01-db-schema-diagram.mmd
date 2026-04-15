@@ -152,11 +152,11 @@ erDiagram
         TEXT CreatedAt "DEFAULT CURRENT_TIMESTAMP"
     }
 
-    %% ─── Watchlist (watchlist.db) ───
+    %% ─── Watchlist ───
 
     Watchlist {
         INTEGER WatchlistId PK "AUTOINCREMENT"
-        INTEGER MediaId "cross-DB ref, NULLABLE"
+        INTEGER MediaId "FK, NULLABLE"
         INTEGER TmdbId "NOT NULL, UNIQUE"
         TEXT Title "NOT NULL"
         SMALLINT Year "NULLABLE"
