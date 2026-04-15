@@ -93,12 +93,18 @@ erDiagram
         INTEGER CastOrder "NULLABLE"
     }
 
-    %% ─── Tags ───
+    %% ─── Tags (Lookup + Join) ───
 
     Tag {
         INTEGER TagId PK "AUTOINCREMENT"
+        TEXT Name "NOT NULL, UNIQUE"
+        TEXT CreatedAt "DEFAULT CURRENT_TIMESTAMP"
+    }
+
+    MediaTag {
+        INTEGER MediaTagId PK "AUTOINCREMENT"
         INTEGER MediaId "FK, NOT NULL"
-        TEXT Name "NOT NULL"
+        INTEGER TagId "FK, NOT NULL"
         TEXT CreatedAt "DEFAULT CURRENT_TIMESTAMP"
     }
 
@@ -209,8 +215,9 @@ erDiagram
     Media ||--o{ MediaCast : "has cast"
     Cast ||--o{ MediaCast : "appears in"
 
-    %% Media 1-N Tag
-    Media ||--o{ Tag : "has tags"
+    %% Media N-M Tag via MediaTag
+    Media ||--o{ MediaTag : "has tags"
+    Tag ||--o{ MediaTag : "used by"
 
     %% Media 1-N MoveHistory
     Media ||--o{ MoveHistory : "has moves"

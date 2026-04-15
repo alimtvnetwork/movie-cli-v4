@@ -436,32 +436,55 @@ CREATE INDEX IdxMediaCast_CastId ON MediaCast(CastId);
 
 ### 3.11 Tag
 
-**Purpose:** User-assigned tags per media item.  
-**Expected volume:** ~500-5,000 rows
+**Purpose:** Lookup table of unique tag names. Linked to media via `MediaTag` join table.  
+**Expected volume:** ~50-500 rows
 
 | Column | Type | Constraints | Description |
 |--------|------|-------------|-------------|
 | TagId | INTEGER | PK, AUTOINCREMENT | Primary key |
-| MediaId | INTEGER | FK, NOT NULL | References Media |
-| Name | TEXT | NOT NULL | Tag text |
-| CreatedAt | TEXT | DEFAULT CURRENT_TIMESTAMP | When tag was added |
+| Name | TEXT | NOT NULL, UNIQUE | Tag text |
+| CreatedAt | TEXT | DEFAULT CURRENT_TIMESTAMP | When tag was created |
 
 ```sql
 CREATE TABLE Tag (
     TagId     INTEGER PRIMARY KEY AUTOINCREMENT,
-    MediaId   INTEGER NOT NULL,
-    Name      TEXT NOT NULL,
-    CreatedAt TEXT NOT NULL DEFAULT (datetime('now')),
-    UNIQUE (MediaId, Name),
-    FOREIGN KEY (MediaId) REFERENCES Media(MediaId) ON DELETE CASCADE
+    Name      TEXT NOT NULL UNIQUE,
+    CreatedAt TEXT NOT NULL DEFAULT (datetime('now'))
 );
-
-CREATE INDEX IdxTag_MediaId ON Tag(MediaId);
 ```
 
 ---
 
-### 3.12 MoveHistory
+### 3.12 MediaTag
+
+**Purpose:** Many-to-many join between Media and Tag. Each row assigns a tag to a media item.  
+**Expected volume:** ~500-5,000 rows
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| MediaTagId | INTEGER | PK, AUTOINCREMENT | Primary key |
+| MediaId | INTEGER | FK, NOT NULL | References Media |
+| TagId | INTEGER | FK, NOT NULL | References Tag |
+| CreatedAt | TEXT | DEFAULT CURRENT_TIMESTAMP | When tag was assigned |
+
+```sql
+CREATE TABLE MediaTag (
+    MediaTagId INTEGER PRIMARY KEY AUTOINCREMENT,
+    MediaId    INTEGER NOT NULL,
+    TagId      INTEGER NOT NULL,
+    CreatedAt  TEXT NOT NULL DEFAULT (datetime('now')),
+    UNIQUE (MediaId, TagId),
+    FOREIGN KEY (MediaId) REFERENCES Media(MediaId) ON DELETE CASCADE,
+    FOREIGN KEY (TagId) REFERENCES Tag(TagId) ON DELETE CASCADE
+);
+
+CREATE INDEX IdxMediaTag_MediaId ON MediaTag(MediaId);
+CREATE INDEX IdxMediaTag_TagId   ON MediaTag(TagId);
+```
+
+---
+
+### 3.13 MoveHistory
 
 **Purpose:** Tracks all file move/rename operations with undo support. Each entry references a FileAction type.  
 **Expected volume:** ~500-10,000 rows
@@ -854,18 +877,20 @@ INNER JOIN ScanFolder sf ON sh.ScanFolderId = sf.ScanFolderId;
 
 ### 7.8 VwMediaTag
 
-**Purpose:** Media with associated tags.
+**Purpose:** Media with associated tags (via MediaTag join).
 
 ```sql
 CREATE VIEW VwMediaTag AS
 SELECT
-    t.TagId,
-    t.MediaId,
+    mt.MediaTagId,
+    mt.MediaId,
     m.Title AS MediaTitle,
+    t.TagId,
     t.Name  AS TagName,
-    t.CreatedAt
-FROM Tag t
-INNER JOIN Media m ON t.MediaId = m.MediaId;
+    mt.CreatedAt
+FROM MediaTag mt
+INNER JOIN Media m ON mt.MediaId = m.MediaId
+INNER JOIN Tag t   ON mt.TagId   = t.TagId;
 ```
 
 ---
@@ -898,7 +923,8 @@ All enum-like columns use TEXT with CHECK constraints in SQLite and typed consta
 | `IdxMediaGenre_GenreId` | MediaGenre | GenreId | Media lookup by genre |
 | `IdxMediaCast_MediaId` | MediaCast | MediaId | Cast lookup by media |
 | `IdxMediaCast_CastId` | MediaCast | CastId | Media lookup by cast member |
-| `IdxTag_MediaId` | Tag | MediaId | Tags for a media item |
+| `IdxMediaTag_MediaId` | MediaTag | MediaId | Tags for a media item |
+| `IdxMediaTag_TagId` | MediaTag | TagId | Media lookup by tag |
 | `IdxScanHistory_ScanFolderId` | ScanHistory | ScanFolderId | History for a folder |
 | `IdxMoveHistory_MediaId` | MoveHistory | MediaId | Move history for a media item |
 | `IdxMoveHistory_FileActionId` | MoveHistory | FileActionId | Filter by action type |

@@ -176,11 +176,18 @@ func (d *DB) migrate() error {
 
 	CREATE TABLE IF NOT EXISTS tags (
 		id         INTEGER PRIMARY KEY AUTOINCREMENT,
+		name       TEXT NOT NULL UNIQUE,
+		created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+	);
+
+	CREATE TABLE IF NOT EXISTS media_tags (
+		id         INTEGER PRIMARY KEY AUTOINCREMENT,
 		media_id   INTEGER NOT NULL,
-		tag        TEXT NOT NULL,
+		tag_id     INTEGER NOT NULL,
 		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 		FOREIGN KEY (media_id) REFERENCES media(id) ON DELETE CASCADE,
-		UNIQUE(media_id, tag)
+		FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE,
+		UNIQUE(media_id, tag_id)
 	);
 
 	CREATE INDEX IF NOT EXISTS idx_media_type       ON media(type);
@@ -189,7 +196,8 @@ func (d *DB) migrate() error {
 	CREATE INDEX IF NOT EXISTS idx_media_tmdb       ON media(tmdb_id);
 	CREATE INDEX IF NOT EXISTS idx_move_history_media ON move_history(media_id);
 	CREATE INDEX IF NOT EXISTS idx_move_history_undone ON move_history(undone);
-	CREATE INDEX IF NOT EXISTS idx_tags_media       ON tags(media_id);
+	CREATE INDEX IF NOT EXISTS idx_media_tags_media ON media_tags(media_id);
+	CREATE INDEX IF NOT EXISTS idx_media_tags_tag   ON media_tags(tag_id);
 
 	CREATE TABLE IF NOT EXISTS watchlist (
 		id         INTEGER PRIMARY KEY AUTOINCREMENT,

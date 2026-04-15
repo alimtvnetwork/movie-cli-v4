@@ -9,7 +9,7 @@ import (
 func TestMigrate(t *testing.T) {
 	d := openTestDB(t)
 	// Verify tables exist by querying them
-	for _, table := range []string{"media", "move_history", "config", "scan_history", "tags", "watchlist"} {
+	for _, table := range []string{"media", "move_history", "config", "scan_history", "tags", "media_tags", "watchlist"} {
 		var name string
 		err := d.QueryRow("SELECT name FROM sqlite_master WHERE type='table' AND name=?", table).Scan(&name)
 		if err != nil {
