@@ -1,0 +1,95 @@
+%% 01-db-schema-diagram.mmd — Complete Database Schema (all tables + relationships)
+%% Version: 1.0.0 | Updated: 2026-04-15
+
+erDiagram
+    media {
+        INTEGER id PK "AUTOINCREMENT"
+        TEXT title "NOT NULL"
+        TEXT clean_title "NOT NULL"
+        INTEGER year
+        TEXT type "movie | tv"
+        INTEGER tmdb_id "UNIQUE"
+        TEXT imdb_id
+        TEXT description
+        REAL imdb_rating
+        REAL tmdb_rating
+        REAL popularity
+        TEXT genre
+        TEXT director
+        TEXT cast_list
+        TEXT thumbnail_path
+        TEXT original_file_name
+        TEXT original_file_path
+        TEXT current_file_path
+        TEXT file_extension
+        INTEGER file_size
+        INTEGER runtime "DEFAULT 0"
+        TEXT language "DEFAULT empty"
+        INTEGER budget "DEFAULT 0"
+        INTEGER revenue "DEFAULT 0"
+        TEXT trailer_url "DEFAULT empty"
+        TEXT tagline "DEFAULT empty"
+        DATETIME scanned_at "DEFAULT CURRENT_TIMESTAMP"
+        DATETIME updated_at "DEFAULT CURRENT_TIMESTAMP"
+    }
+
+    move_history {
+        INTEGER id PK "AUTOINCREMENT"
+        INTEGER media_id FK "NOT NULL"
+        TEXT from_path "NOT NULL"
+        TEXT to_path "NOT NULL"
+        TEXT original_file_name
+        TEXT new_file_name
+        DATETIME moved_at "DEFAULT CURRENT_TIMESTAMP"
+        INTEGER undone "0 or 1, DEFAULT 0"
+    }
+
+    tags {
+        INTEGER id PK "AUTOINCREMENT"
+        INTEGER media_id FK "NOT NULL"
+        TEXT tag "NOT NULL"
+        DATETIME created_at "DEFAULT CURRENT_TIMESTAMP"
+    }
+
+    scan_history {
+        INTEGER id PK "AUTOINCREMENT"
+        TEXT folder_path "NOT NULL"
+        INTEGER total_files "DEFAULT 0"
+        INTEGER movies_found "DEFAULT 0"
+        INTEGER tv_found "DEFAULT 0"
+        DATETIME scanned_at "DEFAULT CURRENT_TIMESTAMP"
+    }
+
+    config {
+        TEXT key PK
+        TEXT value "NOT NULL"
+    }
+
+    watchlist {
+        INTEGER id PK "AUTOINCREMENT"
+        INTEGER media_id FK "NULLABLE"
+        INTEGER tmdb_id "UNIQUE, NOT NULL"
+        TEXT title "NOT NULL"
+        INTEGER year
+        TEXT type "movie | tv"
+        TEXT status "to-watch | watched"
+        DATETIME added_at "DEFAULT CURRENT_TIMESTAMP"
+        DATETIME watched_at "NULLABLE"
+    }
+
+    error_logs {
+        INTEGER id PK "AUTOINCREMENT"
+        TEXT timestamp "NOT NULL"
+        TEXT level "ERROR | WARN | INFO"
+        TEXT source "NOT NULL"
+        TEXT function "DEFAULT empty"
+        TEXT command "DEFAULT empty"
+        TEXT work_dir "DEFAULT empty"
+        TEXT message "NOT NULL"
+        TEXT stack_trace "DEFAULT empty"
+        DATETIME created_at "DEFAULT CURRENT_TIMESTAMP"
+    }
+
+    media ||--o{ move_history : "has moves"
+    media ||--o{ tags : "has tags"
+    media ||--o| watchlist : "tracked in"
