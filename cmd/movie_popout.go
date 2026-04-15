@@ -317,7 +317,7 @@ func offerFolderCleanup(scanner *bufio.Scanner, database *db.DB, rootDir string,
 		subDirs[item.subDir] = true
 	}
 
-	var folders []folderInfo
+	var folders []popoutFolderInfo
 	for dir := range subDirs {
 		dirPath := filepath.Join(rootDir, dir)
 		info, statErr := os.Stat(dirPath)
@@ -337,7 +337,7 @@ func offerFolderCleanup(scanner *bufio.Scanner, database *db.DB, rootDir string,
 			return nil
 		})
 
-		folders = append(folders, folderInfo{
+		folders = append(folders, popoutFolderInfo{
 			name:      dir,
 			path:      dirPath,
 			files:     files,
@@ -389,7 +389,7 @@ func offerFolderCleanup(scanner *bufio.Scanner, database *db.DB, rootDir string,
 	}
 }
 
-func selectiveFolderRemoval(scanner *bufio.Scanner, database *db.DB, folders []folderInfo, batchID string) {
+func selectiveFolderRemoval(scanner *bufio.Scanner, database *db.DB, folders []popoutFolderInfo, batchID string) {
 	for _, f := range folders {
 		status := "empty"
 		if len(f.files) > 0 {
@@ -415,7 +415,7 @@ func selectiveFolderRemoval(scanner *bufio.Scanner, database *db.DB, folders []f
 	}
 }
 
-func listThenDecide(scanner *bufio.Scanner, database *db.DB, folders []folderInfo, batchID string) {
+func listThenDecide(scanner *bufio.Scanner, database *db.DB, folders []popoutFolderInfo, batchID string) {
 	for _, f := range folders {
 		fmt.Printf("\n  📁 %s/\n", f.name)
 		if len(f.files) == 0 {
