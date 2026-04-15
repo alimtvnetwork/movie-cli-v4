@@ -79,14 +79,17 @@
 - [x] `mahin movie` shows categorized subcommand help with examples
 
 ### Database Redesign v2.0.0 (15-Apr-2026) ✅
-- [x] Schema diagram — PascalCase, INTEGER AUTOINCREMENT, Split DB (4 databases)
-- [x] Design spec — 16 tables, 8 views, all DDL + indexes documented
+- [x] Schema diagram — PascalCase, INTEGER AUTOINCREMENT, single DB (`mahin.db`)
+- [x] Design spec — 19 tables, 8 views, all DDL + indexes documented
 - [x] State & history spec — undo/redo via ActionHistory + batch operations
 - [x] Popout spec — media file extraction with history tracking
 - [x] Migration spec — fresh install, breaking upgrade, incremental; SchemaVersion table
 - [x] Data folder structure — `<binary-dir>/data/` with config/ and log/ subfolders
 - [x] FileAction expanded to 14 types (added TagAdd, TagRemove, WatchlistAdd, WatchlistRemove, WatchlistStatusChange, ConfigChange)
 - [x] Collection table for TMDb movie collections ✅ 15-Apr-2026
+- [x] Tag refactored to M-N via MediaTag join table ✅ 15-Apr-2026
+- [x] action_history.go aligned with 14 FileAction types + PascalCase ✅ 15-Apr-2026
+- [x] Removed Split DB — consolidated all tables into single `mahin.db` ✅ 15-Apr-2026
 - [x] Suggestions & proposals document
 
 ---
@@ -94,12 +97,10 @@
 ## 🔲 Pending — Prioritized Backlog
 
 ### Phase 1: Database Implementation (P0)
-- [ ] Implement new Split DB schema in Go (`db/` package) — 4 databases, PascalCase tables
-- [ ] Migrate `action_history.go` to use FileAction FK instead of inline action_type CHECK
+- [ ] Implement new schema in Go (`db/` package) — single `mahin.db`, PascalCase tables
 - [ ] Implement SchemaVersion tracking + migration runner in Go
 - [ ] Seed FileAction with 14 predefined rows
 - [ ] Create 8 database views (VwMediaFull, VwMoveHistoryDetail, etc.)
-
 
 ### Phase 2: Code Alignment (P1)
 - [ ] Update all commands to use new PascalCase column names
@@ -124,6 +125,6 @@
 
 Pick one of these to implement next:
 
-1. **Split DB implementation** — Create the 4 .db files with PascalCase schema in Go
+1. **Single DB implementation** — Create `mahin.db` with PascalCase schema in Go
 2. **Migration runner** — SchemaVersion + sequential migration system
 3. **Acceptance criteria** — Add GIVEN/WHEN/THEN to spec for all commands
