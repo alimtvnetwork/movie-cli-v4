@@ -154,9 +154,12 @@ Step  Table/Object                 Dependencies
  13   MediaTag                     Media, Tag
  14   MoveHistory                  Media, FileAction
  15   ActionHistory                Media, FileAction
- 15   → Create all indexes         all tables exist
- 16   → Create all views           all tables exist
- 17   → Insert SchemaVersion       done
+ 16   Watchlist                    Media (optional FK)
+ 17   Config                       none
+ 18   ErrorLog                     none
+ 19   → Create all indexes         all tables exist
+ 20   → Create all views           all tables exist
+ 21   → Insert SchemaVersion       done
 ```
 
 ### 4.3 Seed Data
