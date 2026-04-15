@@ -248,7 +248,40 @@ CREATE INDEX IdxScanHistory_ScanFolderId ON ScanHistory(ScanFolderId);
 
 ---
 
-### 3.7 Media (Core Entity)
+### 3.7 Collection (TMDb Movie Collections)
+
+**Purpose:** Groups movies that belong to a TMDb collection (e.g., "The Dark Knight Collection", "Harry Potter Collection"). Populated automatically from TMDb `belongs_to_collection` field during scan/search.  
+**Expected volume:** ~100-2,000 rows (grows with library)
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| CollectionId | INTEGER | PK, AUTOINCREMENT | Primary key |
+| TmdbCollectionId | INTEGER | UNIQUE, NOT NULL | TMDb collection ID |
+| Name | TEXT | NOT NULL | Collection name from TMDb |
+| Overview | TEXT | NULLABLE | Collection description |
+| PosterPath | TEXT | NULLABLE | Local path to cached collection poster |
+| BackdropPath | TEXT | NULLABLE | Local path to cached backdrop image |
+| CreatedAt | TEXT | DEFAULT CURRENT_TIMESTAMP | When first added |
+
+```sql
+CREATE TABLE Collection (
+    CollectionId     INTEGER PRIMARY KEY AUTOINCREMENT,
+    TmdbCollectionId INTEGER NOT NULL UNIQUE,
+    Name             TEXT NOT NULL,
+    Overview         TEXT,
+    PosterPath       TEXT,
+    BackdropPath     TEXT,
+    CreatedAt        TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IdxCollection_TmdbCollectionId ON Collection(TmdbCollectionId);
+```
+
+> **Data source:** When scanning or searching a movie, if the TMDb response includes `belongs_to_collection`, upsert the Collection row and set `Media.CollectionId`. TV shows do not have collections.
+
+---
+
+### 3.8 Media (Core Entity)
 
 **Purpose:** Core media metadata — one row per scanned media file. Connected to ScanHistory to track which scan discovered it.  
 **Expected volume:** ~1,000-50,000 rows
@@ -267,6 +300,7 @@ CREATE INDEX IdxScanHistory_ScanFolderId ON ScanHistory(ScanFolderId);
 | TmdbRating | REAL | NULLABLE | TMDb rating (0.0-10.0) |
 | Popularity | REAL | NULLABLE | TMDb popularity score |
 | LanguageId | INTEGER | FK, NULLABLE | Original language |
+| CollectionId | INTEGER | FK, NULLABLE | TMDb collection this movie belongs to |
 | Director | TEXT | NULLABLE | Primary director name |
 | ThumbnailPath | TEXT | NULLABLE | Local path to cached poster image |
 | OriginalFileName | TEXT | NULLABLE | File name at time of scan |
@@ -297,6 +331,7 @@ CREATE TABLE Media (
     TmdbRating      REAL,
     Popularity      REAL,
     LanguageId      INTEGER,
+    CollectionId    INTEGER,
     Director        TEXT,
     ThumbnailPath   TEXT,
     OriginalFileName TEXT,
@@ -313,12 +348,14 @@ CREATE TABLE Media (
     ScannedAt       TEXT NOT NULL DEFAULT (datetime('now')),
     UpdatedAt       TEXT NOT NULL DEFAULT (datetime('now')),
     FOREIGN KEY (LanguageId) REFERENCES Language(LanguageId),
+    FOREIGN KEY (CollectionId) REFERENCES Collection(CollectionId),
     FOREIGN KEY (ScanHistoryId) REFERENCES ScanHistory(ScanHistoryId)
 );
 
 CREATE INDEX IdxMedia_TmdbId ON Media(TmdbId);
 CREATE INDEX IdxMedia_Type ON Media(Type);
 CREATE INDEX IdxMedia_LanguageId ON Media(LanguageId);
+CREATE INDEX IdxMedia_CollectionId ON Media(CollectionId);
 CREATE INDEX IdxMedia_ScanHistoryId ON Media(ScanHistoryId);
 ```
 
@@ -339,7 +376,7 @@ func (m MediaType) IsEqual(other MediaType) bool {
 
 ---
 
-### 3.8 MediaGenre (Join Table — 1-N)
+### 3.9 MediaGenre (Join Table — 1-N)
 
 **Purpose:** Links media to genres. One media can have many genres.  
 **Expected volume:** ~3,000-150,000 rows (avg 3 genres per media)

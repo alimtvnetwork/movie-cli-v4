@@ -2,7 +2,7 @@
 %% Version: 2.0.0 | Updated: 2026-04-15
 %% Follows: PascalCase naming, {TableName}Id PKs, Split DB pattern
 %% Split DB Layout:
-%%   media.db       — Media, Genre, MediaGenre, Cast, MediaCast, Language, Tag,
+%%   media.db       — Media, Collection, Genre, MediaGenre, Cast, MediaCast, Language, Tag,
 %%                    ScanFolder, ScanHistory, MoveHistory, ActionHistory, FileAction
 %%   watchlist.db   — Watchlist
 %%   config.db      — Config
@@ -34,7 +34,17 @@ erDiagram
         TEXT Name "NOT NULL, UNIQUE — 14 types: Move, Rename, Delete, Popout, Restore, ScanAdd, ScanRemove, RescanUpdate, TagAdd, TagRemove, WatchlistAdd, WatchlistRemove, WatchlistStatusChange, ConfigChange"
     }
 
-    %% ─── Core Entity ───
+    %% ─── Core Entities ───
+
+    Collection {
+        INTEGER CollectionId PK "AUTOINCREMENT"
+        INTEGER TmdbCollectionId "UNIQUE, NOT NULL"
+        TEXT Name "NOT NULL"
+        TEXT Overview "NULLABLE"
+        TEXT PosterPath "NULLABLE"
+        TEXT BackdropPath "NULLABLE"
+        TEXT CreatedAt "DEFAULT CURRENT_TIMESTAMP"
+    }
 
     Media {
         INTEGER MediaId PK "AUTOINCREMENT"
@@ -49,6 +59,7 @@ erDiagram
         REAL TmdbRating "NULLABLE"
         REAL Popularity "NULLABLE"
         INTEGER LanguageId "FK, NULLABLE"
+        INTEGER CollectionId "FK, NULLABLE"
         TEXT Director "NULLABLE"
         TEXT ThumbnailPath "NULLABLE"
         TEXT OriginalFileName "NULLABLE"
@@ -180,6 +191,9 @@ erDiagram
 
     %% Language 1-N Media
     Language ||--o{ Media : "LanguageId"
+
+    %% Collection 1-N Media
+    Collection ||--o{ Media : "CollectionId"
 
     %% ScanFolder 1-N ScanHistory
     ScanFolder ||--o{ ScanHistory : "has scans"
