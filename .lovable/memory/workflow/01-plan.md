@@ -1,6 +1,6 @@
 # Project Plan & Status
 
-> **Last Updated**: 09-Apr-2026
+> **Last Updated**: 15-Apr-2026
 
 ## ✅ Completed
 
@@ -78,24 +78,44 @@
 - [x] `mahin version` shows Go version and OS/arch
 - [x] `mahin movie` shows categorized subcommand help with examples
 
+### Database Redesign v2.0.0 (15-Apr-2026) ✅
+- [x] Schema diagram — PascalCase, INTEGER AUTOINCREMENT, Split DB (4 databases)
+- [x] Design spec — 16 tables, 8 views, all DDL + indexes documented
+- [x] State & history spec — undo/redo via ActionHistory + batch operations
+- [x] Popout spec — media file extraction with history tracking
+- [x] Migration spec — fresh install, breaking upgrade, incremental; SchemaVersion table
+- [x] Data folder structure — `<binary-dir>/data/` with config/ and log/ subfolders
+- [x] FileAction expanded to 14 types (added TagAdd, TagRemove, WatchlistAdd, WatchlistRemove, WatchlistStatusChange, ConfigChange)
+- [x] Suggestions & proposals document
+
 ---
 
 ## 🔲 Pending — Prioritized Backlog
 
-### Phase 1: Safety & Reliability (P0)
-- [x] `movie undo` confirmation prompt before reverting ✅ 10-Apr-2026 (already implemented)
+### Phase 1: Database Implementation (P0)
+- [ ] Implement new Split DB schema in Go (`db/` package) — 4 databases, PascalCase tables
+- [ ] Migrate `action_history.go` to use FileAction FK instead of inline action_type CHECK
+- [ ] Implement SchemaVersion tracking + migration runner in Go
+- [ ] Seed FileAction with 14 predefined rows
+- [ ] Create 8 database views (VwMediaFull, VwMoveHistoryDetail, etc.)
+- [ ] Add Collection table for TMDb movie collections (v2.1.0)
 
-### Phase 2: Spec Completeness (P1)
-- [x] Clarify `movie ls` filter rule (scan-indexed items only) ✅ 09-Apr-2026
+### Phase 2: Code Alignment (P1)
+- [ ] Update all commands to use new PascalCase column names
+- [ ] Update `movie_info.go` / `movie_resolve.go` for new Media table structure
+- [ ] Add Watchlist commands (add, remove, list, mark watched)
+- [ ] Add Tag commands (add, remove, list by tag)
 
-### Phase 3: Enhancements (P3)
-- [x] Batch move (`--all` flag for `movie move`) ✅ 09-Apr-2026
-- [x] JSON metadata files per movie/TV show on scan ✅ 09-Apr-2026
-- [x] Use `DiscoverByGenre` in `movie suggest` ✅ 09-Apr-2026
-- [x] CI pipeline (lint, test, vuln scan) ✅ 10-Apr-2026 — ci.yml + vulncheck.yml + spec/12-ci-cd-pipeline/
-- [x] CI/CD pipeline spec documentation ✅ 10-Apr-2026 — spec/12-ci-cd-pipeline/ (3 docs)
-- [x] Self-update/release spec documentation ✅ 10-Apr-2026 — spec/13-self-update-app-update/ (6 docs)
-- [x] README update with all commands ✅ 15-Apr-2026 — all 29 commands documented
+### Phase 3: Spec Completeness (P2)
+- [ ] Acceptance criteria (GIVEN/WHEN/THEN) for all commands
+- [ ] Shared helper docs — code comments marking shared helpers
+- [ ] File size stats in `movie stats`
+
+### Phase 4: Future Enhancements (P3)
+- [ ] Director normalization table (separate from Media)
+- [ ] Season/Episode tables for TV series
+- [ ] REST API server mode with HTML dashboard
+- [ ] Watchlist sync with TMDb account
 
 ---
 
@@ -103,8 +123,6 @@
 
 Pick one of these to implement next:
 
-1. **Acceptance criteria** (S06) — Add GIVEN/WHEN/THEN to spec for all commands
-2. **Shared helper docs** (S07) — Add code comments marking shared helpers
-3. **File size stats** (S10) — Add size info to `movie stats`
-
-*Tell me which task to implement.*
+1. **Split DB implementation** — Create the 4 .db files with PascalCase schema in Go
+2. **Migration runner** — SchemaVersion + sequential migration system
+3. **Acceptance criteria** — Add GIVEN/WHEN/THEN to spec for all commands
