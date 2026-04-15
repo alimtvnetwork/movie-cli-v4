@@ -1,12 +1,7 @@
 %% 01-db-schema-diagram.mmd — Complete Database Schema (all tables + relationships)
-%% Version: 2.0.0 | Updated: 2026-04-15
-%% Follows: PascalCase naming, {TableName}Id PKs, Split DB pattern
-%% Split DB Layout:
-%%   media.db       — Media, Collection, Genre, MediaGenre, Cast, MediaCast, Language, Tag,
-%%                    ScanFolder, ScanHistory, MoveHistory, ActionHistory, FileAction
-%%   watchlist.db   — Watchlist
-%%   config.db      — Config
-%%   error-log.db   — ErrorLog
+%% Version: 2.1.0 | Updated: 2026-04-15
+%% Follows: PascalCase naming, {TableName}Id PKs
+%% Single database: mahin.db — all tables in one file
 
 erDiagram
 
