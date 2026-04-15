@@ -35,6 +35,7 @@ Application-level project specification and documentation for the `movie-cli` CL
 | 01 | [01-project-spec.md](./01-project-spec.md) | Full project specification (commands, schema, TMDb, build) |
 | 06 | [06-diagrams/](../06-diagrams/) | Command flow diagrams (Mermaid) — in `spec/06-diagrams/` |
 | 09 | [09-app-issues/](../09-app-issues/) | Issue tracking and resolution — in `spec/09-app-issues/` |
+| 06-db | [06-database-design/](./06-database-design/) | Database schema, state history, undo/redo, popout specs |
 | 97 | [97-acceptance-criteria.md](./97-acceptance-criteria.md) | GIVEN/WHEN/THEN acceptance criteria for all 15 commands |
 
 ---
