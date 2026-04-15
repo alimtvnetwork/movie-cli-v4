@@ -9,26 +9,20 @@
 
 ## 1. Overview
 
-The Movie CLI uses **SQLite** with the **Split DB** pattern — multiple small database files per bounded context. All naming follows **PascalCase** for tables and columns, with `{TableName}Id` primary keys.
+The Movie CLI uses **SQLite** with a **single database file** (`mahin.db`). All tables reside in one database — the system is small enough that splitting across multiple files adds unnecessary complexity. All naming follows **PascalCase** for tables and columns, with `{TableName}Id` primary keys.
 
-### 1.1 Split DB Layout
+### 1.1 Database File
 
-| Database File | Bounded Context | Description |
-|---------------|----------------|-------------|
-| `media.db` | Media & Operations | Core media data, lookups, tags, scan tracking, file operations, action history |
-| `watchlist.db` | Watch Tracking | User watchlist independent of local media library |
-| `config.db` | Configuration | Key-value CLI settings |
-| `error-log.db` | Error Logging | Structured error/warning log entries |
+| Database File | Description |
+|---------------|-------------|
+| `mahin.db` | All tables — media, lookups, tags, scan tracking, file operations, action history, watchlist, config, error log |
 
 ### 1.2 Data Folder Structure
 
 ```
 <cli-binary-location>/
 └── data/
-    ├── media.db
-    ├── watchlist.db
-    ├── config.db
-    ├── error-log.db
+    ├── mahin.db
     ├── config/
     │   └── (CLI configuration files)
     └── log/
@@ -561,17 +555,17 @@ CREATE INDEX IdxActionHistory_IsUndone ON ActionHistory(IsUndone);
 
 ---
 
-## 4. Table Definitions — `watchlist.db`
+## 4. Watchlist
 
 ### 4.1 Watchlist
 
-**Purpose:** User's to-watch and watched list. References TMDb IDs. Optional cross-DB reference to Media (not FK-enforced).  
+**Purpose:** User's to-watch and watched list. References TMDb IDs. Optional FK to Media.  
 **Expected volume:** ~100-1,000 rows
 
 | Column | Type | Constraints | Description |
 |--------|------|-------------|-------------|
 | WatchlistId | INTEGER | PK, AUTOINCREMENT | Primary key |
-| MediaId | INTEGER | NULLABLE | Cross-DB ref to media.db Media (no FK) |
+| MediaId | INTEGER | FK, NULLABLE | References Media (NULL for items not in local library) |
 | TmdbId | INTEGER | NOT NULL, UNIQUE | TMDb ID |
 | Title | TEXT | NOT NULL | Display title |
 | Year | SMALLINT | NULLABLE | Release year |
@@ -590,7 +584,8 @@ CREATE TABLE Watchlist (
     Type        TEXT CHECK(Type IN ('movie', 'tv')),
     Status      TEXT NOT NULL CHECK(Status IN ('to-watch', 'watched')) DEFAULT 'to-watch',
     AddedAt     TEXT NOT NULL DEFAULT (datetime('now')),
-    WatchedAt   TEXT
+    WatchedAt   TEXT,
+    FOREIGN KEY (MediaId) REFERENCES Media(MediaId) ON DELETE SET NULL
 );
 ```
 
@@ -605,11 +600,9 @@ const (
 )
 ```
 
-> **Cross-DB note:** `MediaId` stores the ID from `media.db` but has no foreign key constraint. Validated at the application layer per Split DB rules.
-
 ---
 
-## 5. Table Definitions — `config.db`
+## 5. Config
 
 ### 5.1 Config
 
@@ -630,7 +623,7 @@ CREATE TABLE Config (
 
 ---
 
-## 6. Table Definitions — `error-log.db`
+## 6. ErrorLog
 
 ### 6.1 ErrorLog
 

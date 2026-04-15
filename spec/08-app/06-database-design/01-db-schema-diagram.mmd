@@ -226,5 +226,5 @@ erDiagram
     %% Media 1-N ActionHistory
     Media ||--o{ ActionHistory : "has actions"
 
-    %% Watchlist optional link to Media (cross-DB, no FK constraint)
+    %% Watchlist optional link to Media (FK, nullable)
     Media ||--o| Watchlist : "tracked in"
