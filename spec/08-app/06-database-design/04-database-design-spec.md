@@ -125,7 +125,7 @@ CREATE INDEX IdxCast_TmdbPersonId ON Cast(TmdbPersonId);
 ### 3.4 FileAction (Lookup)
 
 **Purpose:** Predefined action types for history tracking. Seeded during migration.  
-**Expected volume:** 8 rows (fixed set)
+**Expected volume:** 14 rows (fixed set)
 
 | Column | Type | Constraints | Description |
 |--------|------|-------------|-------------|
@@ -147,7 +147,13 @@ INSERT INTO FileAction (Name) VALUES
     ('Restore'),
     ('ScanAdd'),
     ('ScanRemove'),
-    ('RescanUpdate');
+    ('RescanUpdate'),
+    ('TagAdd'),
+    ('TagRemove'),
+    ('WatchlistAdd'),
+    ('WatchlistRemove'),
+    ('WatchlistStatusChange'),
+    ('ConfigChange');
 ```
 
 #### FileAction Enum (Go Code)
@@ -156,14 +162,20 @@ INSERT INTO FileAction (Name) VALUES
 type FileActionType int
 
 const (
-    FileActionMove         FileActionType = 1
-    FileActionRename       FileActionType = 2
-    FileActionDelete       FileActionType = 3
-    FileActionPopout       FileActionType = 4
-    FileActionRestore      FileActionType = 5
-    FileActionScanAdd      FileActionType = 6
-    FileActionScanRemove   FileActionType = 7
-    FileActionRescanUpdate FileActionType = 8
+    FileActionMove                FileActionType = 1
+    FileActionRename              FileActionType = 2
+    FileActionDelete              FileActionType = 3
+    FileActionPopout              FileActionType = 4
+    FileActionRestore             FileActionType = 5
+    FileActionScanAdd             FileActionType = 6
+    FileActionScanRemove          FileActionType = 7
+    FileActionRescanUpdate        FileActionType = 8
+    FileActionTagAdd              FileActionType = 9
+    FileActionTagRemove           FileActionType = 10
+    FileActionWatchlistAdd        FileActionType = 11
+    FileActionWatchlistRemove     FileActionType = 12
+    FileActionWatchlistStatusChange FileActionType = 13
+    FileActionConfigChange        FileActionType = 14
 )
 ```
 
