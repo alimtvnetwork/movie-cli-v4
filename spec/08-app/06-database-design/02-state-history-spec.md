@@ -1,6 +1,6 @@
 # State History & Undo/Redo Specification
 
-**Version:** 1.0.0  
+**Version:** 2.0.0  
 **Updated:** 2026-04-15  
 **Status:** Planned
 
@@ -15,7 +15,7 @@ Every state-changing operation in the CLI must be tracked in the database so tha
 - **File deletions / removals** (`movie cleanup --remove`)
 - **Scan operations** (`movie scan` — adding/removing entries)
 
-The `move_history` table already tracks move and rename operations with an `undone` flag. This spec extends that pattern to cover **all** reversible actions.
+The `MoveHistory` table tracks move and rename operations with an `IsUndone` flag. The `ActionHistory` table extends that pattern to cover **all** reversible actions via a `FileActionId` FK to the `FileAction` lookup table.
 
 ---
 
@@ -25,68 +25,68 @@ The `move_history` table already tracks move and rename operations with an `undo
 
 | Action | Table | Tracked Fields | Undo Support |
 |--------|-------|----------------|--------------|
-| File move | `move_history` | from_path, to_path, original_file_name, new_file_name, moved_at | ✅ `undone` flag |
-| File rename | `move_history` | Same as move (rename = move within same dir) | ✅ `undone` flag |
-| Folder scan | `scan_history` | folder_path, total_files, movies_found, tv_found, scanned_at | ❌ Log only |
-| Media insert | `media` | All metadata fields, scanned_at | ❌ No revert |
+| File move | `MoveHistory` | FromPath, ToPath, OriginalFileName, NewFileName, MovedAt | ✅ `IsUndone` flag |
+| File rename | `MoveHistory` | Same as move (rename = move within same dir) | ✅ `IsUndone` flag |
+| Folder scan | `ScanHistory` | ScanFolderId, TotalFiles, MoviesFound, TvFound, ScannedAt | ❌ Log only |
+| Media insert | `Media` | All metadata fields, ScannedAt | ❌ No revert |
 | Media delete | N/A | Not tracked | ❌ No revert |
 
 ### 2.2 Gaps to Fill
 
 | Action | Gap | Solution |
 |--------|-----|----------|
-| Media deletion | No record of what was deleted | New: `action_history` table |
-| Scan additions | No per-file record of what was added | New: `action_history` table |
-| Scan removals | No record of what was removed | New: `action_history` table |
-| Popout operations | Not yet implemented | Use `move_history` + `action_history` |
+| Media deletion | No record of what was deleted | `ActionHistory` with FileAction = Delete |
+| Scan additions | No per-file record of what was added | `ActionHistory` with FileAction = ScanAdd |
+| Scan removals | No record of what was removed | `ActionHistory` with FileAction = ScanRemove |
+| Popout operations | Not yet implemented | `MoveHistory` + `ActionHistory` with FileAction = Popout |
 
 ---
 
-## 3. Proposed: `action_history` Table
+## 3. ActionHistory Table
 
-A unified audit log for all reversible operations beyond file moves.
+A unified audit log for all reversible operations beyond file moves. Uses `FileActionId` FK to the `FileAction` lookup table (14 predefined action types).
 
 ```sql
-CREATE TABLE IF NOT EXISTS action_history (
-    id            INTEGER PRIMARY KEY AUTOINCREMENT,
-    action_type   TEXT NOT NULL CHECK(action_type IN (
-        'scan_add', 'scan_remove', 'delete', 'popout', 'restore', 'rescan_update'
-    )),
-    media_id      INTEGER,
-    media_snapshot TEXT,          -- JSON snapshot of media record before change
-    detail        TEXT,           -- Human-readable description
-    batch_id      TEXT,           -- Groups related actions (e.g., one scan = one batch)
-    undone        INTEGER DEFAULT 0,
-    created_at    DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (media_id) REFERENCES media(id) ON DELETE SET NULL
+CREATE TABLE ActionHistory (
+    ActionHistoryId INTEGER PRIMARY KEY AUTOINCREMENT,
+    FileActionId    INTEGER NOT NULL,
+    MediaId         INTEGER,
+    MediaSnapshot   TEXT,
+    Detail          TEXT,
+    BatchId         TEXT,
+    IsUndone        BOOLEAN NOT NULL DEFAULT 0,
+    CreatedAt       TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (FileActionId) REFERENCES FileAction(FileActionId),
+    FOREIGN KEY (MediaId) REFERENCES Media(MediaId) ON DELETE SET NULL
 );
 
-CREATE INDEX IF NOT EXISTS idx_action_history_type ON action_history(action_type);
-CREATE INDEX IF NOT EXISTS idx_action_history_batch ON action_history(batch_id);
-CREATE INDEX IF NOT EXISTS idx_action_history_undone ON action_history(undone);
+CREATE INDEX IdxActionHistory_FileActionId ON ActionHistory(FileActionId);
+CREATE INDEX IdxActionHistory_MediaId      ON ActionHistory(MediaId);
+CREATE INDEX IdxActionHistory_BatchId      ON ActionHistory(BatchId);
+CREATE INDEX IdxActionHistory_IsUndone     ON ActionHistory(IsUndone);
 ```
 
 ### 3.1 Field Descriptions
 
 | Field | Purpose |
 |-------|---------|
-| `action_type` | Category of operation performed |
-| `media_id` | FK to the affected media record (NULL if deleted) |
-| `media_snapshot` | Full JSON of the media row **before** the change — enables undo by restoring |
-| `detail` | e.g. `"Deleted: Scream (2022).mkv from /Movies"` |
-| `batch_id` | UUID grouping all actions from one command invocation |
-| `undone` | 0 = active, 1 = undone |
+| `FileActionId` | FK to FileAction lookup — identifies the type of operation |
+| `MediaId` | FK to the affected Media record (NULL if deleted) |
+| `MediaSnapshot` | Full JSON of the Media row **before** the change — enables undo by restoring |
+| `Detail` | e.g. `"Deleted: Scream (2022).mkv from /Movies"` |
+| `BatchId` | UUID grouping all actions from one command invocation |
+| `IsUndone` | 0 = active, 1 = undone |
 
-### 3.2 Action Types
+### 3.2 FileAction Types (relevant to state history)
 
-| Type | When Created | Undo Behavior |
-|------|-------------|---------------|
-| `scan_add` | New media inserted during scan | Delete the media record |
-| `scan_remove` | Media removed during incremental scan | Re-insert from snapshot |
-| `delete` | `movie cleanup --remove` | Re-insert from snapshot |
-| `popout` | `movie popout` extracts file | Move file back (uses `move_history`) |
-| `restore` | Undo of a delete/remove | Delete again |
-| `rescan_update` | `movie rescan` updates metadata | Restore old metadata from snapshot |
+| FileAction Name | When Created | Undo Behavior |
+|-----------------|-------------|---------------|
+| `ScanAdd` | New media inserted during scan | Delete the Media record |
+| `ScanRemove` | Media removed during incremental scan | Re-insert from MediaSnapshot |
+| `Delete` | `movie cleanup --remove` | Re-insert from MediaSnapshot |
+| `Popout` | `movie popout` extracts file | Move file back (uses `MoveHistory`) |
+| `Restore` | Undo of a delete/remove | Delete again |
+| `RescanUpdate` | `movie rescan` updates metadata | Restore old metadata from MediaSnapshot |
 
 ---
 
@@ -102,13 +102,13 @@ movie undo --id <id>    # Undo specific action by ID
 ```
 
 **Flow:**
-1. Query latest un-undone record from `move_history` or `action_history`
+1. Query latest record where `IsUndone = 0` from `MoveHistory` or `ActionHistory`
 2. Display what will be undone, ask confirmation
 3. Reverse the operation:
-   - Move/rename → move file back, update `media.current_file_path`
-   - Delete → re-insert from `media_snapshot`
-   - Scan add → delete the media entry
-4. Set `undone = 1`
+   - Move/rename → move file back, update `Media.CurrentFilePath`
+   - Delete → re-insert from `MediaSnapshot`
+   - ScanAdd → delete the Media entry
+4. Set `IsUndone = 1`
 
 ### 4.2 `movie redo`
 
@@ -119,9 +119,9 @@ movie redo --id <id>    # Redo specific action by ID
 ```
 
 **Flow:**
-1. Query latest `undone = 1` record
+1. Query latest record where `IsUndone = 1`
 2. Re-apply the original operation
-3. Set `undone = 0`
+3. Set `IsUndone = 0`
 
 ### 4.3 `movie history`
 
@@ -141,34 +141,34 @@ movie history --batch <id>     # Show all actions in a batch
 
 When running an incremental scan on a previously scanned folder:
 
-1. Generate a `batch_id` (UUID) for this scan session
+1. Generate a `BatchId` (UUID) for this scan session
 2. For each **new** file found:
-   - Insert into `media`
-   - Insert `action_history` with `action_type = 'scan_add'`
+   - Insert into `Media`
+   - Insert `ActionHistory` with `FileActionId = ScanAdd`
 3. For each **removed** file (in DB but not on disk):
-   - Snapshot the media record as JSON
-   - Delete from `media`
-   - Insert `action_history` with `action_type = 'scan_remove'`, `media_snapshot` = JSON
+   - Snapshot the Media record as JSON
+   - Delete from `Media`
+   - Insert `ActionHistory` with `FileActionId = ScanRemove`, `MediaSnapshot` = JSON
 4. For each **existing** file with missing metadata:
    - Snapshot current state
    - Rescan via TMDb
-   - Insert `action_history` with `action_type = 'rescan_update'`
+   - Insert `ActionHistory` with `FileActionId = RescanUpdate`
 
 ### 5.2 `movie rename` Integration
 
-Already uses `move_history`. No changes needed — `movie undo` reads from `move_history`.
+Already uses `MoveHistory`. No changes needed — `movie undo` reads from `MoveHistory`.
 
 ### 5.3 `movie move` Integration
 
-Already uses `move_history`. No changes needed.
+Already uses `MoveHistory`. No changes needed.
 
 ### 5.4 `movie cleanup` Integration
 
 When removing stale entries:
 
-1. Snapshot each media record as JSON
-2. Delete from `media`
-3. Insert `action_history` with `action_type = 'delete'`
+1. Snapshot each Media record as JSON
+2. Delete from `Media`
+3. Insert `ActionHistory` with `FileActionId = Delete`
 
 ---
 
@@ -177,7 +177,7 @@ When removing stale entries:
 All state operations must follow the error management spec:
 
 - Wrap DB errors with context: `fmt.Errorf("undo move %d: %w", id, err)`
-- Log failures to `error_logs` table
+- Log failures to `ErrorLog` table
 - Never leave partial state: use transactions for batch operations
 - Display user-friendly messages on failure
 
@@ -187,10 +187,10 @@ All state operations must follow the error management spec:
 
 | Phase | Items | Depends On |
 |-------|-------|------------|
-| Phase 1 | `action_history` table + migration | — |
-| Phase 2 | `movie undo` (move_history only) | Phase 1 |
+| Phase 1 | `ActionHistory` table + migration | — |
+| Phase 2 | `movie undo` (`MoveHistory` only) | Phase 1 |
 | Phase 3 | `movie history` command | Phase 1 |
-| Phase 4 | Integrate `action_history` into scan/cleanup | Phase 1 |
+| Phase 4 | Integrate `ActionHistory` into scan/cleanup | Phase 1 |
 | Phase 5 | `movie redo` command | Phase 2 |
 | Phase 6 | Batch undo support | Phase 2 + 4 |
 
