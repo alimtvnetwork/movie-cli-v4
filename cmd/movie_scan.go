@@ -161,7 +161,7 @@ func runMovieScan(cmd *cobra.Command, args []string) {
 					continue
 				}
 				detail := fmt.Sprintf("Scan removed: %s (%s)", rm.CleanTitle, rm.OriginalFilePath)
-				database.InsertActionSimple(db.ActionScanRemove, rm.ID, snapshot, detail, scanBatchID)
+				database.InsertActionSimple(db.FileActionScanRemove, rm.ID, snapshot, detail, scanBatchID)
 			}
 
 			delCount, delErr := database.DeleteMediaByIDs(removeIDs)
@@ -194,7 +194,7 @@ func runMovieScan(cmd *cobra.Command, args []string) {
 					if rescanMediaEntry(database, client, em) {
 						status = "rescanned"
 						detail := fmt.Sprintf("Rescan updated: %s", em.CleanTitle)
-						database.InsertActionSimple(db.ActionRescanUpdate, em.ID, preSnapshot, detail, scanBatchID)
+						database.InsertActionSimple(db.FileActionRescanUpdate, em.ID, preSnapshot, detail, scanBatchID)
 						if !useTable && !useJSON {
 							typeIcon := "🎬"
 							if em.Type == "tv" {

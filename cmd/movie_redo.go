@@ -81,7 +81,6 @@ func runMovieRedo(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	// Default: redo the most recent undone operation
 	redoLastOperation(database, scanner)
 }
 
@@ -114,26 +113,26 @@ func showRedoableList(database *db.DB) {
 	actions, _ := database.ListActions(40)
 	redoableActions := 0
 	for _, a := range actions {
-		if a.Undone {
+		if a.IsUndone {
 			redoableActions++
 		}
 	}
 	if redoableActions > 0 {
 		fmt.Println("  📋 Actions:")
 		for _, a := range actions {
-			if !a.Undone {
+			if !a.IsUndone {
 				continue
 			}
 			detail := a.Detail
 			if detail == "" {
-				detail = string(a.ActionType)
+				detail = a.FileActionId.String()
 			}
 			batchStr := ""
-			if a.BatchID != "" && len(a.BatchID) >= 8 {
-				batchStr = fmt.Sprintf("  batch:%s", a.BatchID[:8])
+			if a.BatchId != "" && len(a.BatchId) >= 8 {
+				batchStr = fmt.Sprintf("  batch:%s", a.BatchId[:8])
 			}
 			fmt.Printf("    [action-%d]  %s  %s  (%s%s)\n",
-				a.ID, a.ActionType, detail, a.CreatedAt, batchStr)
+				a.ActionHistoryId, a.FileActionId, detail, a.CreatedAt, batchStr)
 		}
 		fmt.Println()
 	}
@@ -153,12 +152,12 @@ func redoActionByID(database *db.DB, scanner *bufio.Scanner, id int64) {
 		errlog.Error("Cannot find action %d: %v", id, err)
 		return
 	}
-	if !action.Undone {
+	if !action.IsUndone {
 		fmt.Printf("⚠️  Action %d is not undone — nothing to redo.\n", id)
 		return
 	}
 
-	fmt.Printf("⏩ Redo action %d (%s):\n", action.ID, action.ActionType)
+	fmt.Printf("⏩ Redo action %d (%s):\n", action.ActionHistoryId, action.FileActionId)
 	if action.Detail != "" {
 		fmt.Printf("   %s\n", action.Detail)
 	}
@@ -170,7 +169,7 @@ func redoActionByID(database *db.DB, scanner *bufio.Scanner, id int64) {
 		errlog.Error("Redo action %d failed: %v", id, err)
 		return
 	}
-	fmt.Printf("✅ Action %d redone successfully.\n", action.ID)
+	fmt.Printf("✅ Action %d redone successfully.\n", action.ActionHistoryId)
 }
 
 // ---------------------------------------------------------------------------
@@ -225,8 +224,8 @@ func redoLastBatch(database *db.DB, scanner *bufio.Scanner) {
 
 	batchID := ""
 	for _, a := range actions {
-		if a.Undone && a.BatchID != "" {
-			batchID = a.BatchID
+		if a.IsUndone && a.BatchId != "" {
+			batchID = a.BatchId
 			break
 		}
 	}
@@ -243,7 +242,7 @@ func redoLastBatch(database *db.DB, scanner *bufio.Scanner) {
 
 	redoable := 0
 	for _, a := range batchActions {
-		if a.Undone {
+		if a.IsUndone {
 			redoable++
 		}
 	}
@@ -259,14 +258,14 @@ func redoLastBatch(database *db.DB, scanner *bufio.Scanner) {
 
 	fmt.Printf("⏩ Redo batch %s (%d actions):\n", shortBatch, redoable)
 	for _, a := range batchActions {
-		if !a.Undone {
+		if !a.IsUndone {
 			continue
 		}
 		detail := a.Detail
 		if detail == "" {
-			detail = string(a.ActionType)
+			detail = a.FileActionId.String()
 		}
-		fmt.Printf("   • %s: %s\n", a.ActionType, detail)
+		fmt.Printf("   • %s: %s\n", a.FileActionId, detail)
 	}
 	if !confirmRedo(scanner) {
 		return
@@ -276,11 +275,11 @@ func redoLastBatch(database *db.DB, scanner *bufio.Scanner) {
 	failed := 0
 	for i := range batchActions {
 		a := batchActions[i]
-		if !a.Undone {
+		if !a.IsUndone {
 			continue
 		}
 		if err := executeActionRedo(database, &a); err != nil {
-			errlog.Warn("Failed to redo action %d: %v", a.ID, err)
+			errlog.Warn("Failed to redo action %d: %v", a.ActionHistoryId, err)
 			failed++
 		}
 	}
@@ -365,7 +364,6 @@ func redoLastOperation(database *db.DB, scanner *bufio.Scanner) {
 
 // executeMoveRedo re-applies a previously undone file move.
 func executeMoveRedo(database *db.DB, m *db.MoveRecord) error {
-	// File should be at FromPath (it was moved back during undo)
 	if _, err := os.Stat(m.FromPath); err != nil {
 		if os.IsNotExist(err) {
 			return fmt.Errorf("file not found at %s — cannot redo", m.FromPath)
@@ -373,23 +371,19 @@ func executeMoveRedo(database *db.DB, m *db.MoveRecord) error {
 		return fmt.Errorf("cannot access %s: %w", m.FromPath, err)
 	}
 
-	// Ensure destination directory exists
 	destDir := m.ToPath[:strings.LastIndex(m.ToPath, string(os.PathSeparator))]
 	if err := os.MkdirAll(destDir, 0755); err != nil {
 		return fmt.Errorf("cannot create directory %s: %w", destDir, err)
 	}
 
-	// Move file forward again
 	if err := MoveFile(m.FromPath, m.ToPath); err != nil {
 		return fmt.Errorf("redo move: %w", err)
 	}
 
-	// Mark as not-undone
 	if err := database.MarkMoveRedone(m.ID); err != nil {
 		errlog.Warn("Could not mark move %d as redone: %v", m.ID, err)
 	}
 
-	// Update media path
 	if err := database.UpdateMediaPath(m.MediaID, m.ToPath); err != nil {
 		errlog.Warn(fmt.Sprintf("Could not update media path (ID %d): %v", m.ID, err))
 	}
@@ -399,45 +393,39 @@ func executeMoveRedo(database *db.DB, m *db.MoveRecord) error {
 
 // executeActionRedo re-applies a previously undone action_history entry.
 func executeActionRedo(database *db.DB, a *db.ActionRecord) error {
-	switch a.ActionType {
-	case db.ActionScanAdd:
-		// Redo scan_add = the media was deleted during undo, re-insert from snapshot if available
-		// If no snapshot, the redo is a no-op (just mark redone)
+	switch a.FileActionId {
+	case db.FileActionScanAdd:
 		if a.MediaSnapshot != "" {
 			media, err := db.MediaFromJSON(a.MediaSnapshot)
 			if err != nil {
-				return fmt.Errorf("parse snapshot for redo action %d: %w", a.ID, err)
+				return fmt.Errorf("parse snapshot for redo action %d: %w", a.ActionHistoryId, err)
 			}
 			if _, insertErr := database.InsertMedia(media); insertErr != nil {
 				return fmt.Errorf("re-insert media for redo: %w", insertErr)
 			}
 		}
 
-	case db.ActionScanRemove, db.ActionDelete:
-		// Redo delete/scan_remove = delete the media again
-		if a.MediaID.Valid {
-			// Snapshot current state before re-deleting
-			media, _ := database.GetMediaByID(a.MediaID.Int64)
+	case db.FileActionScanRemove, db.FileActionDelete:
+		if a.MediaId.Valid {
+			media, _ := database.GetMediaByID(a.MediaId.Int64)
 			if media != nil {
-				if err := database.DeleteMediaByID(a.MediaID.Int64); err != nil {
-					return fmt.Errorf("redo delete media %d: %w", a.MediaID.Int64, err)
+				if err := database.DeleteMediaByID(a.MediaId.Int64); err != nil {
+					return fmt.Errorf("redo delete media %d: %w", a.MediaId.Int64, err)
 				}
 			}
 		}
 
-	case db.ActionRescanUpdate:
-		// Redo rescan = we can't re-fetch TMDb here; just mark redone
-		// The next scan will re-fetch automatically
+	case db.FileActionRescanUpdate:
+		// Redo rescan = can't re-fetch TMDb here; just mark redone
 
-	case db.ActionPopout:
+	case db.FileActionPopout:
 		// Popout redo handled via move_history — just mark redone
 
-	case db.ActionRestore:
-		// Redo restore = re-insert from snapshot
+	case db.FileActionRestore:
 		if a.MediaSnapshot != "" {
 			media, err := db.MediaFromJSON(a.MediaSnapshot)
 			if err != nil {
-				return fmt.Errorf("parse snapshot for redo restore %d: %w", a.ID, err)
+				return fmt.Errorf("parse snapshot for redo restore %d: %w", a.ActionHistoryId, err)
 			}
 			if _, insertErr := database.InsertMedia(media); insertErr != nil {
 				return fmt.Errorf("redo restore insert: %w", insertErr)
@@ -445,10 +433,10 @@ func executeActionRedo(database *db.DB, a *db.ActionRecord) error {
 		}
 
 	default:
-		return fmt.Errorf("unknown action type for redo: %s", a.ActionType)
+		return fmt.Errorf("unknown action type for redo: %s", a.FileActionId)
 	}
 
-	return database.MarkActionRedone(a.ID)
+	return database.MarkActionRedone(a.ActionHistoryId)
 }
 
 // ---------------------------------------------------------------------------
@@ -469,12 +457,12 @@ func confirmRedo(scanner *bufio.Scanner) bool {
 }
 
 func printActionRedo(a *db.ActionRecord) {
-	fmt.Printf("⏩ Last undone action (%s):\n", a.ActionType)
+	fmt.Printf("⏩ Last undone action (%s):\n", a.FileActionId)
 	if a.Detail != "" {
 		fmt.Printf("   %s\n", a.Detail)
 	}
-	if a.BatchID != "" {
-		short := a.BatchID
+	if a.BatchId != "" {
+		short := a.BatchId
 		if len(short) > 8 {
 			short = short[:8]
 		}

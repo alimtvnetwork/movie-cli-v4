@@ -120,7 +120,7 @@ func processVideoFile(
 	// Track scan_add in action_history for undo support
 	if insertErr == nil && mediaID > 0 && batchID != "" {
 		detail := fmt.Sprintf("Scan added: %s (%s)", m.CleanTitle, vf.FullPath)
-		database.InsertActionSimple(db.ActionScanAdd, mediaID, "", detail, batchID)
+		database.InsertActionSimple(db.FileActionScanAdd, mediaID, "", detail, batchID)
 	}
 
 	if jsonErr := writeMediaJSON(outputDir, m); jsonErr != nil {

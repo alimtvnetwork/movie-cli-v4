@@ -247,7 +247,7 @@ func executePopout(database *db.DB, items []popoutItem, batchID string) (success
 
 		// Log to action_history
 		detail := fmt.Sprintf("Popped out: %s from %s/", item.cleanName, item.subDir)
-		database.InsertActionSimple(db.ActionPopout, mediaID, "", detail, batchID)
+		database.InsertActionSimple(db.FileActionPopout, mediaID, "", detail, batchID)
 
 		success++
 	}
@@ -448,7 +448,7 @@ func removeFolder(database *db.DB, dirPath, dirName, batchID string) {
 	// Track folder deletion in action_history
 	detail := fmt.Sprintf("Removed folder: %s/", dirName)
 	snapshot := fmt.Sprintf(`{"folder_path":"%s"}`, dirPath)
-	database.InsertActionSimple(db.ActionDelete, 0, snapshot, detail, batchID)
+	database.InsertActionSimple(db.FileActionDelete, 0, snapshot, detail, batchID)
 }
 
 // generateBatchID creates a simple random hex ID for grouping related actions.
