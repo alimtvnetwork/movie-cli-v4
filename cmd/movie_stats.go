@@ -99,11 +99,11 @@ func printStatsJSON(database *db.DB, totalMovies, totalTV, total int) {
 	totalSize, largestSize, smallestSize, sizeErr := database.FileSizeStats()
 	if sizeErr == nil && totalSize > 0 {
 		out.Storage = &statsStorage{
-			TotalSize:    totalSize,
-			TotalHuman:   humanSize(totalSize),
-			LargestFile:  largestSize,
-			SmallestFile: smallestSize,
-			AverageSize:  totalSize / int64(total),
+			TotalSize:    int64(totalSize * 1024 * 1024),
+			TotalHuman:   db.HumanSize(totalSize),
+			LargestFile:  int64(largestSize * 1024 * 1024),
+			SmallestFile: int64(smallestSize * 1024 * 1024),
+			AverageSize:  int64(totalSize * 1024 * 1024) / int64(total),
 		}
 	}
 
@@ -162,11 +162,11 @@ func printStatsDefault(database *db.DB, totalMovies, totalTV, total int) {
 		errlog.Warn("File size stats error: %v", sizeErr)
 	} else if totalSize > 0 {
 		fmt.Println("  💾 Storage:")
-		fmt.Printf("     Total Size:    %s\n", humanSize(totalSize))
-		fmt.Printf("     Largest File:  %s\n", humanSize(largestSize))
-		fmt.Printf("     Smallest File: %s\n", humanSize(smallestSize))
+		fmt.Printf("     Total Size:    %s\n", db.HumanSize(totalSize))
+		fmt.Printf("     Largest File:  %s\n", db.HumanSize(largestSize))
+		fmt.Printf("     Smallest File: %s\n", db.HumanSize(smallestSize))
 		if total > 0 {
-			fmt.Printf("     Average Size:  %s\n", humanSize(totalSize/int64(total)))
+			fmt.Printf("     Average Size:  %s\n", db.HumanSize(totalSize/float64(total)))
 		}
 		fmt.Println()
 	}

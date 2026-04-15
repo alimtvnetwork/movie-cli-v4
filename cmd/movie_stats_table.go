@@ -27,11 +27,11 @@ func printStatsTable(database *db.DB, totalMovies, totalTV, total int) {
 	// Storage
 	totalSize, largestSize, smallestSize, sizeErr := database.FileSizeStats()
 	if sizeErr == nil && totalSize > 0 {
-		fmt.Printf("  %-*s │ %-*s\n", labelWidth, "Total Size", valueWidth, humanSize(totalSize))
-		fmt.Printf("  %-*s │ %-*s\n", labelWidth, "Largest File", valueWidth, humanSize(largestSize))
-		fmt.Printf("  %-*s │ %-*s\n", labelWidth, "Smallest File", valueWidth, humanSize(smallestSize))
+		fmt.Printf("  %-*s │ %-*s\n", labelWidth, "Total Size", valueWidth, db.HumanSize(totalSize))
+		fmt.Printf("  %-*s │ %-*s\n", labelWidth, "Largest File", valueWidth, db.HumanSize(largestSize))
+		fmt.Printf("  %-*s │ %-*s\n", labelWidth, "Smallest File", valueWidth, db.HumanSize(smallestSize))
 		if total > 0 {
-			fmt.Printf("  %-*s │ %-*s\n", labelWidth, "Average Size", valueWidth, humanSize(totalSize/int64(total)))
+			fmt.Printf("  %-*s │ %-*s\n", labelWidth, "Average Size", valueWidth, db.HumanSize(totalSize/float64(total)))
 		}
 	}
 
