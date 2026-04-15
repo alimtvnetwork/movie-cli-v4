@@ -85,7 +85,7 @@
 - [x] Popout spec — media file extraction with history tracking
 - [x] Migration spec — fresh install, breaking upgrade, incremental; SchemaVersion table
 - [x] Data folder structure — `<binary-dir>/data/` with config/ and log/ subfolders
-- [x] FileAction expanded to 14 types (added TagAdd, TagRemove, WatchlistAdd, WatchlistRemove, WatchlistStatusChange, ConfigChange)
+- [x] Collection table for TMDb movie collections ✅ 15-Apr-2026
 - [x] Suggestions & proposals document
 
 ---
