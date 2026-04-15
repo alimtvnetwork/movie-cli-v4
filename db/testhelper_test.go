@@ -8,15 +8,18 @@ import (
 )
 
 // openTestDB creates an in-memory SQLite database with the full schema.
-// The database is automatically closed when the test finishes.
 func openTestDB(t *testing.T) *DB {
 	t.Helper()
 	conn, err := sql.Open("sqlite", ":memory:")
 	if err != nil {
 		t.Fatalf("open in-memory db: %v", err)
 	}
+	if _, err := conn.Exec("PRAGMA foreign_keys = ON"); err != nil {
+		conn.Close()
+		t.Fatalf("enable foreign keys: %v", err)
+	}
 	d := &DB{DB: conn, BasePath: t.TempDir()}
-	if err := d.migrate(); err != nil {
+	if err := d.migrateSchema(); err != nil {
 		conn.Close()
 		t.Fatalf("migrate: %v", err)
 	}
@@ -37,7 +40,7 @@ func seedMedia(t *testing.T, d *DB, title string, tmdbID int) int64 {
 		OriginalFilePath: "/movies/" + title + ".mkv",
 		CurrentFilePath:  "/movies/" + title + ".mkv",
 		FileExtension:    ".mkv",
-		FileSize:         1024 * 1024 * 700,
+		FileSizeMb:       700.0, // 700 MB
 	})
 	if err != nil {
 		t.Fatalf("seed media %q: %v", title, err)

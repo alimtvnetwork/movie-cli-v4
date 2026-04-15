@@ -290,7 +290,32 @@ func (d *DB) MediaByType(mediaType string, limit int) ([]Media, error) {
 	return scanMediaRows(rows)
 }
 
-// scanMediaRow scans a single media row.
+// TopGenres returns genres sorted by frequency via the normalized Genre/MediaGenre tables.
+func (d *DB) TopGenres(limit int) (map[string]int, error) {
+	rows, err := d.Query(`
+		SELECT g.Name, COUNT(*) as cnt
+		FROM MediaGenre mg
+		INNER JOIN Genre g ON mg.GenreId = g.GenreId
+		GROUP BY g.Name
+		ORDER BY cnt DESC
+		LIMIT ?`, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	counts := make(map[string]int)
+	for rows.Next() {
+		var name string
+		var cnt int
+		if err := rows.Scan(&name, &cnt); err != nil {
+			return nil, err
+		}
+		counts[name] = cnt
+	}
+	return counts, rows.Err()
+}
+
 func scanMediaRow(row *sql.Row) (*Media, error) {
 	m := &Media{}
 	err := row.Scan(&m.ID, &m.Title, &m.CleanTitle, &m.Year, &m.Type,
