@@ -597,6 +597,8 @@ movie-cli-v3/
 │   ├── media.go                   # Media CRUD operations
 │   ├── config.go                  # Config get/set
 │   └── history.go                 # Move + scan history
+├── errlog/                        # Centralized error/warning logging
+│   └── errlog.go                  # File + DB logging with stack traces
 ├── updater/updater.go             # Git-based self-update
 ├── version/version.go             # Build-time version variables
 ├── .github/
