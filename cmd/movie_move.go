@@ -328,7 +328,7 @@ func trackMove(database *db.DB, result cleaner.Result, fileInfo os.FileInfo, src
 	}
 
 	if mediaID > 0 {
-		if histErr := database.InsertMoveHistory(mediaID, srcPath, destPath,
+		if histErr := database.InsertMoveHistory(mediaID, int(db.FileActionMove), srcPath, destPath,
 			fileInfo.Name(), cleanName); histErr != nil {
 			errlog.Warn("DB history error: %v", histErr)
 		}

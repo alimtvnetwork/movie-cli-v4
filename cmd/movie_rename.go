@@ -101,7 +101,7 @@ func runMovieRename(cmd *cobra.Command, args []string) {
 		if updateErr := database.UpdateMediaPath(items[i].media.ID, items[i].newPath); updateErr != nil {
 			errlog.Warn("DB update path error: %v", updateErr)
 		}
-		if histErr := database.InsertMoveHistory(items[i].media.ID, items[i].oldPath, items[i].newPath,
+		if histErr := database.InsertMoveHistory(items[i].media.ID, int(db.FileActionRename), items[i].oldPath, items[i].newPath,
 			items[i].oldName, items[i].newName); histErr != nil {
 			errlog.Warn("DB history error: %v", histErr)
 		}
