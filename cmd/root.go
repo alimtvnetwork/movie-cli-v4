@@ -65,6 +65,7 @@ func init() {
 		movieSuggestCmd,
 		movieMoveCmd,
 		movieUndoCmd,
+		movieRedoCmd,
 		movieInfoCmd,
 		moviePlayCmd,
 		movieStatsCmd,
