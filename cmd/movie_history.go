@@ -144,16 +144,15 @@ func collectUnifiedRecords(database *db.DB) []unifiedRecord {
 
 		switch historyType {
 		case "scan":
-			// Show both scan_add and scan_remove
-			adds, _ := database.ListActionsByType(db.ActionScanAdd, historyLimit)
-			removes, _ := database.ListActionsByType(db.ActionScanRemove, historyLimit)
+			adds, _ := database.ListActionsByType(db.FileActionScanAdd, historyLimit)
+			removes, _ := database.ListActionsByType(db.FileActionScanRemove, historyLimit)
 			actions = append(adds, removes...)
 		case "delete":
-			actions, err = database.ListActionsByType(db.ActionDelete, historyLimit)
+			actions, err = database.ListActionsByType(db.FileActionDelete, historyLimit)
 		case "popout":
-			actions, err = database.ListActionsByType(db.ActionPopout, historyLimit)
+			actions, err = database.ListActionsByType(db.FileActionPopout, historyLimit)
 		case "rescan":
-			actions, err = database.ListActionsByType(db.ActionRescanUpdate, historyLimit)
+			actions, err = database.ListActionsByType(db.FileActionRescanUpdate, historyLimit)
 		default: // "all"
 			actions, err = database.ListActions(historyLimit)
 		}
@@ -223,7 +222,7 @@ func showBatchHistory(database *db.DB) {
 			return
 		}
 		for _, a := range allActions {
-			if len(a.BatchID) >= len(historyBatch) && a.BatchID[:len(historyBatch)] == historyBatch {
+			if len(a.BatchId) >= len(historyBatch) && a.BatchId[:len(historyBatch)] == historyBatch {
 				actions = append(actions, a)
 			}
 		}
@@ -236,15 +235,15 @@ func showBatchHistory(database *db.DB) {
 	fmt.Printf("📋 Batch: %s (%d actions)\n\n", historyBatch, len(actions))
 	for _, a := range actions {
 		status := "✅"
-		if a.Undone {
+		if a.IsUndone {
 			status = "↩️ "
 		}
 		detail := a.Detail
 		if detail == "" {
-			detail = string(a.ActionType)
+			detail = a.FileActionId.String()
 		}
-		fmt.Printf("  %s [%s] %s\n", status, a.ActionType, detail)
-		fmt.Printf("     ID: %d  Created: %s\n\n", a.ID, a.CreatedAt)
+		fmt.Printf("  %s [%s] %s\n", status, a.FileActionId, detail)
+		fmt.Printf("     ID: %d  Created: %s\n\n", a.ActionHistoryId, a.CreatedAt)
 	}
 }
 
