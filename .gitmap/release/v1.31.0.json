@@ -1,0 +1,16 @@
+{
+  "version": "1.31.0",
+  "branch": "release/v1.31.0",
+  "sourceBranch": "main",
+  "commit": "d2b9151d6f5a283ec12cd76ac1d77c8ac7d0b8d4",
+  "tag": "v1.31.0",
+  "assets": [],
+  "changelog": [
+    "**Version in CLI header box** — scan output now shows `🎬  Movie CLI v1.31.0` centered in the banner (matches gitmap style)",
+    "**Spec v1.1** (`spec/10-cli-output-spec.md`) — added flag reference table, JSON item schema, table column definitions, exit codes, flag interaction edge cases, metadata line priority order"
+  ],
+  "draft": false,
+  "preRelease": false,
+  "createdAt": "2026-04-15T15:41:38Z",
+  "isLatest": false
+}
