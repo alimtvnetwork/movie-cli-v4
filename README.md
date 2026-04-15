@@ -294,15 +294,18 @@ All data lives in `./data/` at the project root.
 | Command | Description |
 |---|---|
 | `movie scan [folder]` | Scan folder → DB + TMDb metadata |
+| `movie rescan` | Re-fetch TMDb metadata for entries with missing data |
 | `movie ls` | Paginated interactive library browser |
 | `movie search <name>` | Live TMDb search → save to DB |
 | `movie info <id\|title>` | Detail view (local DB → TMDb fallback) |
 
 ```bash
-movie scan ~/Downloads
-movie ls
-movie search "Inception"
-movie info 1
+movie scan ~/Downloads            # scan folder, fetch metadata + posters
+movie rescan                      # re-fetch missing genres/ratings from TMDb
+movie ls                          # browse library with pagination
+movie search "Inception"          # search TMDb and save result
+movie info 1                      # show details for media ID 1
+movie info "The Batman"           # search by title
 ```
 
 ---
@@ -314,15 +317,39 @@ movie info 1
 | `movie move [directory]` | Browse, select, move with clean name |
 | `movie move --all` | Batch move all files (auto-route by type) |
 | `movie rename` | Batch rename to clean format |
-| `movie undo` | Revert last move/rename |
+| `movie popout [directory]` | Extract video files from subfolders to root |
 | `movie play <id>` | Open with default video player |
+| `movie cd [folder-name]` | Print path of a scanned folder for quick nav |
 
 ```bash
-movie move ~/Downloads        # interactive single-file
-movie move --all ~/Downloads  # batch move all
-movie rename                  # clean all filenames
-movie undo                    # revert last operation
-movie play 1                  # play with system player
+movie move ~/Downloads            # interactive single-file move
+movie move --all ~/Downloads      # batch move all files
+movie rename                      # clean all filenames
+movie popout ~/Downloads          # flatten nested subfolders
+movie play 1                      # play with system player
+cd $(movie cd Movies)             # navigate to scanned folder
+```
+
+---
+
+### History & Undo
+
+| Command | Description |
+|---|---|
+| `movie undo` | Revert last move/rename/delete/scan operation |
+| `movie undo --list` | Show recent undoable actions |
+| `movie undo --batch` | Undo the entire last batch (e.g. a full scan) |
+| `movie undo --id <id>` | Undo a specific action by ID |
+| `movie redo` | Re-apply the last undone operation |
+| `movie history` | Show history of all tracked operations |
+
+```bash
+movie undo                        # revert most recent operation
+movie undo --list                 # see what can be undone
+movie undo --batch                # undo entire last scan batch
+movie undo --id 42                # undo specific action
+movie redo                        # re-apply last undone operation
+movie history                     # view full operation history
 ```
 
 ---
@@ -335,13 +362,47 @@ movie play 1                  # play with system player
 | `movie tag add <id> <tag>` | Add a tag to a media item |
 | `movie tag remove <id> <tag>` | Remove a tag |
 | `movie tag list [id]` | List tags (per item or all) |
+| `movie watch add <id>` | Add a library item to your watchlist |
+| `movie watch done <id>` | Mark a title as watched |
+| `movie watch undo <id>` | Revert a title back to to-watch |
+| `movie watch rm <id>` | Remove a title from your watchlist |
+| `movie watch ls` | List your watchlist |
 | `movie stats` | Counts, storage, genre chart, avg ratings |
+| `movie duplicates` | Detect duplicate media entries |
 
 ```bash
-movie suggest 5
-movie tag add 1 favorite
-movie tag list
-movie stats
+movie suggest 5                   # get 5 recommendations
+movie tag add 1 favorite          # tag media #1 as favorite
+movie tag list                    # list all tags
+movie watch add 3                 # add media #3 to watchlist
+movie watch done 3                # mark as watched
+movie watch ls                    # view watchlist
+movie stats                       # library statistics
+movie duplicates                  # find duplicate entries
+```
+
+---
+
+### Maintenance & Debugging
+
+| Command | Description |
+|---|---|
+| `movie cleanup` | Find stale entries where files no longer exist |
+| `movie cleanup --remove` | Delete stale entries (not just preview) |
+| `movie db` | Show resolved database path and status |
+| `movie logs` | Display recent error logs from the database |
+| `movie rest` | Start a local REST API server for the library |
+| `movie rest --open` | Start server and open in browser |
+| `movie export [-o path]` | Dump media table as JSON |
+
+```bash
+movie cleanup                     # dry run — show stale entries
+movie cleanup --remove            # actually remove stale entries
+movie db                          # check database location
+movie logs                        # view recent error/warning logs
+movie rest                        # start REST API on localhost
+movie rest --open                 # start and open browser
+movie export -o ~/library.json    # export full library as JSON
 ```
 
 ---
@@ -352,7 +413,6 @@ movie stats
 |---|---|
 | `movie config` | Show all configuration |
 | `movie config set <key> <val>` | Set a config value |
-| `movie export [-o path]` | Dump media table as JSON |
 | `movie version` | Version, commit, build date, Go, OS/arch |
 | `movie self-update` | Update via `git pull --ff-only` |
 | `movie changelog [--latest]` | Show release notes |
@@ -360,8 +420,8 @@ movie stats
 ```bash
 movie config set movies_dir ~/Movies
 movie config set tmdb_api_key YOUR_KEY
-movie export -o ~/Desktop/library.json
 movie self-update
+movie changelog --latest
 ```
 
 **Config keys:**
