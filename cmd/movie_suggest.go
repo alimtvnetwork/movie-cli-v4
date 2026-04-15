@@ -41,7 +41,7 @@ func runMovieSuggest(cmd *cobra.Command, args []string) {
 	}
 	defer database.Close()
 
-	apiKey, err := database.GetConfig("tmdb_api_key")
+	apiKey, err := database.GetConfig("TmdbApiKey")
 	if err != nil && err.Error() != "sql: no rows in result set" {
 		errlog.Warn("Config read error: %v", err)
 	}

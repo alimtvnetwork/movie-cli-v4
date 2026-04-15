@@ -97,7 +97,7 @@ func processVideoFile(
 		FileExtension:    result.Extension,
 	}
 	if fi != nil {
-		m.FileSize = fi.Size()
+		m.FileSizeMb = float64(fi.Size()) / (1024 * 1024)
 	}
 
 	// Fetch metadata from TMDb
