@@ -196,11 +196,10 @@ When the existing database version is below `DbMinCompatible`, the system perfor
 
 ```
 1. Log warning: "Database version X.X.X is incompatible with minimum Y.Y.Y — recreating"
-2. Close all database connections
-3. Delete all .db files in data/ folder
-4. Delete all .db-wal and .db-shm files (WAL cleanup)
-5. Run fresh install (Section 4)
-6. Log info: "Database recreated at version Z.Z.Z"
+2. Close database connection
+3. Delete mahin.db, mahin.db-wal, mahin.db-shm
+4. Run fresh install (Section 4)
+5. Log info: "Database recreated at version Z.Z.Z"
 ```
 
 ### 5.2 Safety Rules
@@ -209,7 +208,7 @@ When the existing database version is below `DbMinCompatible`, the system perfor
 |------|-------------|
 | Never delete `data/config/` | User configuration files are preserved across resets |
 | Never delete `data/log/` | Log history is preserved across resets |
-| Only delete `.db` files | The `data/` folder itself and subfolders are kept |
+| Only delete `mahin.db*` | The `data/` folder itself and subfolders are kept |
 | Log before delete | Always write to `error.log` before deleting databases |
 | No user prompt | Drop-and-recreate is automatic — the CLI is the sole user |
 
@@ -220,20 +219,22 @@ Legacy databases from before the v2.0.0 schema redesign can be detected by:
 1. **No `SchemaVersion` table** — legacy databases didn't have version tracking
 2. **Table named `media` (lowercase)** — legacy used lowercase table names
 3. **Column named `id` (not `MediaId`)** — legacy used generic `id` columns
-4. **Single `movie.db` file** — legacy used one monolithic database
+4. **File named `movie.db`** — legacy used a different database filename
 
 Any of these conditions trigger drop-and-recreate.
 
 ```go
 func isLegacyDatabase(dataDir string) bool {
+    // Check for old monolithic file
     legacyPath := filepath.Join(dataDir, "movie.db")
     if _, err := os.Stat(legacyPath); err == nil {
         return true
     }
 
-    // Check for SchemaVersion table in any existing .db file
-    for _, dbFile := range splitDbFiles {
-        if !hasSchemaVersionTable(filepath.Join(dataDir, dbFile)) {
+    // Check for SchemaVersion table in mahin.db
+    dbPath := filepath.Join(dataDir, "mahin.db")
+    if _, err := os.Stat(dbPath); err == nil {
+        if !hasSchemaVersionTable(dbPath) {
             return true
         }
     }
