@@ -86,6 +86,7 @@
 - [x] Migration spec — fresh install, breaking upgrade, incremental; SchemaVersion table
 - [x] Data folder structure — `<binary-dir>/data/` with config/ and log/ subfolders
 - [x] FileAction expanded to 14 types (added TagAdd, TagRemove, WatchlistAdd, WatchlistRemove, WatchlistStatusChange, ConfigChange)
+- [x] Collection table for TMDb movie collections ✅ 15-Apr-2026
 - [x] Suggestions & proposals document
 
 ---
@@ -98,7 +99,7 @@
 - [ ] Implement SchemaVersion tracking + migration runner in Go
 - [ ] Seed FileAction with 14 predefined rows
 - [ ] Create 8 database views (VwMediaFull, VwMoveHistoryDetail, etc.)
-- [ ] Add Collection table for TMDb movie collections (v2.1.0)
+
 
 ### Phase 2: Code Alignment (P1)
 - [ ] Update all commands to use new PascalCase column names

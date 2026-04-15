@@ -149,7 +149,8 @@ Step  Table/Object                 Dependencies
   6   → Seed FileAction            FileAction exists
   7   ScanFolder                   none
   8   ScanHistory                  ScanFolder
-  9   Media                        Language, ScanHistory
+  9   Collection                   none
+ 10   Media                        Language, ScanHistory, Collection
  10   MediaGenre                   Media, Genre
  11   MediaCast                    Media, Cast
  12   Tag                          Media
