@@ -1,12 +1,7 @@
 %% 01-db-schema-diagram.mmd — Complete Database Schema (all tables + relationships)
-%% Version: 2.0.0 | Updated: 2026-04-15
-%% Follows: PascalCase naming, {TableName}Id PKs, Split DB pattern
-%% Split DB Layout:
-%%   media.db       — Media, Collection, Genre, MediaGenre, Cast, MediaCast, Language, Tag,
-%%                    ScanFolder, ScanHistory, MoveHistory, ActionHistory, FileAction
-%%   watchlist.db   — Watchlist
-%%   config.db      — Config
-%%   error-log.db   — ErrorLog
+%% Version: 2.1.0 | Updated: 2026-04-15
+%% Follows: PascalCase naming, {TableName}Id PKs
+%% Single database: mahin.db — all tables in one file
 
 erDiagram
 
@@ -157,11 +152,11 @@ erDiagram
         TEXT CreatedAt "DEFAULT CURRENT_TIMESTAMP"
     }
 
-    %% ─── Watchlist (watchlist.db) ───
+    %% ─── Watchlist ───
 
     Watchlist {
         INTEGER WatchlistId PK "AUTOINCREMENT"
-        INTEGER MediaId "cross-DB ref, NULLABLE"
+        INTEGER MediaId "FK, NULLABLE"
         INTEGER TmdbId "NOT NULL, UNIQUE"
         TEXT Title "NOT NULL"
         SMALLINT Year "NULLABLE"
@@ -171,14 +166,14 @@ erDiagram
         TEXT WatchedAt "NULLABLE"
     }
 
-    %% ─── Config (config.db) ───
+    %% ─── Config ───
 
     Config {
         TEXT ConfigKey PK "NOT NULL"
         TEXT ConfigValue "NOT NULL"
     }
 
-    %% ─── Error Log (error-log.db) ───
+    %% ─── Error Log ───
 
     ErrorLog {
         INTEGER ErrorLogId PK "AUTOINCREMENT"
@@ -231,5 +226,5 @@ erDiagram
     %% Media 1-N ActionHistory
     Media ||--o{ ActionHistory : "has actions"
 
-    %% Watchlist optional link to Media (cross-DB, no FK constraint)
+    %% Watchlist optional link to Media (FK, nullable)
     Media ||--o| Watchlist : "tracked in"

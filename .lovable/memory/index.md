@@ -14,6 +14,7 @@ cmd/ has 21 files, db/ has 6 files (including tags.go).
 CI pipeline follows gitmap-v2 patterns: SHA dedup, parallel matrix, vulncheck, cross-compile.
 Data folder at `<binary-dir>/data/`, resolved via os.Executable(). NOT cwd-relative.
 NEVER name a file `<package>/<package>.go` (e.g. db/db.go). Use descriptive names (db/open.go).
+Single DB: all tables in `mahin.db`. No Split DB pattern.
 
 ## Memories
 - [Project overview](mem://01-project-overview) — Go CLI, command tree (21 cmds), architecture, file structure
@@ -22,6 +23,7 @@ NEVER name a file `<package>/<package>.go` (e.g. db/db.go). Use descriptive name
 - [AI success plan](mem://workflow/01-ai-success-plan) — 7 rules for 98% AI success rate
 - [Suggestions](mem://suggestions/01-suggestions) — Active suggestion tracker (S06 acceptance criteria is next P1)
 - [Reliability report](mem://reports/01-reliability-risk-report) — Failure map, corrective actions, readiness decision
+- [No Split DB](mem://constraints/no-split-db) — All tables in single mahin.db, never multiple .db files
 - [Timestamp bug](mem://issues/01-timestamp-bug) — Fixed: hardcoded "now" → RFC3339
 - [Duplicate TMDb fetch](mem://issues/02-duplicate-tmdb-fetch) — Fixed: shared helpers
 - [Large files](mem://issues/03-large-files) — Fixed: split to <200 lines

@@ -13,8 +13,8 @@ The Movie CLI (`mahin`) uses an **embedded migration system** — no external mi
 
 | Mode | When | Behavior |
 |------|------|----------|
-| **Fresh install** | No `data/` folder or no `.db` files exist | Create all databases, tables, indexes, views, and seed data from scratch |
-| **Breaking upgrade** | Database version < minimum compatible version | Delete all `.db` files and recreate from scratch (data loss accepted) |
+| **Fresh install** | No `data/` folder or no `mahin.db` file | Create database, tables, indexes, views, and seed data from scratch |
+| **Breaking upgrade** | Database version < minimum compatible version | Delete `mahin.db` and recreate from scratch (data loss accepted) |
 | **Incremental upgrade** | Database version is compatible but behind current | Run pending migrations sequentially |
 
 > **v2.0.0 rule:** The first release with this schema (v2.0.0) is a **breaking migration**. Any database created by a prior version is deleted and recreated.
@@ -25,7 +25,7 @@ The Movie CLI (`mahin`) uses an **embedded migration system** — no external mi
 
 ### 2.1 Schema Version Table
 
-Every database file contains a `SchemaVersion` table to track its migration state:
+The database file contains a `SchemaVersion` table to track its migration state:
 
 ```sql
 CREATE TABLE SchemaVersion (
@@ -57,8 +57,8 @@ App starts
   │       │   └── YES
   │       │       ├── Version >= current? → No migration needed
   │       │       ├── Version >= MinCompatible? → Incremental migration (Section 6)
-  │       │       └── Version < MinCompatible? → Drop and recreate (Section 5)
-  │       └── .db file missing? → Create that specific database
+   │       │       └── Version < MinCompatible? → Drop and recreate (Section 5)
+   │       └── Done — app proceeds to execute command
   └── Done — app proceeds to execute command
 ```
 
@@ -84,10 +84,7 @@ On first run, the migration system creates the full folder structure:
 ```
 <cli-binary-location>/
 └── data/
-    ├── media.db          ← created by migration
-    ├── watchlist.db      ← created by migration
-    ├── config.db         ← created by migration
-    ├── error-log.db      ← created by migration
+    ├── mahin.db          ← created by migration
     ├── config/           ← created by migration
     └── log/              ← created by migration
         ├── log.txt       ← created on first log write
@@ -118,9 +115,9 @@ func ensureDataFolders(dataDir string) error {
 
 ## 4. Fresh Install — Full Schema Creation
 
-When no database files exist, the system creates all databases with tables, indexes, views, and seed data in order.
+When no database file exists, the system creates the database with all tables, indexes, views, and seed data in order.
 
-### 4.1 Execution Order (per database)
+### 4.1 Execution Order
 
 ```
 1. Create database file
@@ -136,7 +133,7 @@ When no database files exist, the system creates all databases with tables, inde
 11. Insert SchemaVersion record
 ```
 
-### 4.2 media.db Creation Order
+### 4.2 Table Creation Order
 
 ```
 Step  Table/Object                 Dependencies
@@ -157,9 +154,12 @@ Step  Table/Object                 Dependencies
  13   MediaTag                     Media, Tag
  14   MoveHistory                  Media, FileAction
  15   ActionHistory                Media, FileAction
- 15   → Create all indexes         all tables exist
- 16   → Create all views           all tables exist
- 17   → Insert SchemaVersion       done
+ 16   Watchlist                    Media (optional FK)
+ 17   Config                       none
+ 18   ErrorLog                     none
+ 19   → Create all indexes         all tables exist
+ 20   → Create all views           all tables exist
+ 21   → Insert SchemaVersion       done
 ```
 
 ### 4.3 Seed Data
@@ -196,11 +196,10 @@ When the existing database version is below `DbMinCompatible`, the system perfor
 
 ```
 1. Log warning: "Database version X.X.X is incompatible with minimum Y.Y.Y — recreating"
-2. Close all database connections
-3. Delete all .db files in data/ folder
-4. Delete all .db-wal and .db-shm files (WAL cleanup)
-5. Run fresh install (Section 4)
-6. Log info: "Database recreated at version Z.Z.Z"
+2. Close database connection
+3. Delete mahin.db, mahin.db-wal, mahin.db-shm
+4. Run fresh install (Section 4)
+5. Log info: "Database recreated at version Z.Z.Z"
 ```
 
 ### 5.2 Safety Rules
@@ -209,7 +208,7 @@ When the existing database version is below `DbMinCompatible`, the system perfor
 |------|-------------|
 | Never delete `data/config/` | User configuration files are preserved across resets |
 | Never delete `data/log/` | Log history is preserved across resets |
-| Only delete `.db` files | The `data/` folder itself and subfolders are kept |
+| Only delete `mahin.db*` | The `data/` folder itself and subfolders are kept |
 | Log before delete | Always write to `error.log` before deleting databases |
 | No user prompt | Drop-and-recreate is automatic — the CLI is the sole user |
 
@@ -220,20 +219,22 @@ Legacy databases from before the v2.0.0 schema redesign can be detected by:
 1. **No `SchemaVersion` table** — legacy databases didn't have version tracking
 2. **Table named `media` (lowercase)** — legacy used lowercase table names
 3. **Column named `id` (not `MediaId`)** — legacy used generic `id` columns
-4. **Single `movie.db` file** — legacy used one monolithic database
+4. **File named `movie.db`** — legacy used a different database filename
 
 Any of these conditions trigger drop-and-recreate.
 
 ```go
 func isLegacyDatabase(dataDir string) bool {
+    // Check for old monolithic file
     legacyPath := filepath.Join(dataDir, "movie.db")
     if _, err := os.Stat(legacyPath); err == nil {
         return true
     }
 
-    // Check for SchemaVersion table in any existing .db file
-    for _, dbFile := range splitDbFiles {
-        if !hasSchemaVersionTable(filepath.Join(dataDir, dbFile)) {
+    // Check for SchemaVersion table in mahin.db
+    dbPath := filepath.Join(dataDir, "mahin.db")
+    if _, err := os.Stat(dbPath); err == nil {
+        if !hasSchemaVersionTable(dbPath) {
             return true
         }
     }
@@ -255,7 +256,6 @@ Each migration is a named function registered in order:
 ```go
 type Migration struct {
     Version     string
-    Database    string   // which .db file this targets
     Description string
     Up          func(db *sql.DB) error
 }
@@ -263,16 +263,14 @@ type Migration struct {
 var migrations = []Migration{
     {
         Version:     "2.0.0",
-        Database:    "media.db",
-        Description: "Initial schema — full redesign with Split DB",
-        Up:          migrateMedia200,
+        Description: "Initial schema — full redesign with single DB",
+        Up:          migrate200,
     },
     // Future migrations appended here:
     // {
     //     Version:     "2.1.0",
-    //     Database:    "media.db",
     //     Description: "Add ReleaseDate column to Media",
-    //     Up:          migrateMedia210,
+    //     Up:          migrate210,
     // },
 }
 ```
@@ -300,7 +298,7 @@ var migrations = []Migration{
 | Rule | Description |
 |------|-------------|
 | Forward-only | No down migrations — rollback by creating a new forward migration |
-| One database per migration | Each migration targets exactly one `.db` file |
+| Transaction-wrapped | Every migration runs inside a transaction |
 | Transaction-wrapped | Every migration runs inside a transaction |
 | Idempotent where possible | Use `IF NOT EXISTS` for CREATE, `IF EXISTS` for DROP |
 | Version in SchemaVersion | Every migration inserts a row in SchemaVersion |
