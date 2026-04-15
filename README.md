@@ -451,17 +451,28 @@ movie
 ├── self-update                   # git pull --ff-only
 ├── config [get|set] [key]        # View/set configuration
 ├── scan [folder]                 # Scan folder → DB + TMDb metadata
+├── rescan                        # Re-fetch missing TMDb metadata
 ├── ls                            # Paginated library list (file-backed only)
 ├── search <name>                 # Live TMDb search → save to DB
 ├── info <id|title>               # Detail view (local DB → TMDb fallback)
 ├── suggest [N]                   # Recommendations + trending
 ├── move [directory]              # Browse, select, move with clean name
 ├── rename                        # Batch rename to clean format
-├── undo                          # Revert last move/rename
+├── popout [directory]            # Extract videos from subfolders
+├── undo [--list|--batch|--id]    # Revert operations (move/delete/scan)
+├── redo                          # Re-apply last undone operation
+├── history                       # Show all tracked operations
 ├── play <id>                     # Open with default video player
 ├── stats                         # Counts, storage, genre chart, avg ratings
+├── duplicates                    # Detect duplicate media entries
+├── cleanup [--remove]            # Find/remove stale entries
 ├── tag [add|remove|list]         # Manage user-defined tags
-└── export [-o path]              # Dump media table as JSON
+├── watch [add|done|undo|rm|ls]   # Manage watchlist
+├── cd [folder-name]              # Print scanned folder path
+├── export [-o path]              # Dump media table as JSON
+├── db                            # Show database path and status
+├── logs                          # View error/warning logs
+└── rest [--open]                 # Start local REST API server
 ```
 
 ---
@@ -556,15 +567,28 @@ movie-cli-v3/
 │   ├── root.go                    # Root command, registers subcommands
 │   ├── movie_config.go            # config get/set
 │   ├── movie_scan.go              # scan folder
+│   ├── movie_rescan.go            # re-fetch missing metadata
 │   ├── movie_ls.go                # paginated list
 │   ├── movie_search.go            # TMDb search
 │   ├── movie_info.go              # detail view + shared fetch helpers
 │   ├── movie_suggest.go           # recommendations
 │   ├── movie_move.go              # interactive move
 │   ├── movie_rename.go            # batch rename
-│   ├── movie_undo.go              # undo last move/rename
+│   ├── movie_popout.go            # extract from subfolders
+│   ├── movie_undo.go              # undo operations
+│   ├── movie_redo.go              # redo undone operations
+│   ├── movie_history.go           # operation history
+│   ├── movie_play.go              # play with system player
 │   ├── movie_stats.go             # library statistics
+│   ├── movie_duplicates.go        # duplicate detection
+│   ├── movie_cleanup.go           # stale entry cleanup
 │   ├── movie_tag.go               # tag management
+│   ├── movie_watch.go             # watchlist management
+│   ├── movie_cd.go                # folder navigation helper
+│   ├── movie_export.go            # JSON export
+│   ├── movie_db.go                # database path/status
+│   ├── movie_logs.go              # error log viewer
+│   ├── movie_rest.go              # REST API server
 │   └── movie_resolve.go           # shared ID/title resolver
 ├── cleaner/cleaner.go             # Filename cleaning + slug generation
 ├── tmdb/client.go                 # TMDb API client
