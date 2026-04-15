@@ -78,7 +78,7 @@ func promptSourceDirectory(scanner interface {
 	Scan() bool
 	Text() string
 }, database *db.DB, home string) string {
-	scanDir, cfgErr := database.GetConfig("scan_dir")
+	scanDir, cfgErr := database.GetConfig("ScanDir")
 	if cfgErr != nil && cfgErr.Error() != "sql: no rows in result set" {
 		errlog.Warn("Config read error (scan_dir): %v", cfgErr)
 	}
@@ -139,15 +139,15 @@ func promptDestination(scanner interface {
 	Scan() bool
 	Text() string
 }, database *db.DB, home string) string {
-	moviesDir, cfgErr := database.GetConfig("movies_dir")
+	moviesDir, cfgErr := database.GetConfig("MoviesDir")
 	if cfgErr != nil && cfgErr.Error() != "sql: no rows in result set" {
 		errlog.Warn("Config read error (movies_dir): %v", cfgErr)
 	}
-	tvDir, cfgErr := database.GetConfig("tv_dir")
+	tvDir, cfgErr := database.GetConfig("TvDir")
 	if cfgErr != nil && cfgErr.Error() != "sql: no rows in result set" {
 		errlog.Warn("Config read error (tv_dir): %v", cfgErr)
 	}
-	archiveDir, cfgErr := database.GetConfig("archive_dir")
+	archiveDir, cfgErr := database.GetConfig("ArchiveDir")
 	if cfgErr != nil && cfgErr.Error() != "sql: no rows in result set" {
 		errlog.Warn("Config read error (archive_dir): %v", cfgErr)
 	}

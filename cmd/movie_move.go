@@ -95,11 +95,11 @@ func runMovieMove(cmd *cobra.Command, args []string) {
 
 // runBatchMove moves all video files at once, auto-routing by type.
 func runBatchMove(database *db.DB, scanner *bufio.Scanner, sourceDir string, files []os.FileInfo, home string) {
-	moviesDir, cfgErr := database.GetConfig("movies_dir")
+	moviesDir, cfgErr := database.GetConfig("MoviesDir")
 	if cfgErr != nil && cfgErr.Error() != "sql: no rows in result set" {
 		errlog.Warn("Config read error (movies_dir): %v", cfgErr)
 	}
-	tvDir, cfgErr := database.GetConfig("tv_dir")
+	tvDir, cfgErr := database.GetConfig("TvDir")
 	if cfgErr != nil && cfgErr.Error() != "sql: no rows in result set" {
 		errlog.Warn("Config read error (tv_dir): %v", cfgErr)
 	}
