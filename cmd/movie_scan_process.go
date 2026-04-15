@@ -106,7 +106,7 @@ func processVideoFile(
 	}
 
 	// Insert into database
-	_, insertErr := database.InsertMedia(m)
+	mediaID, insertErr := database.InsertMedia(m)
 	if insertErr != nil {
 		if m.TmdbID > 0 {
 			if updateErr := database.UpdateMediaByTmdbID(m); updateErr != nil {
@@ -115,6 +115,12 @@ func processVideoFile(
 		} else {
 			errlog.Error("DB insert error for '%s': %v", m.Title, insertErr)
 		}
+	}
+
+	// Track scan_add in action_history for undo support
+	if insertErr == nil && mediaID > 0 && batchID != "" {
+		detail := fmt.Sprintf("Scan added: %s (%s)", m.CleanTitle, vf.FullPath)
+		database.InsertActionSimple(db.ActionScanAdd, mediaID, "", detail, batchID)
 	}
 
 	if jsonErr := writeMediaJSON(outputDir, m); jsonErr != nil {
