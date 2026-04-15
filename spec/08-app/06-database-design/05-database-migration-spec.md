@@ -162,7 +162,7 @@ Step  Table/Object                 Dependencies
 
 ### 4.3 Seed Data
 
-#### FileAction (Predefined — 8 rows)
+#### FileAction (Predefined — 14 rows)
 
 ```sql
 INSERT INTO FileAction (Name) VALUES
@@ -173,7 +173,13 @@ INSERT INTO FileAction (Name) VALUES
     ('Restore'),
     ('ScanAdd'),
     ('ScanRemove'),
-    ('RescanUpdate');
+    ('RescanUpdate'),
+    ('TagAdd'),
+    ('TagRemove'),
+    ('WatchlistAdd'),
+    ('WatchlistRemove'),
+    ('WatchlistStatusChange'),
+    ('ConfigChange');
 ```
 
 > **Important:** FileAction IDs are stable and mapped to Go enum constants. Never reorder or delete rows. New actions are appended only.
