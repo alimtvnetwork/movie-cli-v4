@@ -143,7 +143,7 @@ GIVEN the database file is corrupted (SQLITE_CORRUPT)
 WHEN any command attempts to open the database
 THEN the error message includes:
   - The full path to the database file
-  - Suggestion: "Delete <binary-dir>/data/media.db and re-scan your library"
+  - Suggestion: "Delete <binary-dir>/data/mahin.db and re-scan your library"
   - Note: "Thumbnails in <binary-dir>/data/thumbnails/ are preserved"
   - Note: "Config and logs in <binary-dir>/data/config/ and data/log/ are preserved"
 ```
