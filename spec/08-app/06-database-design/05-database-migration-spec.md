@@ -153,9 +153,10 @@ Step  Table/Object                 Dependencies
  10   Media                        Language, ScanHistory, Collection
  10   MediaGenre                   Media, Genre
  11   MediaCast                    Media, Cast
- 12   Tag                          Media
- 13   MoveHistory                  Media, FileAction
- 14   ActionHistory                Media, FileAction
+ 12   Tag                          (none — lookup)
+ 13   MediaTag                     Media, Tag
+ 14   MoveHistory                  Media, FileAction
+ 15   ActionHistory                Media, FileAction
  15   → Create all indexes         all tables exist
  16   → Create all views           all tables exist
  17   → Insert SchemaVersion       done
@@ -348,7 +349,7 @@ func recreateView(db *sql.DB, viewName string, viewSQL string) error {
 | VwMoveHistoryDetail | MoveHistory, Media, FileAction |
 | VwActionHistoryDetail | ActionHistory, Media, FileAction |
 | VwScanHistoryDetail | ScanHistory, ScanFolder |
-| VwMediaTag | Tag, Media |
+| VwMediaTag | MediaTag, Tag, Media |
 
 > If `Media` table changes, recreate: VwMediaDetail, VwMediaFull, VwMoveHistoryDetail, VwActionHistoryDetail, VwMediaTag.
 
