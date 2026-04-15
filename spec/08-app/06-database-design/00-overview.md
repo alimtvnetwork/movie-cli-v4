@@ -48,6 +48,7 @@ Complete database design documentation for the Movie CLI (`mahin`). All persiste
 | 03 | [03-popout-spec.md](./03-popout-spec.md) | `movie popout` command spec | ✅ Active |
 | 04 | [04-database-design-spec.md](./04-database-design-spec.md) | Full database design spec — tables, views, enums, conventions | ✅ Active |
 | 05 | [05-database-migration-spec.md](./05-database-migration-spec.md) | Migration logic — versioning, drop-and-recreate, view creation | ✅ Active |
+| 06 | [06-suggestions-and-proposals.md](./06-suggestions-and-proposals.md) | Additional actions, alternative names, missing tables/relationships | ✅ For Review |
 
 ---
 
