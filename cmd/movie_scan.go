@@ -189,9 +189,12 @@ func runMovieScan(cmd *cobra.Command, args []string) {
 				totalFiles++
 				status := "existing"
 				if useTMDb && mediaNeedsRescan(em) {
+					// Snapshot before rescan for undo
+					preSnapshot, _ := db.MediaToJSON(em)
 					if rescanMediaEntry(database, client, em) {
 						status = "rescanned"
-						if !useTable && !useJSON {
+						detail := fmt.Sprintf("Rescan updated: %s", em.CleanTitle)
+						database.InsertActionSimple(db.ActionRescanUpdate, em.ID, preSnapshot, detail, scanBatchID)
 							typeIcon := "🎬"
 							if em.Type == "tv" {
 								typeIcon = "📺"
