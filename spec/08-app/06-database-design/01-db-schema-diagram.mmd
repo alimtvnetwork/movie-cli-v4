@@ -1,95 +1,214 @@
 %% 01-db-schema-diagram.mmd — Complete Database Schema (all tables + relationships)
-%% Version: 1.0.0 | Updated: 2026-04-15
+%% Version: 2.0.0 | Updated: 2026-04-15
+%% Follows: PascalCase naming, {TableName}Id PKs, Split DB pattern
+%% Split DB Layout:
+%%   media.db       — Media, Genre, MediaGenre, Cast, MediaCast, Language, Tag,
+%%                    ScanFolder, ScanHistory, MoveHistory, ActionHistory, FileAction
+%%   watchlist.db   — Watchlist
+%%   config.db      — Config
+%%   error-log.db   — ErrorLog
 
 erDiagram
-    media {
-        INTEGER id PK "AUTOINCREMENT"
-        TEXT title "NOT NULL"
-        TEXT clean_title "NOT NULL"
-        INTEGER year
-        TEXT type "movie | tv"
-        INTEGER tmdb_id "UNIQUE"
-        TEXT imdb_id
-        TEXT description
-        REAL imdb_rating
-        REAL tmdb_rating
-        REAL popularity
-        TEXT genre
-        TEXT director
-        TEXT cast_list
-        TEXT thumbnail_path
-        TEXT original_file_name
-        TEXT original_file_path
-        TEXT current_file_path
-        TEXT file_extension
-        INTEGER file_size
-        INTEGER runtime "DEFAULT 0"
-        TEXT language "DEFAULT empty"
-        INTEGER budget "DEFAULT 0"
-        INTEGER revenue "DEFAULT 0"
-        TEXT trailer_url "DEFAULT empty"
-        TEXT tagline "DEFAULT empty"
-        DATETIME scanned_at "DEFAULT CURRENT_TIMESTAMP"
-        DATETIME updated_at "DEFAULT CURRENT_TIMESTAMP"
+
+    %% ─── Lookup Tables ───
+
+    Genre {
+        INTEGER GenreId PK "AUTOINCREMENT"
+        TEXT Name "NOT NULL, UNIQUE"
     }
 
-    move_history {
-        INTEGER id PK "AUTOINCREMENT"
-        INTEGER media_id FK "NOT NULL"
-        TEXT from_path "NOT NULL"
-        TEXT to_path "NOT NULL"
-        TEXT original_file_name
-        TEXT new_file_name
-        DATETIME moved_at "DEFAULT CURRENT_TIMESTAMP"
-        INTEGER undone "0 or 1, DEFAULT 0"
+    Cast {
+        INTEGER CastId PK "AUTOINCREMENT"
+        TEXT Name "NOT NULL"
+        INTEGER TmdbPersonId "UNIQUE, NULLABLE"
     }
 
-    tags {
-        INTEGER id PK "AUTOINCREMENT"
-        INTEGER media_id FK "NOT NULL"
-        TEXT tag "NOT NULL"
-        DATETIME created_at "DEFAULT CURRENT_TIMESTAMP"
+    Language {
+        INTEGER LanguageId PK "AUTOINCREMENT"
+        TEXT Code "NOT NULL, UNIQUE (e.g. en, ms)"
+        TEXT Name "NOT NULL"
     }
 
-    scan_history {
-        INTEGER id PK "AUTOINCREMENT"
-        TEXT folder_path "NOT NULL"
-        INTEGER total_files "DEFAULT 0"
-        INTEGER movies_found "DEFAULT 0"
-        INTEGER tv_found "DEFAULT 0"
-        DATETIME scanned_at "DEFAULT CURRENT_TIMESTAMP"
+    FileAction {
+        INTEGER FileActionId PK "AUTOINCREMENT"
+        TEXT Name "NOT NULL, UNIQUE"
     }
 
-    config {
-        TEXT key PK
-        TEXT value "NOT NULL"
+    %% ─── Core Entity ───
+
+    Media {
+        INTEGER MediaId PK "AUTOINCREMENT"
+        TEXT Title "NOT NULL"
+        TEXT CleanTitle "NOT NULL"
+        SMALLINT Year "NULLABLE"
+        TEXT Type "NOT NULL, CHECK(movie | tv)"
+        INTEGER TmdbId "UNIQUE, NULLABLE"
+        TEXT ImdbId "NULLABLE"
+        TEXT Description "NULLABLE"
+        REAL ImdbRating "NULLABLE"
+        REAL TmdbRating "NULLABLE"
+        REAL Popularity "NULLABLE"
+        INTEGER LanguageId "FK, NULLABLE"
+        TEXT Director "NULLABLE"
+        TEXT ThumbnailPath "NULLABLE"
+        TEXT OriginalFileName "NULLABLE"
+        TEXT OriginalFilePath "NULLABLE"
+        TEXT CurrentFilePath "NULLABLE"
+        TEXT FileExtension "NULLABLE"
+        REAL FileSizeMb "NULLABLE, stored in megabytes"
+        INTEGER Runtime "DEFAULT 0, minutes"
+        INTEGER Budget "DEFAULT 0"
+        INTEGER Revenue "DEFAULT 0"
+        TEXT TrailerUrl "NULLABLE"
+        TEXT Tagline "NULLABLE"
+        INTEGER ScanHistoryId "FK, NULLABLE"
+        TEXT ScannedAt "DEFAULT CURRENT_TIMESTAMP"
+        TEXT UpdatedAt "DEFAULT CURRENT_TIMESTAMP"
     }
 
-    watchlist {
-        INTEGER id PK "AUTOINCREMENT"
-        INTEGER media_id FK "NULLABLE"
-        INTEGER tmdb_id "UNIQUE, NOT NULL"
-        TEXT title "NOT NULL"
-        INTEGER year
-        TEXT type "movie | tv"
-        TEXT status "to-watch | watched"
-        DATETIME added_at "DEFAULT CURRENT_TIMESTAMP"
-        DATETIME watched_at "NULLABLE"
+    %% ─── Join Tables ───
+
+    MediaGenre {
+        INTEGER MediaGenreId PK "AUTOINCREMENT"
+        INTEGER MediaId "FK, NOT NULL"
+        INTEGER GenreId "FK, NOT NULL"
     }
 
-    error_logs {
-        INTEGER id PK "AUTOINCREMENT"
-        TEXT timestamp "NOT NULL"
-        TEXT level "ERROR | WARN | INFO"
-        TEXT source "NOT NULL"
-        TEXT function "DEFAULT empty"
-        TEXT command "DEFAULT empty"
-        TEXT work_dir "DEFAULT empty"
-        TEXT message "NOT NULL"
-        TEXT stack_trace "DEFAULT empty"
-        DATETIME created_at "DEFAULT CURRENT_TIMESTAMP"
+    MediaCast {
+        INTEGER MediaCastId PK "AUTOINCREMENT"
+        INTEGER MediaId "FK, NOT NULL"
+        INTEGER CastId "FK, NOT NULL"
+        TEXT Role "NULLABLE, character name"
+        INTEGER CastOrder "NULLABLE"
     }
 
-    media ||--o{ move_history : "has moves"
-    media ||--o{ tags : "has tags"
-    media ||--o| watchlist : "tracked in"
+    %% ─── Tags ───
+
+    Tag {
+        INTEGER TagId PK "AUTOINCREMENT"
+        INTEGER MediaId "FK, NOT NULL"
+        TEXT Name "NOT NULL"
+        TEXT CreatedAt "DEFAULT CURRENT_TIMESTAMP"
+    }
+
+    %% ─── Scan Domain ───
+
+    ScanFolder {
+        INTEGER ScanFolderId PK "AUTOINCREMENT"
+        TEXT FolderPath "NOT NULL, UNIQUE"
+        BOOLEAN IsActive "NOT NULL, DEFAULT 1"
+        TEXT CreatedAt "DEFAULT CURRENT_TIMESTAMP"
+        TEXT UpdatedAt "DEFAULT CURRENT_TIMESTAMP"
+    }
+
+    ScanHistory {
+        INTEGER ScanHistoryId PK "AUTOINCREMENT"
+        INTEGER ScanFolderId "FK, NOT NULL"
+        INTEGER TotalFiles "DEFAULT 0"
+        INTEGER MoviesFound "DEFAULT 0"
+        INTEGER TvFound "DEFAULT 0"
+        INTEGER NewFiles "DEFAULT 0"
+        INTEGER RemovedFiles "DEFAULT 0"
+        INTEGER UpdatedFiles "DEFAULT 0"
+        INTEGER ErrorCount "DEFAULT 0"
+        INTEGER DurationMs "DEFAULT 0"
+        TEXT ScannedAt "DEFAULT CURRENT_TIMESTAMP"
+    }
+
+    %% ─── History / Operations ───
+
+    MoveHistory {
+        INTEGER MoveHistoryId PK "AUTOINCREMENT"
+        INTEGER MediaId "FK, NOT NULL"
+        INTEGER FileActionId "FK, NOT NULL"
+        TEXT FromPath "NOT NULL"
+        TEXT ToPath "NOT NULL"
+        TEXT OriginalFileName "NULLABLE"
+        TEXT NewFileName "NULLABLE"
+        BOOLEAN IsUndone "NOT NULL, DEFAULT 0"
+        TEXT MovedAt "DEFAULT CURRENT_TIMESTAMP"
+    }
+
+    ActionHistory {
+        INTEGER ActionHistoryId PK "AUTOINCREMENT"
+        INTEGER FileActionId "FK, NOT NULL"
+        INTEGER MediaId "FK, NULLABLE"
+        TEXT MediaSnapshot "NULLABLE, JSON"
+        TEXT Detail "NULLABLE"
+        TEXT BatchId "NULLABLE, groups related actions"
+        BOOLEAN IsUndone "NOT NULL, DEFAULT 0"
+        TEXT CreatedAt "DEFAULT CURRENT_TIMESTAMP"
+    }
+
+    %% ─── Watchlist (watchlist.db) ───
+
+    Watchlist {
+        INTEGER WatchlistId PK "AUTOINCREMENT"
+        INTEGER MediaId "cross-DB ref, NULLABLE"
+        INTEGER TmdbId "NOT NULL, UNIQUE"
+        TEXT Title "NOT NULL"
+        SMALLINT Year "NULLABLE"
+        TEXT Type "CHECK(movie | tv)"
+        TEXT Status "CHECK(to-watch | watched)"
+        TEXT AddedAt "DEFAULT CURRENT_TIMESTAMP"
+        TEXT WatchedAt "NULLABLE"
+    }
+
+    %% ─── Config (config.db) ───
+
+    Config {
+        TEXT ConfigKey PK "NOT NULL"
+        TEXT ConfigValue "NOT NULL"
+    }
+
+    %% ─── Error Log (error-log.db) ───
+
+    ErrorLog {
+        INTEGER ErrorLogId PK "AUTOINCREMENT"
+        TEXT Timestamp "NOT NULL"
+        TEXT Level "NOT NULL, CHECK(ERROR | WARN | INFO)"
+        TEXT Source "NOT NULL"
+        TEXT Function "NULLABLE"
+        TEXT Command "NULLABLE"
+        TEXT WorkDir "NULLABLE"
+        TEXT Message "NOT NULL"
+        TEXT StackTrace "NULLABLE"
+        TEXT CreatedAt "DEFAULT CURRENT_TIMESTAMP"
+    }
+
+    %% ─── Relationships ───
+
+    %% Language 1-N Media
+    Language ||--o{ Media : "LanguageId"
+
+    %% ScanFolder 1-N ScanHistory
+    ScanFolder ||--o{ ScanHistory : "has scans"
+
+    %% ScanHistory 1-N Media
+    ScanHistory ||--o{ Media : "discovered in"
+
+    %% Media 1-N MediaGenre, Genre 1-N MediaGenre (M-N via join)
+    Media ||--o{ MediaGenre : "has genres"
+    Genre ||--o{ MediaGenre : "used by"
+
+    %% Media N-M Cast via MediaCast
+    Media ||--o{ MediaCast : "has cast"
+    Cast ||--o{ MediaCast : "appears in"
+
+    %% Media 1-N Tag
+    Media ||--o{ Tag : "has tags"
+
+    %% Media 1-N MoveHistory
+    Media ||--o{ MoveHistory : "has moves"
+
+    %% FileAction 1-N MoveHistory
+    FileAction ||--o{ MoveHistory : "action type"
+
+    %% FileAction 1-N ActionHistory
+    FileAction ||--o{ ActionHistory : "action type"
+
+    %% Media 1-N ActionHistory
+    Media ||--o{ ActionHistory : "has actions"
+
+    %% Watchlist optional link to Media (cross-DB, no FK constraint)
+    Media ||--o| Watchlist : "tracked in"
