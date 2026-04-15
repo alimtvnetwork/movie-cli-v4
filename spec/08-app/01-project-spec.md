@@ -127,7 +127,15 @@ This means:
 
 ```
 <binary-dir>/data/
-├── movie.db                   # SQLite database (WAL mode)
+├── media.db                   # Media & operations database (WAL mode)
+├── watchlist.db               # Watchlist database
+├── config.db                  # Key-value CLI settings
+├── error-log.db               # Structured error log database
+├── config/
+│   └── (CLI configuration files)
+├── log/
+│   ├── log.txt                # General application log
+│   └── error.log              # Error-only log (see error handling spec)
 ├── thumbnails/
 │   └── <slug>/
 │       └── <slug>.jpg         # Downloaded poster images
@@ -150,81 +158,62 @@ co-located next to the binary. The deploy step:
 This ensures the database, thumbnails, and JSON files are always found
 regardless of which directory the user runs the command from.
 
-### Database Schema
+### Database Schema — Split DB Pattern
 
-**SQLite with WAL mode enabled.**
+The CLI uses the **Split DB** pattern with multiple SQLite databases per bounded context. All databases use WAL mode.
 
-#### `media` table
-| Column | Type | Notes |
-|---|---|---|
-| id | INTEGER PK AUTO | |
-| title | TEXT NOT NULL | Display title (from TMDb or cleaned) |
-| clean_title | TEXT NOT NULL | Cleaned filename title |
-| year | INTEGER | Release year |
-| type | TEXT | `'movie'` or `'tv'` (CHECK constraint) |
-| tmdb_id | INTEGER UNIQUE | TMDb ID (prevents duplicates) |
-| imdb_id | TEXT | IMDb ID |
-| description | TEXT | Overview/synopsis |
-| imdb_rating | REAL | |
-| tmdb_rating | REAL | |
-| popularity | REAL | TMDb popularity score |
-| genre | TEXT | Comma-separated genre names |
-| director | TEXT | Comma-separated director names |
-| cast_list | TEXT | Comma-separated cast names (top 10) |
-| thumbnail_path | TEXT | Local path to downloaded poster |
-| original_file_name | TEXT | Original filename before cleaning |
-| original_file_path | TEXT | Original full path |
-| current_file_path | TEXT | Current full path (updated on move) |
-| file_extension | TEXT | e.g., `.mkv`, `.mp4` |
-| file_size | INTEGER | Size in bytes |
-| scanned_at | DATETIME | Auto: CURRENT_TIMESTAMP |
-| updated_at | DATETIME | Auto: CURRENT_TIMESTAMP |
+| Database File | Bounded Context | Key Tables |
+|---------------|----------------|------------|
+| `media.db` | Media & Operations | Media, Genre, MediaGenre, Cast, MediaCast, Language, Tag, ScanFolder, ScanHistory, MoveHistory, ActionHistory, FileAction |
+| `watchlist.db` | Watch Tracking | Watchlist |
+| `config.db` | Configuration | Config |
+| `error-log.db` | Error Logging | ErrorLog |
 
-#### `move_history` table
-| Column | Type | Notes |
-|---|---|---|
-| id | INTEGER PK AUTO | |
-| media_id | INTEGER FK→media | CASCADE delete |
-| from_path | TEXT NOT NULL | Source path |
-| to_path | TEXT NOT NULL | Destination path |
-| original_file_name | TEXT | Name before move |
-| new_file_name | TEXT | Name after move |
-| moved_at | DATETIME | Auto |
-| undone | INTEGER DEFAULT 0 | 0=active, 1=undone |
+> **Full schema documentation:** [Database Design Spec](./06-database-design/04-database-design-spec.md)  
+> **ER diagram:** [DB Schema Diagram](./06-database-design/01-db-schema-diagram.mmd)  
+> **Migration logic:** [Database Migration Spec](./06-database-design/05-database-migration-spec.md)
 
-#### `config` table
-| Column | Type | Notes |
-|---|---|---|
-| key | TEXT PK | Config key |
-| value | TEXT NOT NULL | Config value |
+#### Naming Conventions (PascalCase)
 
-#### `scan_history` table
-| Column | Type | Notes |
-|---|---|---|
-| id | INTEGER PK AUTO | |
-| folder_path | TEXT NOT NULL | Scanned directory |
-| total_files | INTEGER | |
-| movies_found | INTEGER | |
-| tv_found | INTEGER | |
-| scanned_at | DATETIME | Auto |
+All table names, column names, and index names use **PascalCase** per the [Database Naming Conventions](../01-coding-guidelines/03-coding-guidelines-spec/10-database-conventions/01-naming-conventions.md):
 
-#### `tags` table
-| Column | Type | Notes |
-|---|---|---|
-| id | INTEGER PK AUTO | |
-| media_id | INTEGER FK→media | CASCADE delete |
-| tag | TEXT NOT NULL | |
-| created_at | DATETIME | Auto |
-| UNIQUE(media_id, tag) | | |
+- Primary keys: `{TableName}Id` (e.g., `MediaId`, `GenreId`)
+- Foreign keys: same name as referenced PK (e.g., `LanguageId`)
+- Booleans: `Is`/`Has` prefix, positive only (e.g., `IsUndone`, `IsActive`)
+- Views: `Vw` prefix (e.g., `VwMediaFull`, `VwMoveHistoryDetail`)
 
-#### Indexes
-- `idx_media_type` on media(type)
-- `idx_media_title` on media(clean_title)
-- `idx_media_year` on media(year)
-- `idx_media_tmdb` on media(tmdb_id)
-- `idx_move_history_media` on move_history(media_id)
-- `idx_move_history_undone` on move_history(undone)
-- `idx_tags_media` on tags(media_id)
+#### Key Tables Summary
+
+| Table | Purpose |
+|-------|---------|
+| `Media` | Core media metadata — one row per scanned file |
+| `Genre` / `MediaGenre` | Normalized genres (1-N join) |
+| `Cast` / `MediaCast` | Normalized cast members (N-M join with role + order) |
+| `Language` | Normalized language codes (1-N to Media) |
+| `FileAction` | Predefined action types: Move, Rename, Delete, Popout, Restore, ScanAdd, ScanRemove, RescanUpdate |
+| `ScanFolder` | Root entity — registered scan folder paths |
+| `ScanHistory` | Detailed scan logs (files found, added, removed, duration) |
+| `MoveHistory` | File move/rename operations with undo support |
+| `ActionHistory` | Unified audit log for all reversible operations |
+| `Tag` | User-assigned tags per media item |
+| `Watchlist` | To-watch / watched tracking (cross-DB ref to Media) |
+| `Config` | Key-value CLI settings |
+| `ErrorLog` | Structured error/warning log entries |
+
+#### Database Views (8 views in media.db)
+
+All application queries use views instead of direct table joins:
+
+| View | Purpose |
+|------|---------|
+| `VwMediaDetail` | Media + resolved language |
+| `VwMediaGenreList` | Media genres with names |
+| `VwMediaCastList` | Media cast with names, roles, order |
+| `VwMediaFull` | Complete media with language, genres, cast (aggregated) |
+| `VwMoveHistoryDetail` | Move history with media title + action name |
+| `VwActionHistoryDetail` | Action history with media title + action name |
+| `VwScanHistoryDetail` | Scan history with folder path |
+| `VwMediaTag` | Media with associated tags |
 
 #### Default Config Values
 | Key | Default |
