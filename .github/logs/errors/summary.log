@@ -1,0 +1,149 @@
+# CI/CD Failure Report
+
+## Run Metadata
+
+| Field         | Value |
+|---------------|-------|
+| Workflow      | CI |
+| Run ID        | 24476509101 |
+| Run Number    | 14 |
+| Commit        | 52f62f8c9713c7ada81b3793e59b9f8ec5dcced7 |
+| Branch        | main |
+| Triggered By  | alimtvnetwork |
+| Event         | push |
+| Timestamp     | 2026-04-15T20:25:23Z |
+| Run URL       | https://github.com/alimtvnetwork/movie-cli-v4/actions/runs/24476509101 |
+
+## Job Results
+
+| Job | Status | Log File |
+|-----|--------|----------|
+| Lint | success | errors/lint.log |
+| Vulnerability Scan | success | errors/vulncheck.log |
+| Test | failure | errors/test-integration.log,errors/test-unit.log |
+| Build | skipped |  |
+
+## Failed Stages
+
+### lint
+
+```
+=== GO VET ===
+status: success
+# github.com/alimtvnetwork/movie-cli-v3/db
+db/media.go:5:2: "fmt" imported and not used
+# github.com/alimtvnetwork/movie-cli-v3/db
+# [github.com/alimtvnetwork/movie-cli-v3/db]
+vet: db/media.go:5:2: "fmt" imported and not used
+
+=== GOLANGCI-LINT ===
+status: success
+cmd/movie_cd.go:11:2: could not import github.com/alimtvnetwork/movie-cli-v3/db (-: # github.com/alimtvnetwork/movie-cli-v3/db
+db/media.go:5:2: "fmt" imported and not used) (typecheck)
+	"github.com/alimtvnetwork/movie-cli-v3/db"
+	^
+db/action_history.go:1: : # github.com/alimtvnetwork/movie-cli-v3/db [github.com/alimtvnetwork/movie-cli-v3/db.test]
+db/media.go:5:2: "fmt" imported and not used (typecheck)
+// action_history.go — ActionHistory table: types and helpers.
+```
+
+### test-integration
+
+```
+=== TEST: integration ===
+status: fail
+exit_code: 1
+packages: ./db/...
+
+--- FAILED TESTS ---
+(no FAIL lines found)
+
+--- SUMMARY ---
+passed: 0
+0
+failed: 0
+0
+
+--- FULL OUTPUT ---
+# github.com/alimtvnetwork/movie-cli-v3/db [github.com/alimtvnetwork/movie-cli-v3/db.test]
+db/media.go:5:2: "fmt" imported and not used
+FAIL	github.com/alimtvnetwork/movie-cli-v3/db [build failed]
+FAIL
+```
+
+### test-unit
+
+```
+=== TEST: unit ===
+status: fail
+exit_code: 1
+packages: ./...
+
+--- FAILED TESTS ---
+(no FAIL lines found)
+
+--- SUMMARY ---
+passed: 0
+0
+failed: 0
+0
+
+--- FULL OUTPUT ---
+# github.com/alimtvnetwork/movie-cli-v3/db
+db/media.go:5:2: "fmt" imported and not used
+FAIL	github.com/alimtvnetwork/movie-cli-v3 [build failed]
+FAIL	github.com/alimtvnetwork/movie-cli-v3/cmd [build failed]
+FAIL	github.com/alimtvnetwork/movie-cli-v3/db [build failed]
+?   	github.com/alimtvnetwork/movie-cli-v3/templates	[no test files]
+	github.com/alimtvnetwork/movie-cli-v3/cleaner		coverage: 0.0% of statements
+	github.com/alimtvnetwork/movie-cli-v3/tmdb		coverage: 0.0% of statements
+	github.com/alimtvnetwork/movie-cli-v3/updater		coverage: 0.0% of statements
+	github.com/alimtvnetwork/movie-cli-v3/errlog		coverage: 0.0% of statements
+	github.com/alimtvnetwork/movie-cli-v3/version		coverage: 0.0% of statements
+FAIL
+```
+
+### vulncheck
+
+```
+=== VULNERABILITY SCAN ===
+status: pass
+exit_code: 0
+
+govulncheck: loading packages: 
+There are errors with the provided package patterns:
+
+/home/runner/work/movie-cli-v4/movie-cli-v4/db/media.go:5:2: "fmt" imported and not used
+/home/runner/work/movie-cli-v4/movie-cli-v4/cmd/movie_history.go:135:18: m.Undone undefined (type db.MoveRecord has no field or method Undone)
+/home/runner/work/movie-cli-v4/movie-cli-v4/cmd/movie_history_table.go:76:17: m.Undone undefined (type db.MoveRecord has no field or method Undone)
+/home/runner/work/movie-cli-v4/movie-cli-v4/cmd/movie_move_helpers.go:73:22: cannot use bytes (variable of type int64) as float64 value in argument to db.HumanSize
+/home/runner/work/movie-cli-v4/movie-cli-v4/cmd/movie_redo.go:98:8: m.Undone undefined (type db.MoveRecord has no field or method Undone)
+/home/runner/work/movie-cli-v4/movie-cli-v4/cmd/movie_redo.go:105:10: m.Undone undefined (type db.MoveRecord has no field or method Undone)
+/home/runner/work/movie-cli-v4/movie-cli-v4/cmd/movie_redo.go:196:13: target.Undone undefined (type *db.MoveRecord has no field or method Undone)
+/home/runner/work/movie-cli-v4/movie-cli-v4/cmd/movie_undo.go:102:9: m.Undone undefined (type db.MoveRecord has no field or method Undone)
+/home/runner/work/movie-cli-v4/movie-cli-v4/cmd/movie_undo.go:109:9: m.Undone undefined (type db.MoveRecord has no field or method Undone)
+/home/runner/work/movie-cli-v4/movie-cli-v4/cmd/movie_undo.go:201:12: target.Undone undefined (type *db.MoveRecord has no field or method Undone)
+
+For details on package patterns, see https://pkg.go.dev/cmd/go#hdr-Package_lists_and_patterns.
+
+```
+
+---
+
+## AI Fix Instructions
+
+1. Read each `.log` file in `.github/logs/errors/`.
+2. Identify the root cause from the error output.
+3. Apply the fix to the relevant source file.
+4. Push — CI will re-run, clear the folder, and only write new failures.
+
+### Common Fix Patterns
+
+| Failure Type | Typical Fix |
+|-------------|-------------|
+| `go vet` | Fix the reported code issue (unused vars, wrong types, etc.) |
+| `golangci-lint` | Fix the linting violation or add a `//nolint` comment with justification |
+| `govulncheck` (3rd-party) | Run `go get <package>@latest && go mod tidy` |
+| `govulncheck` (stdlib) | Upgrade Go version in `go.mod` or wait for patch |
+| Test failure | Read the FAIL output, fix the logic or update the test assertion |
+| Build failure | Fix compilation errors shown in the build output |

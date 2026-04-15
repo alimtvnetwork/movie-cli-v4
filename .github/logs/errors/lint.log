@@ -1,0 +1,17 @@
+=== GO VET ===
+status: success
+# github.com/alimtvnetwork/movie-cli-v3/db
+db/media.go:5:2: "fmt" imported and not used
+# github.com/alimtvnetwork/movie-cli-v3/db
+# [github.com/alimtvnetwork/movie-cli-v3/db]
+vet: db/media.go:5:2: "fmt" imported and not used
+
+=== GOLANGCI-LINT ===
+status: success
+cmd/movie_cd.go:11:2: could not import github.com/alimtvnetwork/movie-cli-v3/db (-: # github.com/alimtvnetwork/movie-cli-v3/db
+db/media.go:5:2: "fmt" imported and not used) (typecheck)
+	"github.com/alimtvnetwork/movie-cli-v3/db"
+	^
+db/action_history.go:1: : # github.com/alimtvnetwork/movie-cli-v3/db [github.com/alimtvnetwork/movie-cli-v3/db.test]
+db/media.go:5:2: "fmt" imported and not used (typecheck)
+// action_history.go — ActionHistory table: types and helpers.
