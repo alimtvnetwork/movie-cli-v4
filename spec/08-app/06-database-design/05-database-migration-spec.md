@@ -13,8 +13,8 @@ The Movie CLI (`mahin`) uses an **embedded migration system** — no external mi
 
 | Mode | When | Behavior |
 |------|------|----------|
-| **Fresh install** | No `data/` folder or no `.db` files exist | Create all databases, tables, indexes, views, and seed data from scratch |
-| **Breaking upgrade** | Database version < minimum compatible version | Delete all `.db` files and recreate from scratch (data loss accepted) |
+| **Fresh install** | No `data/` folder or no `mahin.db` file | Create database, tables, indexes, views, and seed data from scratch |
+| **Breaking upgrade** | Database version < minimum compatible version | Delete `mahin.db` and recreate from scratch (data loss accepted) |
 | **Incremental upgrade** | Database version is compatible but behind current | Run pending migrations sequentially |
 
 > **v2.0.0 rule:** The first release with this schema (v2.0.0) is a **breaking migration**. Any database created by a prior version is deleted and recreated.
@@ -25,7 +25,7 @@ The Movie CLI (`mahin`) uses an **embedded migration system** — no external mi
 
 ### 2.1 Schema Version Table
 
-Every database file contains a `SchemaVersion` table to track its migration state:
+The database file contains a `SchemaVersion` table to track its migration state:
 
 ```sql
 CREATE TABLE SchemaVersion (
@@ -57,8 +57,8 @@ App starts
   │       │   └── YES
   │       │       ├── Version >= current? → No migration needed
   │       │       ├── Version >= MinCompatible? → Incremental migration (Section 6)
-  │       │       └── Version < MinCompatible? → Drop and recreate (Section 5)
-  │       └── .db file missing? → Create that specific database
+   │       │       └── Version < MinCompatible? → Drop and recreate (Section 5)
+   │       └── Done — app proceeds to execute command
   └── Done — app proceeds to execute command
 ```
 
@@ -84,10 +84,7 @@ On first run, the migration system creates the full folder structure:
 ```
 <cli-binary-location>/
 └── data/
-    ├── media.db          ← created by migration
-    ├── watchlist.db      ← created by migration
-    ├── config.db         ← created by migration
-    ├── error-log.db      ← created by migration
+    ├── mahin.db          ← created by migration
     ├── config/           ← created by migration
     └── log/              ← created by migration
         ├── log.txt       ← created on first log write
@@ -118,9 +115,9 @@ func ensureDataFolders(dataDir string) error {
 
 ## 4. Fresh Install — Full Schema Creation
 
-When no database files exist, the system creates all databases with tables, indexes, views, and seed data in order.
+When no database file exists, the system creates the database with all tables, indexes, views, and seed data in order.
 
-### 4.1 Execution Order (per database)
+### 4.1 Execution Order
 
 ```
 1. Create database file
@@ -136,7 +133,7 @@ When no database files exist, the system creates all databases with tables, inde
 11. Insert SchemaVersion record
 ```
 
-### 4.2 media.db Creation Order
+### 4.2 Table Creation Order
 
 ```
 Step  Table/Object                 Dependencies
