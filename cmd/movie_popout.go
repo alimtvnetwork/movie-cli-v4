@@ -309,13 +309,6 @@ func offerFolderCleanup(scanner *bufio.Scanner, database *db.DB, rootDir string,
 		subDirs[item.subDir] = true
 	}
 
-	type folderInfo struct {
-		name      string
-		path      string
-		files     []string
-		totalSize int64
-	}
-
 	var folders []folderInfo
 	for dir := range subDirs {
 		dirPath := filepath.Join(rootDir, dir)
