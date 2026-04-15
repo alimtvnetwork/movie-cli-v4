@@ -1,33 +1,12 @@
-// errorlog.go — error_logs table and DB writer for the error logging system.
+// errorlog.go — ErrorLog table helpers.
 package db
 
 import "fmt"
 
-// migrateErrorLogs creates the error_logs table if it doesn't exist.
-func (d *DB) migrateErrorLogs() error {
-	_, err := d.Exec(`
-		CREATE TABLE IF NOT EXISTS error_logs (
-			id          INTEGER PRIMARY KEY AUTOINCREMENT,
-			timestamp   TEXT NOT NULL,
-			level       TEXT NOT NULL CHECK(level IN ('ERROR', 'WARN', 'INFO')),
-			source      TEXT NOT NULL,
-			function    TEXT DEFAULT '',
-			command     TEXT DEFAULT '',
-			work_dir    TEXT DEFAULT '',
-			message     TEXT NOT NULL,
-			stack_trace TEXT DEFAULT '',
-			created_at  DATETIME DEFAULT CURRENT_TIMESTAMP
-		);
-		CREATE INDEX IF NOT EXISTS idx_error_logs_level ON error_logs(level);
-		CREATE INDEX IF NOT EXISTS idx_error_logs_ts    ON error_logs(timestamp);
-	`)
-	return err
-}
-
-// InsertErrorLog writes an error entry to the error_logs table.
+// InsertErrorLog writes an error entry to the ErrorLog table.
 func (d *DB) InsertErrorLog(timestamp, level, source, function, command, workDir, message, stackTrace string) error {
 	_, err := d.Exec(`
-		INSERT INTO error_logs (timestamp, level, source, function, command, work_dir, message, stack_trace)
+		INSERT INTO ErrorLog (Timestamp, Level, Source, Function, Command, WorkDir, Message, StackTrace)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
 		timestamp, level, source, function, command, workDir, message, stackTrace,
 	)
@@ -40,8 +19,8 @@ func (d *DB) InsertErrorLog(timestamp, level, source, function, command, workDir
 // RecentErrorLogs returns the most recent N error log entries.
 func (d *DB) RecentErrorLogs(limit int) ([]map[string]string, error) {
 	rows, err := d.Query(`
-		SELECT id, timestamp, level, source, function, command, work_dir, message, stack_trace
-		FROM error_logs ORDER BY id DESC LIMIT ?`, limit)
+		SELECT ErrorLogId, Timestamp, Level, Source, Function, Command, WorkDir, Message, StackTrace
+		FROM ErrorLog ORDER BY ErrorLogId DESC LIMIT ?`, limit)
 	if err != nil {
 		return nil, fmt.Errorf("query error logs: %w", err)
 	}

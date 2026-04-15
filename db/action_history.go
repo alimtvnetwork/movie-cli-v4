@@ -1,11 +1,4 @@
-// action_history.go — ActionHistory table: migration, types, and helpers.
-//
-// Tracks all reversible state changes (scan adds/removes, deletions, popouts,
-// rescans, tag ops, watchlist ops, config changes) so that undo / redo /
-// history can operate on them.
-//
-// The new schema uses a FileAction lookup table (INTEGER FK) instead of
-// inline action_type TEXT. See spec/08-app/06-database-design/04-database-design-spec.md.
+// action_history.go — ActionHistory table: types and helpers.
 package db
 
 import (
@@ -33,7 +26,7 @@ const (
 	FileActionConfigChange          FileActionType = 14
 )
 
-// fileActionNames maps FileActionType to the Name stored in the FileAction table.
+// fileActionNames maps FileActionType to display name.
 var fileActionNames = map[FileActionType]string{
 	FileActionMove:                  "Move",
 	FileActionRename:                "Rename",
@@ -64,47 +57,19 @@ type ActionRecord struct {
 	ActionHistoryId int64
 	FileActionId    FileActionType
 	MediaId         sql.NullInt64
-	MediaSnapshot   string // JSON snapshot of the media row before change
-	Detail          string // human-readable description
-	BatchId         string // groups related actions (UUID)
+	MediaSnapshot   string
+	Detail          string
+	BatchId         string
 	IsUndone        bool
 	CreatedAt       string
 }
 
-// migrateActionHistory creates the ActionHistory table and indexes.
-func (d *DB) migrateActionHistory() error {
-	_, err := d.Exec(`
-		CREATE TABLE IF NOT EXISTS action_history (
-			ActionHistoryId INTEGER PRIMARY KEY AUTOINCREMENT,
-			FileActionId    INTEGER NOT NULL,
-			MediaId         INTEGER,
-			MediaSnapshot   TEXT,
-			Detail          TEXT,
-			BatchId         TEXT,
-			IsUndone        INTEGER NOT NULL DEFAULT 0,
-			CreatedAt       TEXT NOT NULL DEFAULT (datetime('now')),
-			FOREIGN KEY (FileActionId) REFERENCES file_action(FileActionId),
-			FOREIGN KEY (MediaId) REFERENCES media(MediaId) ON DELETE SET NULL
-		);
-		CREATE INDEX IF NOT EXISTS IdxActionHistory_FileActionId ON action_history(FileActionId);
-		CREATE INDEX IF NOT EXISTS IdxActionHistory_MediaId      ON action_history(MediaId);
-		CREATE INDEX IF NOT EXISTS IdxActionHistory_BatchId      ON action_history(BatchId);
-		CREATE INDEX IF NOT EXISTS IdxActionHistory_IsUndone     ON action_history(IsUndone);
-	`)
-	if err != nil {
-		return fmt.Errorf("migrate action_history: %w", err)
-	}
-	return nil
-}
-
-// ---------------------------------------------------------------------------
-// Insert helpers
-// ---------------------------------------------------------------------------
+const actionCols = `ActionHistoryId, FileActionId, MediaId, MediaSnapshot, Detail, BatchId, IsUndone, CreatedAt`
 
 // InsertAction logs a state-changing action to ActionHistory.
 func (d *DB) InsertAction(fileAction FileActionType, mediaId sql.NullInt64, snapshot, detail, batchId string) (int64, error) {
 	res, err := d.Exec(`
-		INSERT INTO action_history (FileActionId, MediaId, MediaSnapshot, Detail, BatchId)
+		INSERT INTO ActionHistory (FileActionId, MediaId, MediaSnapshot, Detail, BatchId)
 		VALUES (?, ?, ?, ?, ?)`,
 		int(fileAction), mediaId, snapshot, detail, batchId,
 	)
@@ -120,17 +85,11 @@ func (d *DB) InsertActionSimple(fileAction FileActionType, mediaId int64, snapsh
 	return d.InsertAction(fileAction, mid, snapshot, detail, batchId)
 }
 
-// ---------------------------------------------------------------------------
-// Query helpers
-// ---------------------------------------------------------------------------
-
-const actionCols = `ActionHistoryId, FileActionId, MediaId, MediaSnapshot, Detail, BatchId, IsUndone, CreatedAt`
-
 // GetLastUndoableAction returns the most recent un-undone action.
 func (d *DB) GetLastUndoableAction() (*ActionRecord, error) {
 	row := d.QueryRow(`
 		SELECT ` + actionCols + `
-		FROM action_history
+		FROM ActionHistory
 		WHERE IsUndone = 0
 		ORDER BY ActionHistoryId DESC LIMIT 1`)
 	return scanActionRow(row)
@@ -140,7 +99,7 @@ func (d *DB) GetLastUndoableAction() (*ActionRecord, error) {
 func (d *DB) GetActionByID(id int64) (*ActionRecord, error) {
 	row := d.QueryRow(`
 		SELECT `+actionCols+`
-		FROM action_history WHERE ActionHistoryId = ?`, id)
+		FROM ActionHistory WHERE ActionHistoryId = ?`, id)
 	return scanActionRow(row)
 }
 
@@ -148,7 +107,7 @@ func (d *DB) GetActionByID(id int64) (*ActionRecord, error) {
 func (d *DB) GetLastRedoableAction() (*ActionRecord, error) {
 	row := d.QueryRow(`
 		SELECT ` + actionCols + `
-		FROM action_history
+		FROM ActionHistory
 		WHERE IsUndone = 1
 		ORDER BY ActionHistoryId DESC LIMIT 1`)
 	return scanActionRow(row)
@@ -161,7 +120,7 @@ func (d *DB) ListActions(limit int) ([]ActionRecord, error) {
 	}
 	rows, err := d.Query(`
 		SELECT `+actionCols+`
-		FROM action_history
+		FROM ActionHistory
 		ORDER BY ActionHistoryId DESC LIMIT ?`, limit)
 	if err != nil {
 		return nil, fmt.Errorf("list actions: %w", err)
@@ -177,7 +136,7 @@ func (d *DB) ListActionsByType(fileAction FileActionType, limit int) ([]ActionRe
 	}
 	rows, err := d.Query(`
 		SELECT `+actionCols+`
-		FROM action_history
+		FROM ActionHistory
 		WHERE FileActionId = ?
 		ORDER BY ActionHistoryId DESC LIMIT ?`, int(fileAction), limit)
 	if err != nil {
@@ -191,7 +150,7 @@ func (d *DB) ListActionsByType(fileAction FileActionType, limit int) ([]ActionRe
 func (d *DB) ListActionsByBatch(batchId string) ([]ActionRecord, error) {
 	rows, err := d.Query(`
 		SELECT `+actionCols+`
-		FROM action_history
+		FROM ActionHistory
 		WHERE BatchId = ?
 		ORDER BY ActionHistoryId ASC`, batchId)
 	if err != nil {
@@ -201,13 +160,9 @@ func (d *DB) ListActionsByBatch(batchId string) ([]ActionRecord, error) {
 	return scanActionRows(rows)
 }
 
-// ---------------------------------------------------------------------------
-// Undo / Redo state helpers
-// ---------------------------------------------------------------------------
-
 // MarkActionUndone sets IsUndone = 1 for the given action.
 func (d *DB) MarkActionUndone(id int64) error {
-	_, err := d.Exec("UPDATE action_history SET IsUndone = 1 WHERE ActionHistoryId = ?", id)
+	_, err := d.Exec("UPDATE ActionHistory SET IsUndone = 1 WHERE ActionHistoryId = ?", id)
 	if err != nil {
 		return fmt.Errorf("mark action undone %d: %w", id, err)
 	}
@@ -216,7 +171,7 @@ func (d *DB) MarkActionUndone(id int64) error {
 
 // MarkActionRedone sets IsUndone = 0 for the given action (redo).
 func (d *DB) MarkActionRedone(id int64) error {
-	_, err := d.Exec("UPDATE action_history SET IsUndone = 0 WHERE ActionHistoryId = ?", id)
+	_, err := d.Exec("UPDATE ActionHistory SET IsUndone = 0 WHERE ActionHistoryId = ?", id)
 	if err != nil {
 		return fmt.Errorf("mark action redone %d: %w", id, err)
 	}
@@ -225,7 +180,7 @@ func (d *DB) MarkActionRedone(id int64) error {
 
 // MarkBatchUndone sets IsUndone = 1 for all actions in a batch.
 func (d *DB) MarkBatchUndone(batchId string) error {
-	_, err := d.Exec("UPDATE action_history SET IsUndone = 1 WHERE BatchId = ?", batchId)
+	_, err := d.Exec("UPDATE ActionHistory SET IsUndone = 1 WHERE BatchId = ?", batchId)
 	if err != nil {
 		return fmt.Errorf("mark batch undone %s: %w", batchId, err)
 	}
@@ -234,16 +189,12 @@ func (d *DB) MarkBatchUndone(batchId string) error {
 
 // MarkBatchRedone sets IsUndone = 0 for all actions in a batch.
 func (d *DB) MarkBatchRedone(batchId string) error {
-	_, err := d.Exec("UPDATE action_history SET IsUndone = 0 WHERE BatchId = ?", batchId)
+	_, err := d.Exec("UPDATE ActionHistory SET IsUndone = 0 WHERE BatchId = ?", batchId)
 	if err != nil {
 		return fmt.Errorf("mark batch redone %s: %w", batchId, err)
 	}
 	return nil
 }
-
-// ---------------------------------------------------------------------------
-// Internal scan helpers
-// ---------------------------------------------------------------------------
 
 func scanActionRow(row *sql.Row) (*ActionRecord, error) {
 	r := &ActionRecord{}

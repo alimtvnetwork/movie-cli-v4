@@ -1,5 +1,4 @@
 // media_snapshot.go — JSON snapshot helpers for media records.
-// Used by action_history to store/restore full media state for undo/redo.
 package db
 
 import (
@@ -7,7 +6,7 @@ import (
 	"fmt"
 )
 
-// MediaToJSON serialises a Media record to JSON for action_history snapshots.
+// MediaToJSON serialises a Media record to JSON for ActionHistory snapshots.
 func MediaToJSON(m *Media) (string, error) {
 	data, err := json.Marshal(m)
 	if err != nil {
@@ -27,7 +26,7 @@ func MediaFromJSON(snapshot string) (*Media, error) {
 
 // DeleteMediaByID deletes a single media record by primary key.
 func (d *DB) DeleteMediaByID(id int64) error {
-	_, err := d.Exec("DELETE FROM media WHERE id = ?", id)
+	_, err := d.Exec("DELETE FROM Media WHERE MediaId = ?", id)
 	if err != nil {
 		return fmt.Errorf("delete media %d: %w", id, err)
 	}
