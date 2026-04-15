@@ -168,29 +168,58 @@ func runMovieScan(cmd *cobra.Command, args []string) {
 		// ── Process files: skip existing, enrich new ──
 		client := tmdb.NewClientWithToken(creds.APIKey, creds.Token)
 		for _, vf := range videoFiles {
-			if em, found := existingPaths[vf.FullPath]; found {
-				// Already in DB — include in report but don't re-process
-				*&totalFiles++
-				*&skipped++
+		if em, found := existingPaths[vf.FullPath]; found {
+				// Already in DB — auto-rescan if missing metadata
+				totalFiles++
+				status := "existing"
+				if useTMDb && mediaNeedsRescan(em) {
+					if rescanMediaEntry(database, client, em) {
+						status = "rescanned"
+						if !useTable && !useJSON {
+							typeIcon := "🎬"
+							if em.Type == "tv" {
+								typeIcon = "📺"
+							}
+							fmt.Printf("\n  %d. %s %s", totalFiles, typeIcon, em.CleanTitle)
+							if em.Year > 0 {
+								fmt.Printf(" (%d)", em.Year)
+							}
+							fmt.Printf(" [%s]\n", em.Type)
+							fmt.Printf("     🔄 Rescanned — ⭐%.1f %s\n", em.TmdbRating, em.Genre)
+						}
+					} else {
+						skipped++
+						if !useTable && !useJSON {
+							fmt.Printf("\n  %d. %s", totalFiles, em.CleanTitle)
+							fmt.Printf(" [%s]\n", em.Type)
+							fmt.Println("     ⚠️  Rescan failed — kept existing data")
+						}
+					}
+				} else {
+					skipped++
+					if useTable {
+						printScanTableRow(buildMediaTableRow(totalFiles, em, "existing"))
+					} else if !useJSON {
+						typeIcon := "🎬"
+						if em.Type == "tv" {
+							typeIcon = "📺"
+						}
+						fmt.Printf("\n  %d. %s %s", totalFiles, typeIcon, em.CleanTitle)
+						if em.Year > 0 {
+							fmt.Printf(" (%d)", em.Year)
+						}
+						fmt.Printf(" [%s]\n", em.Type)
+						fmt.Println("     ⏩ Already in database")
+					}
+				}
 				scannedItems = append(scannedItems, *em)
 				if em.Type == "movie" {
 					movieCount++
 				} else {
 					tvCount++
 				}
-				if useTable {
-					printScanTableRow(buildMediaTableRow(totalFiles, em, "existing"))
-				} else if !useJSON {
-					typeIcon := "🎬"
-					if em.Type == "tv" {
-						typeIcon = "📺"
-					}
-					fmt.Printf("\n  %d. %s %s", totalFiles, typeIcon, em.CleanTitle)
-					if em.Year > 0 {
-						fmt.Printf(" (%d)", em.Year)
-					}
-					fmt.Printf(" [%s]\n", em.Type)
-					fmt.Println("     ⏩ Already in database")
+				if useTable && status != "existing" {
+					printScanTableRow(buildMediaTableRow(totalFiles, em, status))
 				}
 				continue
 			}
