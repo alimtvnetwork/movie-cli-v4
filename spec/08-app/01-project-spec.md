@@ -245,7 +245,7 @@ All application queries use views instead of direct table joins:
 **Args**: None  
 **Behavior**:
 1. Verify `git` is in PATH
-2. Resolve repo path by checking the binary directory, current working directory, and a sibling `movie-cli-v3/` folder
+2. Resolve repo path by checking the binary directory, current working directory, and a sibling `movie-cli-v4/` folder
 3. If no local repo exists, clone a fresh copy next to the binary
 4. If an existing repo is found, run `git status --porcelain` — repo must be clean (no uncommitted changes)
 5. For an existing repo, record current commit (`git rev-parse --short HEAD`)

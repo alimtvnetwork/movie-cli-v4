@@ -62,9 +62,9 @@ $commit = (git rev-parse --short HEAD)
 $buildDate = (Get-Date -Format "yyyy-MM-dd")
 
 $ldflags = "-s -w " +
-    "-X 'github.com/alimtvnetwork/movie-cli-v3/version.Version=$version' " +
-    "-X 'github.com/alimtvnetwork/movie-cli-v3/version.Commit=$commit' " +
-    "-X 'github.com/alimtvnetwork/movie-cli-v3/version.BuildDate=$buildDate'"
+    "-X 'github.com/alimtvnetwork/movie-cli-v4/version.Version=$version' " +
+    "-X 'github.com/alimtvnetwork/movie-cli-v4/version.Commit=$commit' " +
+    "-X 'github.com/alimtvnetwork/movie-cli-v4/version.BuildDate=$buildDate'"
 
 go build -ldflags $ldflags -o "$binDir/$binaryName" .
 ```

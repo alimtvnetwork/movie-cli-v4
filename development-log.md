@@ -2,7 +2,7 @@
 
 > **Project**: Movie CLI  
 > **Language**: Go 1.22  
-> **Module**: `github.com/alimtvnetwork/movie-cli-v3`  
+> **Module**: `github.com/alimtvnetwork/movie-cli-v4`  
 > **Purpose**: Cross-platform CLI tool for managing a personal movie and TV show library  
 > **Development Period**: 15-Mar-2026 → 18-Mar-2026  
 > **Last Updated**: 05-Apr-2026
