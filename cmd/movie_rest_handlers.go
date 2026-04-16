@@ -199,16 +199,18 @@ func handleLogs(w http.ResponseWriter, r *http.Request, database *db.DB) {
 }
 
 func parseLogsLimit(r *http.Request) int {
-	limit := 50
-	if limitStr := r.URL.Query().Get("limit"); limitStr != "" {
-		if parsed, err := strconv.Atoi(limitStr); err == nil && parsed > 0 {
-			limit = parsed
-		}
+	limitStr := r.URL.Query().Get("limit")
+	if limitStr == "" {
+		return 50
 	}
-	if limit > 500 {
-		limit = 500
+	parsed, err := strconv.Atoi(limitStr)
+	if err != nil || parsed <= 0 {
+		return 50
 	}
-	return limit
+	if parsed > 500 {
+		return 500
+	}
+	return parsed
 }
 
 func filterRESTLogEntries(r *http.Request, entries []map[string]string) []map[string]string {

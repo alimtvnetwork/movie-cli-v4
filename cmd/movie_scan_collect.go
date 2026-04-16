@@ -90,14 +90,15 @@ func collectTopLevel(scanDir string) []videoFile {
 		name := entry.Name()
 		fullPath := filepath.Join(scanDir, name)
 
-		if entry.IsDir() {
-			if vf, ok := findVideoInSubdir(name, fullPath); ok {
-				files = append(files, vf)
+		if !entry.IsDir() {
+			if cleaner.IsVideoFile(name) {
+				files = append(files, videoFile{Name: name, FullPath: fullPath})
 			}
 			continue
 		}
-		if cleaner.IsVideoFile(name) {
-			files = append(files, videoFile{Name: name, FullPath: fullPath})
+		vf, ok := findVideoInSubdir(name, fullPath)
+		if ok {
+			files = append(files, vf)
 		}
 	}
 	return files

@@ -14,11 +14,9 @@ import (
 
 // executeMoveRedo re-applies a previously reverted file move.
 func executeMoveRedo(database *db.DB, m *db.MoveRecord) error {
-	if _, err := os.Stat(m.FromPath); err != nil {
-		if os.IsNotExist(err) {
-			return apperror.New("file not found at %s — cannot redo", m.FromPath)
-		}
-		return apperror.Wrapf(err, "cannot access %s", m.FromPath)
+	statErr := checkFileExists(m.FromPath)
+	if statErr != nil {
+		return statErr
 	}
 
 	destDir := m.ToPath[:strings.LastIndex(m.ToPath, string(os.PathSeparator))]
@@ -39,6 +37,17 @@ func executeMoveRedo(database *db.DB, m *db.MoveRecord) error {
 	}
 
 	return nil
+}
+
+func checkFileExists(path string) error {
+	_, err := os.Stat(path)
+	if err == nil {
+		return nil
+	}
+	if os.IsNotExist(err) {
+		return apperror.New("file not found at %s — cannot redo", path)
+	}
+	return apperror.Wrapf(err, "cannot access %s", path)
 }
 
 // executeActionRedo re-applies a previously reverted action_history entry.
@@ -75,13 +84,11 @@ func redoScanAdd(database *db.DB, a *db.ActionRecord) error {
 }
 
 func redoDelete(database *db.DB, a *db.ActionRecord) error {
-	if a.MediaId.Valid {
-		media, _ := database.GetMediaByID(a.MediaId.Int64)
-		if media != nil {
-			if err := database.DeleteMediaByID(a.MediaId.Int64); err != nil {
-				return apperror.Wrapf(err, "redo delete media %d", a.MediaId.Int64)
-			}
-		}
+	if !a.MediaId.Valid {
+		return database.MarkActionRestored(a.ActionHistoryId)
+	}
+	if err := database.DeleteMediaByID(a.MediaId.Int64); err != nil {
+		return apperror.Wrapf(err, "redo delete media %d", a.MediaId.Int64)
 	}
 	return database.MarkActionRestored(a.ActionHistoryId)
 }
@@ -129,11 +136,7 @@ func printRevertedActions(actions []db.ActionRecord) {
 		if !a.IsReverted {
 			continue
 		}
-		detail := a.Detail
-		if detail == "" {
-			detail = a.FileActionId.String()
-		}
-		fmt.Printf("   • %s: %s\n", a.FileActionId, detail)
+		fmt.Printf("   • %s: %s\n", a.FileActionId, actionDetail(a))
 	}
 }
 
@@ -174,14 +177,10 @@ func confirmRedo(scanner *bufio.Scanner) bool {
 
 func printActionRedo(a *db.ActionRecord) {
 	fmt.Printf("⏩ Last reverted action (%s):\n", a.FileActionId)
-	if a.Detail != "" {
-		fmt.Printf("   %s\n", a.Detail)
-	}
-	if a.BatchId != "" {
-		short := a.BatchId
-		if len(short) > 8 {
-			short = short[:8]
-		}
-		fmt.Printf("   Batch: %s\n", short)
+	detail := actionDetail(*a)
+	fmt.Printf("   %s\n", detail)
+	suffix := batchSuffix(a.BatchId)
+	if suffix != "" {
+		fmt.Printf("   Batch: %s\n", a.BatchId[:8])
 	}
 }

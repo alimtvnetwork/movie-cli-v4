@@ -224,13 +224,14 @@ func MoveFile(src, dst string) error {
 // (e.g., USB drives, network mounts, different partitions).
 func isCrossDeviceError(err error) bool {
 	var linkErr *os.LinkError
-	if errors.As(err, &linkErr) {
-		var errno syscall.Errno
-		if errors.As(linkErr.Err, &errno) {
-			return errno == syscall.EXDEV
-		}
+	if !errors.As(err, &linkErr) {
+		return false
 	}
-	return false
+	var errno syscall.Errno
+	if !errors.As(linkErr.Err, &errno) {
+		return false
+	}
+	return errno == syscall.EXDEV
 }
 
 // crossDeviceMove copies the file from src to dst, preserves the original file

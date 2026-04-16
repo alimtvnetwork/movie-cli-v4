@@ -44,32 +44,48 @@ func printUndoableMoves(database *db.DB) int {
 
 func printUndoableActions(database *db.DB) int {
 	actions, _ := database.ListActions(20)
+	count := countNonReverted(actions)
+	if count == 0 {
+		return 0
+	}
+	fmt.Println("  📋 Actions:")
+	for _, a := range actions {
+		if a.IsReverted {
+			continue
+		}
+		fmt.Printf("    [action-%d]  %s  %s  (%s%s)\n",
+			a.ActionHistoryId, a.FileActionId, actionDetail(a), a.CreatedAt, batchSuffix(a.BatchId))
+	}
+	fmt.Println()
+	return count
+}
+
+func countNonReverted(actions []db.ActionRecord) int {
 	count := 0
 	for _, a := range actions {
 		if !a.IsReverted {
 			count++
 		}
 	}
-	if count > 0 {
-		fmt.Println("  📋 Actions:")
-		for _, a := range actions {
-			if a.IsReverted {
-				continue
-			}
-			detail := a.Detail
-			if detail == "" {
-				detail = a.FileActionId.String()
-			}
-			batchStr := ""
-			if a.BatchId != "" {
-				batchStr = fmt.Sprintf("  batch:%s", a.BatchId[:8])
-			}
-			fmt.Printf("    [action-%d]  %s  %s  (%s%s)\n",
-				a.ActionHistoryId, a.FileActionId, detail, a.CreatedAt, batchStr)
-		}
-		fmt.Println()
-	}
 	return count
+}
+
+func actionDetail(a db.ActionRecord) string {
+	if a.Detail != "" {
+		return a.Detail
+	}
+	return a.FileActionId.String()
+}
+
+func batchSuffix(batchID string) string {
+	if batchID == "" {
+		return ""
+	}
+	short := batchID
+	if len(short) > 8 {
+		short = short[:8]
+	}
+	return fmt.Sprintf("  batch:%s", short)
 }
 
 func undoActionByID(database *db.DB, scanner *bufio.Scanner, id int64) {
@@ -245,11 +261,7 @@ func printUndoableActionsList(actions []db.ActionRecord) {
 		if a.IsReverted {
 			continue
 		}
-		detail := a.Detail
-		if detail == "" {
-			detail = a.FileActionId.String()
-		}
-		fmt.Printf("   • %s: %s\n", a.FileActionId, detail)
+		fmt.Printf("   • %s: %s\n", a.FileActionId, actionDetail(a))
 	}
 }
 

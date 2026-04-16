@@ -44,31 +44,19 @@ func printRedoableMoves(database *db.DB) int {
 
 func printRedoableActions(database *db.DB) int {
 	actions, _ := database.ListActions(40)
-	count := 0
+	count := countReverted(actions)
+	if count == 0 {
+		return 0
+	}
+	fmt.Println("  📋 Actions:")
 	for _, a := range actions {
-		if a.IsReverted {
-			count++
+		if !a.IsReverted {
+			continue
 		}
+		fmt.Printf("    [action-%d]  %s  %s  (%s%s)\n",
+			a.ActionHistoryId, a.FileActionId, actionDetail(a), a.CreatedAt, batchSuffix(a.BatchId))
 	}
-	if count > 0 {
-		fmt.Println("  📋 Actions:")
-		for _, a := range actions {
-			if !a.IsReverted {
-				continue
-			}
-			detail := a.Detail
-			if detail == "" {
-				detail = a.FileActionId.String()
-			}
-			batchStr := ""
-			if a.BatchId != "" && len(a.BatchId) >= 8 {
-				batchStr = fmt.Sprintf("  batch:%s", a.BatchId[:8])
-			}
-			fmt.Printf("    [action-%d]  %s  %s  (%s%s)\n",
-				a.ActionHistoryId, a.FileActionId, detail, a.CreatedAt, batchStr)
-		}
-		fmt.Println()
-	}
+	fmt.Println()
 	return count
 }
 

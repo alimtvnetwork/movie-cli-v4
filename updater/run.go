@@ -75,14 +75,21 @@ func prepareRepoBranch(repoPath string) error {
 		return apperror.New("repository has local changes; commit or stash them before update")
 	}
 
-	if branch != "" {
-		currentBranch, _ := gitOutput(repoPath, "rev-parse", "--abbrev-ref", "HEAD")
-		if currentBranch != branch {
-			fmt.Printf("🔀 Switching from %s to %s\n", currentBranch, branch)
-			if _, checkoutErr := gitOutput(repoPath, "checkout", branch); checkoutErr != nil {
-				return apperror.Wrap("cannot checkout branch from gitmap", checkoutErr)
-			}
-		}
+	if branch == "" {
+		return nil
+	}
+	return checkoutBranch(repoPath, branch)
+}
+
+func checkoutBranch(repoPath, branch string) error {
+	currentBranch, _ := gitOutput(repoPath, "rev-parse", "--abbrev-ref", "HEAD")
+	if currentBranch == branch {
+		return nil
+	}
+	fmt.Printf("🔀 Switching from %s to %s\n", currentBranch, branch)
+	_, checkoutErr := gitOutput(repoPath, "checkout", branch)
+	if checkoutErr != nil {
+		return apperror.Wrap("cannot checkout branch from gitmap", checkoutErr)
 	}
 	return nil
 }
