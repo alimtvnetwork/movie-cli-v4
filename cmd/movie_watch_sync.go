@@ -80,24 +80,7 @@ func runWatchExport(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	out := watchlistJSON{
-		ExportedAt: db.NowUTC(),
-		Count:      len(entries),
-	}
-	for _, e := range entries {
-		entry := watchEntryJSON{
-			TmdbID:  e.TmdbID,
-			Title:   e.Title,
-			Year:    e.Year,
-			Type:    e.Type,
-			Status:  e.Status,
-			AddedAt: e.AddedAt,
-		}
-		if e.WatchedAt.Valid {
-			entry.WatchedAt = e.WatchedAt.String
-		}
-		out.Entries = append(out.Entries, entry)
-	}
+	out := buildWatchlistJSON(entries)
 
 	data, err := json.MarshalIndent(out, "", "  ")
 	if err != nil {
@@ -105,20 +88,45 @@ func runWatchExport(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	outPath := watchExportOutput
-	if outPath == "" {
-		outPath = filepath.Join(".", "data", "json", "export", "watchlist.json")
-	}
-	if err := os.MkdirAll(filepath.Dir(outPath), 0755); err != nil {
-		errlog.Error("Cannot create directory: %v", err)
-		return
-	}
-	if err := os.WriteFile(outPath, data, 0644); err != nil {
-		errlog.Error("Failed to write file: %v", err)
+	outPath := resolveWatchExportPath()
+	if writeErr := writeExportFile(outPath, data); writeErr != nil {
+		errlog.Error("%v", writeErr)
 		return
 	}
 
 	fmt.Printf("✅ Exported %d watchlist entries → %s\n", len(entries), outPath)
+}
+
+func buildWatchlistJSON(entries []db.WatchlistEntry) watchlistJSON {
+	out := watchlistJSON{
+		ExportedAt: db.NowUTC(),
+		Count:      len(entries),
+	}
+	for _, e := range entries {
+		entry := watchEntryJSON{
+			TmdbID: e.TmdbID, Title: e.Title, Year: e.Year,
+			Type: e.Type, Status: e.Status, AddedAt: e.AddedAt,
+		}
+		if e.WatchedAt.Valid {
+			entry.WatchedAt = e.WatchedAt.String
+		}
+		out.Entries = append(out.Entries, entry)
+	}
+	return out
+}
+
+func resolveWatchExportPath() string {
+	if watchExportOutput != "" {
+		return watchExportOutput
+	}
+	return filepath.Join(".", "data", "json", "export", "watchlist.json")
+}
+
+func writeExportFile(outPath string, data []byte) error {
+	if err := os.MkdirAll(filepath.Dir(outPath), 0755); err != nil {
+		return fmt.Errorf("Cannot create directory: %v", err)
+	}
+	return os.WriteFile(outPath, data, 0644)
 }
 
 func runWatchImport(cmd *cobra.Command, args []string) {

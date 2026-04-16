@@ -50,42 +50,48 @@ type scanMediaJSON struct {
 // Files are saved to <basePath>/json/movie/<slug>.json or json/tv/<slug>.json.
 func writeMediaJSON(basePath string, m *db.Media) error {
 	subDir := db.JSONSubDir(m.Type)
-
-	slug := cleaner.ToSlug(m.CleanTitle)
-	if m.Year > 0 {
-		slug += "-" + strconv.Itoa(m.Year)
-	}
+	slug := mediaSlug(m)
 
 	dir := filepath.Join(basePath, "json", subDir)
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return apperror.Wrap("cannot create json dir", err)
 	}
 
-	data := scanMediaJSON{
-		Title:            m.Title,
-		CleanTitle:       m.CleanTitle,
-		Year:             m.Year,
-		Type:             m.Type,
-		TmdbID:           m.TmdbID,
-		ImdbID:           m.ImdbID,
-		Description:      m.Description,
-		ImdbRating:       m.ImdbRating,
-		TmdbRating:       m.TmdbRating,
-		Popularity:       m.Popularity,
-		Genre:            m.Genre,
-		Director:         m.Director,
-		CastList:         m.CastList,
-		ThumbnailPath:    m.ThumbnailPath,
-		OriginalFileName: m.OriginalFileName,
-		OriginalFilePath: m.OriginalFilePath,
-		CurrentFilePath:  m.CurrentFilePath,
-		FileExtension:    m.FileExtension,
-		FileSize:         m.FileSize,
-		GeneratedAt:      time.Now().UTC().Format(time.RFC3339),
+	data := toScanMediaJSON(m)
+	jsonPath := filepath.Join(dir, slug+".json")
+
+	if err := writeJSONFile(jsonPath, data); err != nil {
+		return err
 	}
 
-	jsonPath := filepath.Join(dir, slug+".json")
-	f, err := os.Create(jsonPath)
+	fmt.Printf("     📝 JSON metadata saved: %s\n", jsonPath)
+	return nil
+}
+
+func mediaSlug(m *db.Media) string {
+	slug := cleaner.ToSlug(m.CleanTitle)
+	if m.Year > 0 {
+		slug += "-" + strconv.Itoa(m.Year)
+	}
+	return slug
+}
+
+func toScanMediaJSON(m *db.Media) scanMediaJSON {
+	return scanMediaJSON{
+		Title: m.Title, CleanTitle: m.CleanTitle,
+		Year: m.Year, Type: m.Type, TmdbID: m.TmdbID, ImdbID: m.ImdbID,
+		Description: m.Description, ImdbRating: m.ImdbRating,
+		TmdbRating: m.TmdbRating, Popularity: m.Popularity,
+		Genre: m.Genre, Director: m.Director, CastList: m.CastList,
+		ThumbnailPath: m.ThumbnailPath, OriginalFileName: m.OriginalFileName,
+		OriginalFilePath: m.OriginalFilePath, CurrentFilePath: m.CurrentFilePath,
+		FileExtension: m.FileExtension, FileSize: m.FileSize,
+		GeneratedAt: time.Now().UTC().Format(time.RFC3339),
+	}
+}
+
+func writeJSONFile(path string, data scanMediaJSON) error {
+	f, err := os.Create(path)
 	if err != nil {
 		return apperror.Wrap("cannot create json file", err)
 	}
@@ -96,7 +102,5 @@ func writeMediaJSON(basePath string, m *db.Media) error {
 	if err := enc.Encode(data); err != nil {
 		return apperror.Wrap("cannot write json", err)
 	}
-
-	fmt.Printf("     📝 JSON metadata saved: %s\n", jsonPath)
 	return nil
 }
