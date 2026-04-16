@@ -1,6 +1,6 @@
 # Project Overview
 
-> **Last Updated**: 12-Apr-2026
+> **Last Updated**: 16-Apr-2026
 
 ## Project
 
@@ -10,6 +10,7 @@
 - **Language**: Go 1.22
 - **Module**: `github.com/alimtvnetwork/movie-cli-v4`
 - **Framework**: Cobra (CLI), SQLite (storage), TMDb API (metadata)
+- **Current Version**: v2.23.0
 
 ## Purpose
 
@@ -19,17 +20,20 @@ A cross-platform CLI tool for managing a personal movie and TV show library. It 
 
 1. **Pure-Go SQLite** (`modernc.org/sqlite`) — no CGo dependency
 2. **WAL mode** for SQLite concurrency
-3. **TMDb API** for metadata (requires user-provided API key)
-4. **git-based self-update** (`git pull --ff-only`)
-5. **All data** stored in `./data/` (DB, thumbnails, JSON logs)
+3. **Single DB** — all tables in `mahin.db` (no Split DB)
+4. **TMDb API** for metadata (requires user-provided API key)
+5. **Console-safe self-update** — synchronous handoff via gitmap pattern, exit code propagation
+6. **Data folder** at `<binary-dir>/data/` resolved via `os.Executable()`
+7. **apperror.Wrap()** for all error wrapping (never fmt.Errorf)
+8. **Zero nesting rule** — no nested ifs, max 2 conditions per if, no else after return
 
-## Command Tree
+## Command Tree (21 commands)
 
 ```
 mahin
 ├── hello                      # Greeting with version
 ├── version                    # Version/commit/build date + Go/OS info
-├── self-update                # git pull --ff-only
+├── update                     # Console-safe self-update (gitmap handoff)
 ├── changelog                  # Show changelog
 └── movie
     ├── config                 # View/set configuration
@@ -38,13 +42,16 @@ mahin
     ├── search                 # Live TMDb search → save
     ├── info                   # Local DB → TMDb fallback
     ├── suggest                # Recommendations/trending + genre discover
-    ├── move                   # Browse + move + track (--all batch support)
+    ├── move                   # Browse + move + track (--all batch, cross-drive)
     ├── rename                 # Batch clean rename
-    ├── undo                   # Revert last move/rename
+    ├── undo                   # Revert last move/rename (with confirmation)
     ├── play                   # Open with default player
-    ├── stats                  # Library statistics
+    ├── stats                  # Library statistics + file sizes
     ├── tag                    # Add/remove/list tags
-    └── export                 # Export library data
+    ├── export                 # Export library data
+    ├── duplicates             # Detect duplicates by TMDb ID/filename/size
+    ├── cleanup                # Find/remove stale DB entries
+    └── watch                  # Watchlist: to-watch/watched tracking
 ```
 
 ## Important Notes for AI
@@ -53,17 +60,18 @@ mahin
 - Build errors in Lovable (`no package.json found`, `no command found for task "dev"`) are **expected and MUST be ignored**
 - All file operations require a real OS/terminal to test
 - Full specification lives in `spec/` folder
-- Milestone markers use `readm.txt` format: `let's start now {date} {time Malaysia}`
 - **Always read memory files before making changes**
+- **Always bump version/info.go after every code change**
 
-## File Structure (as of 10-Apr-2026)
+## File Structure (as of 16-Apr-2026)
 
-- `cmd/` — 21 Go files (root, hello, version, update, changelog + movie parent + 14 subcommands + move_helpers)
-- `cleaner/` — 1 file (filename cleaning)
-- `tmdb/` — 1 file (API client)
-- `db/` — 6 files (db.go, media.go, config.go, history.go, helpers.go, tags.go)
-- `updater/` — 1 file (git self-update)
-- `version/` — 1 file (build-time vars)
-- `.github/` — Release pipeline (release.yml)
-- `spec/` — Structured specification docs
-- `docs/` — Additional documentation
+- `cmd/` — 21+ Go files (root, hello, version, update, changelog + movie parent + subcommands + helpers)
+- `cleaner/` — filename cleaning
+- `tmdb/` — API client (split: client.go, http.go, types.go, etc.)
+- `db/` — 6+ files (open.go, media.go, config.go, history.go, helpers.go, tags.go, etc.)
+- `updater/` — self-update: run.go, handoff.go, script.go, process.go
+- `apperror/` — error wrapping (Wrap, New)
+- `errlog/` — structured error logging
+- `version/` — build-time vars (info.go)
+- `.github/` — CI/CD pipelines
+- `spec/` — structured specification docs

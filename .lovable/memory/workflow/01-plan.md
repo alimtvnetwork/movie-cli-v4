@@ -1,6 +1,6 @@
 # Project Plan & Status
 
-> **Last Updated**: 15-Apr-2026
+> **Last Updated**: 16-Apr-2026
 
 ## ✅ Completed
 
@@ -8,7 +8,7 @@
 - [x] Root command with Cobra (`movie-cli`)
 - [x] `hello` command with version display
 - [x] `version` command with ldflags injection
-- [x] `self-update` command via git pull --ff-only
+- [x] `self-update` → migrated to `update` command (gitmap console-safe handoff)
 
 ### Movie Management Commands
 - [x] `movie config` — get/set configuration with masked API key display
@@ -17,80 +17,70 @@
 - [x] `movie search` — live TMDb search, select, save to DB
 - [x] `movie info` — local DB lookup → TMDb fallback → auto-persist
 - [x] `movie suggest` — genre-based recommendations + trending fallback
-- [x] `movie move` — interactive browse, move, track history
+- [x] `movie move` — interactive browse, move, track history (cross-drive support)
 - [x] `movie rename` — batch clean rename with undo tracking
-- [x] `movie undo` — revert last move/rename operation
+- [x] `movie undo` — revert last move/rename operation (with confirmation prompt)
 - [x] `movie play` — open file with system default player (cross-platform)
-- [x] `movie stats` — counts, genre chart, average ratings
+- [x] `movie stats` — counts, genre chart, average ratings, file sizes
+- [x] `movie tag` — add/remove/list tags
+- [x] `movie export` — export library data
+- [x] `movie duplicates` — detect by TMDb ID, filename, or size
+- [x] `movie cleanup` — find/remove stale DB entries
+- [x] `movie watch` — watchlist: to-watch/watched tracking
 
 ### Infrastructure
-- [x] SQLite database with migrations (5 tables, 7 indexes)
-- [x] TMDb API client (search, details, credits, recommendations, trending, posters)
+- [x] SQLite database with migrations (single mahin.db)
+- [x] TMDb API client (search, details, credits, recommendations, trending, posters, retry with backoff)
 - [x] Filename cleaner (junk removal, year extraction, TV detection, slugs)
 - [x] Makefile with build + cross-compile targets
-- [x] build.ps1 PowerShell deploy script
+- [x] build.ps1 / run.ps1 PowerShell deploy script
 - [x] spec.md — full project specification
 - [x] Shared resolver helper (`movie_resolve.go`)
+- [x] apperror package for error wrapping
+- [x] errlog package for structured error logging
 
-### Bug Fixes
-- [x] Fixed timestamp bug — `saveHistoryLog` now uses `time.Now().Format(time.RFC3339)`
-- [x] Deduplicated TMDb fetch logic — shared `fetchMovieDetails()`/`fetchTVDetails()`
+### Bug Fixes & Refactoring
+- [x] Fixed timestamp bug — `saveHistoryLog` now uses RFC3339
+- [x] Deduplicated TMDb fetch logic — shared helpers
+- [x] Split large files to <200 lines
+- [x] Cross-drive move fallback (copy+delete for EXDEV)
+- [x] Undo confirmation prompt
+- [x] Console-safe updater handoff (sync, exit code propagation) ✅ 16-Apr-2026
+- [x] Nested-if refactoring — top 20 files cleaned ✅ 16-Apr-2026
+- [x] Guideline violations audit — 280+ violations catalogued ✅ 16-Apr-2026
 
-### Refactoring
-- [x] Split `cmd/movie_move.go` → `movie_move.go` + `movie_move_helpers.go`
-- [x] Split `db/sqlite.go` → 5 focused files
-
-### Documentation
-- [x] README.md (basic), spec.md, ai-handoff.md, development-log.md
-- [x] .lovable/memory structure with suggestions, issues, workflow
+### Documentation & CI
+- [x] README.md, spec.md, ai-handoff.md, development-log.md
+- [x] .lovable/memory structure
 - [x] AI success rate plan
-- [x] Reliability risk report (05-Apr-2026)
+- [x] Reliability risk report
+- [x] CI pipeline (lint, test, vuln scan)
+- [x] Release pipeline with cross-compile + install scripts
+- [x] Integration tests with SQLite fixtures
 
-### Spec Restructuring (Phase 1-5)
-- [x] Phase 1: Spec authoring guideline review
-- [x] Phase 2: Spec folder audit
-- [x] Phase 3: Naming/placement normalization (root lowercase, merge 02-app, flatten error spec)
-- [x] Phase 4: Ignore rule verification (.gitignore audit)
-- [x] Phase 5: Final consistency pass (N1-N4 renames, C1-C5 missing files created)
+### Spec Restructuring (Phase 1-5) ✅
+- [x] All 5 phases complete
 
 ### PowerShell Automation (Phase 1-8) ✅
-- [x] Phase 1: Core parameters & environment detection
-- [x] Phase 2: Git operations (pull, conflict resolution, force-pull)
-- [x] Phase 3: Go build pipeline integration
-- [x] Phase 4: Deployment with backup & rollback
-- [x] Phase 5: Logging & colored output helpers
-- [x] Phase 6: Error handling audit (no swallowed errors)
-- [x] Phase 7: install.ps1 bootstrap script
-- [x] Phase 8: README.md automation docs update
-
-### Release Pipeline & Install Scripts (09-Apr-2026) ✅
-- [x] GitHub Actions release.yml — triggers on `release/**` branches and `v*` tags
-- [x] Cross-compiled binaries for 6 targets (windows/linux/darwin × amd64/arm64)
-- [x] Version-specific install.ps1 (Windows) with SHA256 verification
-- [x] Version-specific install.sh (Linux/macOS) with SHA256 verification
-- [x] Release page with changelog, checksums, install instructions, asset table
-- [x] CHANGELOG.md created for release note extraction
-- [x] Pipeline spec documentation (`spec/pipeline/`)
-
-### CLI UX Improvements (09-Apr-2026) ✅
-- [x] Root command shows version + comprehensive help with examples
-- [x] `mahin --version` flag support
-- [x] `mahin version` shows Go version and OS/arch
-- [x] `mahin movie` shows categorized subcommand help with examples
+- [x] All 8 phases complete
 
 ### Database Redesign v2.0.0 (15-Apr-2026) ✅
-- [x] Schema diagram — PascalCase, INTEGER AUTOINCREMENT, single DB (`mahin.db`)
-- [x] Design spec — 19 tables, 8 views, all DDL + indexes documented
-- [x] State & history spec — undo/redo via ActionHistory + batch operations
-- [x] Popout spec — media file extraction with history tracking
-- [x] Migration spec — fresh install, breaking upgrade, incremental; SchemaVersion table
-- [x] Data folder structure — `<binary-dir>/data/` with config/ and log/ subfolders
-- [x] FileAction expanded to 14 types (added TagAdd, TagRemove, WatchlistAdd, WatchlistRemove, WatchlistStatusChange, ConfigChange)
-- [x] Collection table for TMDb movie collections ✅ 15-Apr-2026
-- [x] Tag refactored to M-N via MediaTag join table ✅ 15-Apr-2026
-- [x] action_history.go aligned with 14 FileAction types + PascalCase ✅ 15-Apr-2026
-- [x] Removed Split DB — consolidated all tables into single `mahin.db` ✅ 15-Apr-2026
-- [x] Suggestions & proposals document
+- [x] Schema diagram, design spec, state/history, popout, migration spec
+- [x] Collection table, Tag M-N via MediaTag, 14 FileAction types
+- [x] Removed Split DB — single mahin.db
+
+---
+
+## 🔄 In Progress
+
+### Guideline Violations Remediation (Phases 3-7)
+- [x] Phase 1: Full audit (280+ violations) ✅ 16-Apr-2026
+- [x] Phase 2: Nested-if elimination (top 20 files) ✅ 16-Apr-2026
+- [ ] Phase 3: Magic strings → constants/enums
+- [ ] Phase 4: fmt.Errorf → apperror.Wrap()
+- [ ] Phase 5: Oversized functions (>15 lines) split
+- [ ] Phase 6: Oversized files (>300 lines) split
+- [ ] Phase 7: Final consistency pass
 
 ---
 
@@ -105,19 +95,22 @@
 ### Phase 2: Code Alignment (P1)
 - [ ] Update all commands to use new PascalCase column names
 - [ ] Update `movie_info.go` / `movie_resolve.go` for new Media table structure
-- [ ] Add Watchlist commands (add, remove, list, mark watched)
-- [ ] Add Tag commands (add, remove, list by tag)
 
 ### Phase 3: Spec Completeness (P2)
 - [ ] Acceptance criteria (GIVEN/WHEN/THEN) for all commands
 - [ ] Shared helper docs — code comments marking shared helpers
-- [ ] File size stats in `movie stats`
 
 ### Phase 4: Future Enhancements (P3)
-- [ ] Director normalization table (separate from Media)
+- [ ] Director normalization table
 - [ ] Season/Episode tables for TV series
 - [ ] REST API server mode with HTML dashboard
 - [ ] Watchlist sync with TMDb account
+
+---
+
+## 🚫 Known Issues
+
+- **User's local repo stuck at v2.14.0** — needs `git reset --hard origin/main`. See `.lovable/pending-issues/01-local-repo-stale.md`
 
 ---
 
@@ -125,6 +118,7 @@
 
 Pick one of these to implement next:
 
-1. **Single DB implementation** — Create `mahin.db` with PascalCase schema in Go
-2. **Migration runner** — SchemaVersion + sequential migration system
-3. **Acceptance criteria** — Add GIVEN/WHEN/THEN to spec for all commands
+1. **Guideline Phase 3** — Replace magic strings with constants
+2. **Guideline Phase 4** — Replace fmt.Errorf with apperror.Wrap()
+3. **Single DB implementation** — Create mahin.db with PascalCase schema
+4. **Migration runner** — SchemaVersion + sequential migration system
