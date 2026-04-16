@@ -48,6 +48,9 @@ func runMovieMove(cmd *cobra.Command, args []string) {
 		return
 	}
 
+	mc := MoveContext{
+		Database: database, Scanner: scanner, Home: home,
+	}
 	sourceDir := resolveSourceDir(args, mc)
 	if sourceDir == "" {
 		return
@@ -73,10 +76,8 @@ func runMovieMove(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	mc := MoveContext{
-		Database: database, Scanner: scanner,
-		SourceDir: sourceDir, Files: files, Home: home,
-	}
+	mc.SourceDir = sourceDir
+	mc.Files = files
 	if moveAllFlag {
 		runBatchMove(mc)
 		return
