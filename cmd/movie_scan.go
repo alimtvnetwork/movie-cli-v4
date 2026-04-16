@@ -211,7 +211,9 @@ func runDryRunScan(videoFiles []videoFile, useJSON, useTable bool,
 		*totalFiles = len(items)
 		*movieCount = mc
 		*tvCount = tc
-	} else if useTable {
+		return
+	}
+	if useTable {
 		rows, mc, tc := buildDryRunTableRows(videoFiles)
 		for _, row := range rows {
 			printScanTableRow(row)
@@ -219,22 +221,32 @@ func runDryRunScan(videoFiles []videoFile, useJSON, useTable bool,
 		*totalFiles = len(rows)
 		*movieCount = mc
 		*tvCount = tc
-	} else {
-		for _, vf := range videoFiles {
-			*totalFiles++
-			result := cleaner.Clean(vf.Name)
-			typeIcon := db.TypeIcon(result.Type)
-			fmt.Printf("\n  %d. %s %s", *totalFiles, typeIcon, result.CleanTitle)
-			if result.Year > 0 {
-				fmt.Printf(" (%d)", result.Year)
-			}
-			fmt.Printf(" [%s]\n", result.Type)
-			fmt.Printf("     └─ %s\n", vf.Name)
-			if result.Type == string(db.MediaTypeMovie) {
-				*movieCount++
-			} else {
-				*tvCount++
-			}
-		}
+		return
 	}
+	runDryRunPlainOutput(videoFiles, totalFiles, movieCount, tvCount)
+}
+
+// runDryRunPlainOutput prints dry-run results in plain text format.
+func runDryRunPlainOutput(videoFiles []videoFile, totalFiles, movieCount, tvCount *int) {
+	for _, vf := range videoFiles {
+		*totalFiles++
+		result := cleaner.Clean(vf.Name)
+		typeIcon := db.TypeIcon(result.Type)
+		fmt.Printf("\n  %d. %s %s", *totalFiles, typeIcon, result.CleanTitle)
+		if result.Year > 0 {
+			fmt.Printf(" (%d)", result.Year)
+		}
+		fmt.Printf(" [%s]\n", result.Type)
+		fmt.Printf("     └─ %s\n", vf.Name)
+		incrementTypeCountPtr(result.Type, movieCount, tvCount)
+	}
+}
+
+// incrementTypeCountPtr bumps movie or tv count pointer based on media type.
+func incrementTypeCountPtr(mediaType string, movieCount, tvCount *int) {
+	if mediaType == string(db.MediaTypeMovie) {
+		*movieCount++
+		return
+	}
+	*tvCount++
 }

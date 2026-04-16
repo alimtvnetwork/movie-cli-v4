@@ -32,7 +32,8 @@ func isAlreadyScanned(ctx *ScanContext, vf videoFile, result cleaner.Result) boo
 				Year:             result.Year,
 				Type:             result.Type,
 			}, "skipped"))
-		} else {
+		}
+		if !ctx.UseTable {
 			fmt.Println("     ⏩ Already in database, skipping")
 		}
 		ctx.Skipped++

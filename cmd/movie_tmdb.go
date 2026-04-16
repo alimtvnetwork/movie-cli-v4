@@ -57,11 +57,11 @@ func resolveScanTMDbCredentials(database *db.DB) tmdbCredentials {
 	if creds.HasAuth() {
 		fmt.Println("✅ TMDb credentials saved.")
 		fmt.Println()
-	} else {
-		fmt.Println("⚠️  No TMDb credentials provided.")
-		fmt.Println("   Scanning will continue without metadata fetching.")
-		fmt.Println()
+		return creds
 	}
+	fmt.Println("⚠️  No TMDb credentials provided.")
+	fmt.Println("   Scanning will continue without metadata fetching.")
+	fmt.Println()
 
 	return creds
 }

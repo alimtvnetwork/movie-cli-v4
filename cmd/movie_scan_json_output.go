@@ -50,9 +50,9 @@ func buildDryRunJSONItems(videoFiles []videoFile) (items []scanJSONItem, movies,
 		})
 		if result.Type == string(db.MediaTypeMovie) {
 			movies++
-		} else {
-			tvShows++
+			continue
 		}
+		tvShows++
 	}
 	return
 }

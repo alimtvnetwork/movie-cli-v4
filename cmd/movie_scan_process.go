@@ -183,7 +183,8 @@ func applyTMDbResult(client *tmdb.Client, database *db.DB, m *db.Media, best tmd
 	if best.MediaType == string(db.MediaTypeTV) {
 		m.Type = string(db.MediaTypeTV)
 		fetchTVDetails(client, best.ID, m)
-	} else {
+	}
+	if best.MediaType != string(db.MediaTypeTV) {
 		m.Type = string(db.MediaTypeMovie)
 		fetchMovieDetails(client, best.ID, m)
 	}

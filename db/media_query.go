@@ -65,13 +65,10 @@ func (d *DB) GetMediaByTmdbID(tmdbID int) (*Media, error) {
 // CountMedia returns total count of scan-indexed items.
 func (d *DB) CountMedia(mediaType string) (int, error) {
 	var count int
-	var err error
 	if mediaType == "" {
-		err = d.QueryRow("SELECT COUNT(*) FROM Media WHERE OriginalFilePath != ''").Scan(&count)
-	} else {
-		err = d.QueryRow("SELECT COUNT(*) FROM Media WHERE Type = ? AND OriginalFilePath != ''", mediaType).Scan(&count)
+		return count, d.QueryRow("SELECT COUNT(*) FROM Media WHERE OriginalFilePath != ''").Scan(&count)
 	}
-	return count, err
+	return count, d.QueryRow("SELECT COUNT(*) FROM Media WHERE Type = ? AND OriginalFilePath != ''", mediaType).Scan(&count)
 }
 
 // ListAllMedia returns all media records that have a file path with genres populated.

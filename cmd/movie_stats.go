@@ -89,9 +89,9 @@ func runMovieStats(cmd *cobra.Command, args []string) {
 func printEmptyStats() {
 	if statsFormat == "json" {
 		fmt.Println("{}")
-	} else {
-		fmt.Println("📭 No media in library. Run 'movie scan <folder>' first.")
+		return
 	}
+	fmt.Println("📭 No media in library. Run 'movie scan <folder>' first.")
 }
 
 func printStatsJSON(database *db.DB, totalMovies, totalTV, total int) {

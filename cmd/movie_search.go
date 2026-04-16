@@ -97,9 +97,9 @@ func executeSearch(client *tmdb.Client, query string) []tmdb.SearchResult {
 	if len(results) == 0 {
 		if searchFormat == string(db.OutputFormatJSON) {
 			fmt.Println("[]")
-		} else {
-			fmt.Println("📭 No results found on TMDb.")
+			return nil
 		}
+		fmt.Println("📭 No results found on TMDb.")
 		return nil
 	}
 	return results

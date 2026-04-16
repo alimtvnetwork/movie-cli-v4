@@ -66,9 +66,9 @@ var updateCleanupCmd = &cobra.Command{
 		}
 		if cleaned > 0 {
 			fmt.Printf("✔ Cleaned %d artifact(s)\n", cleaned)
-		} else {
-			fmt.Println("✔ No update artifacts found")
+			return
 		}
+		fmt.Println("✔ No update artifacts found")
 	},
 }
 

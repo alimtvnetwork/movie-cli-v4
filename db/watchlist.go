@@ -67,16 +67,20 @@ func (d *DB) RemoveFromWatchlist(tmdbID int) error {
 
 // ListWatchlist returns entries filtered by status.
 func (d *DB) ListWatchlist(status string) ([]WatchlistEntry, error) {
+	query := `SELECT WatchlistId, MediaId, TmdbId, Title, Year, Type, Status, AddedAt, WatchedAt
+		FROM Watchlist ORDER BY AddedAt DESC`
+	if status != "" {
+		query = `SELECT WatchlistId, MediaId, TmdbId, Title, Year, Type, Status, AddedAt, WatchedAt
+		FROM Watchlist WHERE Status = ? ORDER BY AddedAt DESC`
+	}
+
 	var rows *sql.Rows
 	var err error
 	if status == "" {
-		rows, err = d.Query(`
-			SELECT WatchlistId, MediaId, TmdbId, Title, Year, Type, Status, AddedAt, WatchedAt
-			FROM Watchlist ORDER BY AddedAt DESC`)
-	} else {
-		rows, err = d.Query(`
-			SELECT WatchlistId, MediaId, TmdbId, Title, Year, Type, Status, AddedAt, WatchedAt
-			FROM Watchlist WHERE Status = ? ORDER BY AddedAt DESC`, status)
+		rows, err = d.Query(query)
+	}
+	if status != "" {
+		rows, err = d.Query(query, status)
 	}
 	if err != nil {
 		return nil, err

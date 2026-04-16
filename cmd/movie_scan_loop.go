@@ -96,16 +96,17 @@ func processExistingMedia(ctx *ScanContext, em *db.Media, vf videoFile, client *
 
 	if useTMDb && mediaNeedsRescan(em) {
 		handleRescan(ctx, em, client, database, scanBatchID, useTable, useJSON)
-	} else {
+	}
+	if !(useTMDb && mediaNeedsRescan(em)) {
 		handleSkippedMedia(ctx, em, useTable, useJSON)
 	}
 
 	ctx.ScannedItems = append(ctx.ScannedItems, *em)
 	if em.Type == string(db.MediaTypeMovie) {
 		ctx.MovieCount++
-	} else {
-		ctx.TVCount++
+		return
 	}
+	ctx.TVCount++
 }
 
 func handleRescan(ctx *ScanContext, em *db.Media, client *tmdb.Client,
