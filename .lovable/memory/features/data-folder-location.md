@@ -1,6 +1,6 @@
 ---
 name: Data folder location
-description: Data folder is relative to binary location, not cwd — uses os.Executable(). Split DB layout with config/ and log/ subfolders.
+description: Data folder is relative to binary location, not cwd — uses os.Executable()
 type: feature
 ---
 The CLI's data folder (`data/`) is always created relative to where the binary physically resides, not the current working directory.
@@ -10,11 +10,8 @@ The CLI's data folder (`data/`) is always created relative to where the binary p
 - `run.ps1` deploys binary to the configured deploy path; data is auto co-located
 - No environment variables needed — purely resolved from binary location
 
-### Split DB Files
-- `data/media.db` — Media & operations (core tables, lookups, history)
-- `data/watchlist.db` — Watchlist tracking
-- `data/config.db` — Key-value CLI settings
-- `data/error-log.db` — Structured error logs
+### Single DB
+- `data/mahin.db` — All tables (media, config, history, tags, watchlist, error log, etc.)
 
 ### Subfolders
 - `data/config/` — CLI configuration files (preserved across DB resets)
