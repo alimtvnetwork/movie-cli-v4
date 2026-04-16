@@ -108,7 +108,9 @@ func fetchAndStoreFromTMDb(database *db.DB, query string) *db.Media {
 
 	m := buildInfoMedia(selected)
 	enrichInfoMedia(client, m, selected)
-	downloadInfoThumbnail(client, database, m, selected.PosterPath)
+	downloadInfoThumbnail(ThumbnailInput{
+		Client: client, Database: database, Media: m, PosterPath: selected.PosterPath,
+	})
 	saveInfoMedia(database, m)
 
 	return m

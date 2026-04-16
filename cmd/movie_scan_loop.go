@@ -30,7 +30,7 @@ func runMainScanLoop(ctx *ScanContext, videoFiles []videoFile, cfg ScanLoopConfi
 	client := tmdb.NewClientWithToken(cfg.Client.APIKey, cfg.Client.AccessToken)
 	for _, vf := range videoFiles {
 		if em, found := existingPaths[vf.FullPath]; found {
-			processExistingMedia(ctx, em, vf, client, database, cfg.BatchID, cfg.HasTMDb, cfg.UseTable, cfg.UseJSON)
+			processExistingMedia(ctx, em, vf, client, database, ScanOutputOpts{UseTable: cfg.UseTable, UseJSON: cfg.UseJSON}, cfg.BatchID, cfg.HasTMDb)
 			continue
 		}
 		processVideoFile(vf, ctx)
@@ -90,15 +90,15 @@ func snapshotRemovedMedia(database *db.DB, media []*db.Media, scanBatchID string
 	}
 }
 
-func processExistingMedia(ctx *ScanContext, em *db.Media, vf videoFile, client *tmdb.Client,
-	database *db.DB, scanBatchID string, useTMDb, useTable, useJSON bool) {
+func processExistingMedia(ctx *ScanContext, em *db.Media, vf videoFile,
+	client *tmdb.Client, database *db.DB, opts ScanOutputOpts, batchID string, hasTMDb bool) {
 	ctx.TotalFiles++
 
-	if useTMDb && mediaNeedsRescan(em) {
-		handleRescan(ctx, em, client, database, scanBatchID, useTable, useJSON)
+	if hasTMDb && mediaNeedsRescan(em) {
+		handleRescan(ctx, em, client, database, opts, batchID)
 	}
-	if !(useTMDb && mediaNeedsRescan(em)) {
-		handleSkippedMedia(ctx, em, useTable, useJSON)
+	if !(hasTMDb && mediaNeedsRescan(em)) {
+		handleSkippedMedia(ctx, em, opts)
 	}
 
 	ctx.ScannedItems = append(ctx.ScannedItems, *em)
@@ -110,22 +110,22 @@ func processExistingMedia(ctx *ScanContext, em *db.Media, vf videoFile, client *
 }
 
 func handleRescan(ctx *ScanContext, em *db.Media, client *tmdb.Client,
-	database *db.DB, scanBatchID string, useTable, useJSON bool) {
+	database *db.DB, opts ScanOutputOpts, batchID string) {
 	preSnapshot, _ := db.MediaToJSON(em)
 	if !rescanMediaEntry(database, client, em) {
 		ctx.Skipped++
-		if !useTable && !useJSON {
+		if !opts.UseTable && !opts.UseJSON {
 			printRescanFailed(ctx.TotalFiles, em)
 		}
 		return
 	}
 	detail := fmt.Sprintf("Rescan updated: %s", em.CleanTitle)
-	database.InsertActionSimple(db.FileActionRescanUpdate, em.ID, preSnapshot, detail, scanBatchID)
-	if useTable {
+	database.InsertActionSimple(db.FileActionRescanUpdate, em.ID, preSnapshot, detail, batchID)
+	if opts.UseTable {
 		printScanTableRow(buildMediaTableRow(ctx.TotalFiles, em, "rescanned"))
 		return
 	}
-	if !useJSON {
+	if !opts.UseJSON {
 		printRescanSuccess(ctx.TotalFiles, em)
 	}
 }
@@ -146,11 +146,11 @@ func printRescanFailed(idx int, em *db.Media) {
 	fmt.Println("     ⚠️  Rescan failed — kept existing data")
 }
 
-func handleSkippedMedia(ctx *ScanContext, em *db.Media, useTable, useJSON bool) {
+func handleSkippedMedia(ctx *ScanContext, em *db.Media, opts ScanOutputOpts) {
 	ctx.Skipped++
-	if useTable {
+	if opts.UseTable {
 		printScanTableRow(buildMediaTableRow(ctx.TotalFiles, em, "existing"))
-	} else if !useJSON {
+	} else if !opts.UseJSON {
 		typeIcon := db.TypeIcon(em.Type)
 		fmt.Printf("\n  %d. %s %s", ctx.TotalFiles, typeIcon, em.CleanTitle)
 		if em.Year > 0 {

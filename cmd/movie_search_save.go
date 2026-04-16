@@ -39,13 +39,15 @@ func saveSearchResult(client *tmdb.Client, database *db.DB, selected tmdb.Search
 	m.Type = resolveMediaType(selected.MediaType)
 	fetchDetailsByType(client, selected.ID, m)
 
-	downloadSearchThumbnail(client, database, selected, m)
+	downloadSearchThumbnail(ThumbnailInput{
+		Client: client, Database: database, Media: m, PosterPath: selected.PosterPath,
+	})
 	persistMedia(database, m)
 	printSavedSummary(m)
 }
 
 // downloadSearchThumbnail downloads the poster image for a search result.
-func downloadSearchThumbnail(client *tmdb.Client, database *db.DB, selected tmdb.SearchResult, m *db.Media) {
+func downloadSearchThumbnail(input ThumbnailInput) {
 	if selected.PosterPath == "" {
 		return
 	}
