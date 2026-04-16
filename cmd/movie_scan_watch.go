@@ -7,6 +7,7 @@ import (
 
 	"github.com/alimtvnetwork/movie-cli-v4/db"
 	"github.com/alimtvnetwork/movie-cli-v4/errlog"
+	"github.com/alimtvnetwork/movie-cli-v4/tmdb"
 )
 
 var scanWatch bool
