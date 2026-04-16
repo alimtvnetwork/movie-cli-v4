@@ -168,14 +168,10 @@ func confirmRedo(scanner *bufio.Scanner) bool {
 
 func printActionRedo(a *db.ActionRecord) {
 	fmt.Printf("⏩ Last reverted action (%s):\n", a.FileActionId)
-	if a.Detail != "" {
-		fmt.Printf("   %s\n", a.Detail)
-	}
-	if a.BatchId != "" {
-		short := a.BatchId
-		if len(short) > 8 {
-			short = short[:8]
-		}
-		fmt.Printf("   Batch: %s\n", short)
+	detail := actionDetail(*a)
+	fmt.Printf("   %s\n", detail)
+	suffix := batchSuffix(a.BatchId)
+	if suffix != "" {
+		fmt.Printf("   Batch: %s\n", a.BatchId[:8])
 	}
 }
