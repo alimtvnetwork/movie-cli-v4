@@ -306,8 +306,8 @@ func TestWatchlist(t *testing.T) {
 
 func TestWatchlistUpsert(t *testing.T) {
 	d := openTestDB(t)
-	d.AddToWatchlist(550, "Fight Club", 1999, "movie", 0)
-	if err := d.AddToWatchlist(550, "Fight Club (Updated)", 1999, "movie", 0); err != nil {
+	d.AddToWatchlist(WatchlistInput{TmdbID: 550, Title: "Fight Club", Year: 1999, MediaType: "movie"})
+	if err := d.AddToWatchlist(WatchlistInput{TmdbID: 550, Title: "Fight Club (Updated)", Year: 1999, MediaType: "movie"}); err != nil {
 		t.Fatalf("upsert: %v", err)
 	}
 	entry, _ := d.GetWatchlistByTmdbID(550)
