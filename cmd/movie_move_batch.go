@@ -146,6 +146,7 @@ func runInteractiveMove(mc MoveContext) {
 	if selectedFile == nil {
 		return
 	}
+	selectedPath := filepath.Join(mc.SourceDir, selectedFile.Name())
 	result := cleaner.Clean(selectedFile.Name())
 
 	fmt.Printf("\n  Selected: %s\n", result.CleanTitle)
