@@ -25,23 +25,23 @@ type moveItem struct {
 }
 
 // runBatchMove moves all video files at once, auto-routing by type.
-func runBatchMove(database *db.DB, scanner *bufio.Scanner, sourceDir string, files []os.FileInfo, home string) {
-	moviesDir, tvDir := resolveMoveTargetDirs(database, home)
+func runBatchMove(mc MoveContext) {
+	moviesDir, tvDir := resolveMoveTargetDirs(mc.Database, mc.Home)
 	moves := previewBatchMoves(files, sourceDir, moviesDir, tvDir)
 
 	fmt.Println("  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 	fmt.Printf("\n  Move all %d files? [y/N]: ", len(moves))
 
-	if !scanner.Scan() {
+	if !mc.Scanner.Scan() {
 		return
 	}
-	confirm := strings.ToLower(strings.TrimSpace(scanner.Text()))
+	confirm := strings.ToLower(strings.TrimSpace(mc.Scanner.Text()))
 	if confirm != "y" && confirm != "yes" {
 		fmt.Println("  ❌ Batch move canceled.")
 		return
 	}
 
-	executeBatchMoves(database, moves)
+	executeBatchMoves(mc.Database, moves)
 }
 
 func resolveMoveTargetDirs(database *db.DB, home string) (string, string) {
@@ -65,7 +65,7 @@ func resolveMoveTargetDirs(database *db.DB, home string) (string, string) {
 	return moviesDir, tvDir
 }
 
-func previewBatchMoves(files []os.FileInfo, sourceDir, moviesDir, tvDir string) []moveItem {
+func previewBatchMoves(files []os.FileInfo, sourceDir string, moviesDir, tvDir string) []moveItem {
 	var moves []moveItem
 
 	fmt.Printf("\n🎬 Batch move — %d video files in: %s\n\n", len(files), sourceDir)
@@ -134,10 +134,10 @@ func executeBatchMoves(database *db.DB, moves []moveItem) {
 }
 
 // runInteractiveMove is the original single-file interactive flow.
-func runInteractiveMove(database *db.DB, scanner *bufio.Scanner, sourceDir string, files []os.FileInfo, home string) {
-	printFileList(files, sourceDir)
+func runInteractiveMove(mc MoveContext) {
+	printFileList(mc.Files, mc.SourceDir)
 
-	selectedFile, selectedPath := selectFile(scanner, files, sourceDir)
+	selectedFile, selectedPath := selectFile(mc.Scanner, mc.Files, mc.SourceDir)
 	if selectedFile == nil {
 		return
 	}
@@ -149,7 +149,7 @@ func runInteractiveMove(database *db.DB, scanner *bufio.Scanner, sourceDir strin
 	}
 	fmt.Printf("  Type:     %s\n", result.Type)
 
-	destDir := promptDestination(scanner, database, home)
+	destDir := promptDestination(mc.Scanner, mc.Database, mc.Home)
 	if destDir == "" {
 		return
 	}
@@ -157,7 +157,7 @@ func runInteractiveMove(database *db.DB, scanner *bufio.Scanner, sourceDir strin
 	cleanName := cleaner.ToCleanFileName(result.CleanTitle, result.Year, result.Extension)
 	destPath := filepath.Join(destDir, cleanName)
 
-	if !confirmInteractiveMove(scanner, selectedPath, destPath) {
+	if !confirmInteractiveMove(mc.Scanner, selectedPath, destPath) {
 		return
 	}
 
@@ -171,7 +171,7 @@ func runInteractiveMove(database *db.DB, scanner *bufio.Scanner, sourceDir strin
 		return
 	}
 
-	trackMove(database, result, selectedFile, selectedPath, destPath, cleanName)
+	trackMove(mc.Database, result, selectedFile, selectedPath, destPath, cleanName)
 
 	fmt.Println()
 	fmt.Println("  ✅ Moved successfully!")

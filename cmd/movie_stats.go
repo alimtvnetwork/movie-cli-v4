@@ -76,13 +76,14 @@ func runMovieStats(cmd *cobra.Command, args []string) {
 		return
 	}
 
+	counts := StatsCounts{Movies: totalMovies, TV: totalTV, Total: total}
 	switch statsFormat {
 	case string(db.OutputFormatJSON):
-		printStatsJSON(database, totalMovies, totalTV, total)
+		printStatsJSON(database, counts)
 	case string(db.OutputFormatTable):
-		printStatsTable(database, totalMovies, totalTV, total)
+		printStatsTable(database, counts)
 	default:
-		printStatsDefault(database, totalMovies, totalTV, total)
+		printStatsDefault(database, counts)
 	}
 }
 
@@ -94,9 +95,9 @@ func printEmptyStats() {
 	fmt.Println("📭 No media in library. Run 'movie scan <folder>' first.")
 }
 
-func printStatsJSON(database *db.DB, totalMovies, totalTV, total int) {
+func printStatsJSON(database *db.DB, counts StatsCounts) {
 	out := statsJSONOutput{
-		TotalMovies: totalMovies, TotalTV: totalTV, Total: total,
+		TotalMovies: counts.Movies, TotalTV: counts.TV, Total: counts.Total,
 	}
 	out.Storage = buildStatsStorageJSON(database, total)
 	out.TopGenres = buildStatsGenresJSON(database)
@@ -136,8 +137,8 @@ func buildStatsGenresJSON(database *db.DB) []statsGenre {
 	return out
 }
 
-func printStatsDefault(database *db.DB, totalMovies, totalTV, total int) {
-	printStatsDefaultCounts(totalMovies, totalTV, total)
+func printStatsDefault(database *db.DB, counts StatsCounts) {
+	printStatsDefaultCounts(counts.Movies, counts.TV, counts.Total)
 	printStatsDefaultStorage(database, total)
 	printStatsDefaultGenres(database)
 	printStatsDefaultRatings(database)

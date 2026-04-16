@@ -13,10 +13,10 @@ const statsLabelW = 20
 const statsValueW = 40
 
 // printStatsTable outputs library statistics as a formatted table.
-func printStatsTable(database *db.DB, totalMovies, totalTV, total int) {
+func printStatsTable(database *db.DB, counts StatsCounts) {
 	fmt.Println()
 	printStatsTableHeader()
-	printStatsTableCounts(totalMovies, totalTV, total)
+	printStatsTableCounts(counts.Movies, counts.TV, counts.Total)
 	printStatsTableStorage(database, total)
 	printStatsTableGenres(database)
 	printStatsTableRatings(database)
