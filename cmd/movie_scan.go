@@ -241,22 +241,24 @@ func runDryRunScan(videoFiles []videoFile, useJSON, useTable bool,
 		*tvCount = tc
 		return
 	}
-	runDryRunPlainOutput(videoFiles, totalFiles, movieCount, tvCount)
+	runDryRunPlainOutput(videoFiles, DryRunCounters{
+		TotalFiles: totalFiles, MovieCount: movieCount, TVCount: tvCount,
+	})
 }
 
 // runDryRunPlainOutput prints dry-run results in plain text format.
-func runDryRunPlainOutput(videoFiles []videoFile, totalFiles, movieCount, tvCount *int) {
+func runDryRunPlainOutput(videoFiles []videoFile, counters DryRunCounters) {
 	for _, vf := range videoFiles {
-		*totalFiles++
+		*counters.TotalFiles++
 		result := cleaner.Clean(vf.Name)
 		typeIcon := db.TypeIcon(result.Type)
-		fmt.Printf("\n  %d. %s %s", *totalFiles, typeIcon, result.CleanTitle)
+		fmt.Printf("\n  %d. %s %s", *counters.TotalFiles, typeIcon, result.CleanTitle)
 		if result.Year > 0 {
 			fmt.Printf(" (%d)", result.Year)
 		}
 		fmt.Printf(" [%s]\n", result.Type)
 		fmt.Printf("     └─ %s\n", vf.Name)
-		incrementTypeCountPtr(result.Type, movieCount, tvCount)
+		incrementTypeCountPtr(result.Type, counters.MovieCount, counters.TVCount)
 	}
 }
 

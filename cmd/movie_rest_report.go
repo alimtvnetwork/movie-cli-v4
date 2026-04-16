@@ -29,7 +29,7 @@ func handleMediaByID(w http.ResponseWriter, r *http.Request, database *db.DB) {
 	case http.MethodDelete:
 		handleMediaDelete(w, database, id)
 	case http.MethodPatch:
-		handleMediaPatch(w, r, database, id)
+		handleMediaPatch(MediaPatchRequest{Writer: w, Request: r, Database: database, ID: id})
 	default:
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 	}
@@ -52,28 +52,28 @@ func handleMediaDelete(w http.ResponseWriter, database *db.DB, id int64) {
 	writeJSON(w, map[string]string{"status": "deleted"})
 }
 
-func handleMediaPatch(w http.ResponseWriter, r *http.Request, database *db.DB, id int64) {
+func handleMediaPatch(req MediaPatchRequest) {
 	var updates map[string]interface{}
-	if decErr := json.NewDecoder(r.Body).Decode(&updates); decErr != nil {
-		http.Error(w, "invalid json", http.StatusBadRequest)
+	if decErr := json.NewDecoder(req.Request.Body).Decode(&updates); decErr != nil {
+		http.Error(req.Writer, "invalid json", http.StatusBadRequest)
 		return
 	}
 	for key, val := range updates {
-		applyMediaUpdate(database, id, key, val)
+		applyMediaUpdate(MediaUpdateField{Database: req.Database, ID: req.ID, Key: key, Val: val})
 	}
-	m, _ := database.GetMediaByID(id)
-	writeJSON(w, m)
+	m, _ := req.Database.GetMediaByID(req.ID)
+	writeJSON(req.Writer, m)
 }
 
-func applyMediaUpdate(database *db.DB, id int64, key string, val interface{}) {
-	switch key {
+func applyMediaUpdate(field MediaUpdateField) {
+	switch field.Key {
 	case "genre":
-		if genreStr, ok := val.(string); ok {
-			database.ReplaceMediaGenres(id, genreStr)
+		if genreStr, ok := field.Val.(string); ok {
+			field.Database.ReplaceMediaGenres(field.ID, genreStr)
 		}
 	case "title", "director", "description", "tagline":
-		if _, execErr := database.Exec("UPDATE Media SET "+key+" = ?, UpdatedAt = datetime('now') WHERE MediaId = ?", val, id); execErr != nil {
-			errlog.Error("DB update error for media %d field %s: %v", id, key, execErr)
+		if _, execErr := field.Database.Exec("UPDATE Media SET "+field.Key+" = ?, UpdatedAt = datetime('now') WHERE MediaId = ?", field.Val, field.ID); execErr != nil {
+			errlog.Error("DB update error for media %d field %s: %v", field.ID, field.Key, execErr)
 		}
 	}
 }

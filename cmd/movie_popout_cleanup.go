@@ -85,7 +85,7 @@ func promptFolderAction(cc CleanupContext, folders []popoutFolderInfo) {
 	switch choice {
 	case "a":
 		for _, f := range folders {
-			removeFolder(cc.Database, f.path, f.name, cc.BatchID)
+			removeFolder(FolderRemoveInput{Database: cc.Database, DirPath: f.path, DirName: f.name, BatchID: cc.BatchID})
 		}
 	case "s":
 		selectiveFolderRemoval(cc, folders)
@@ -117,7 +117,7 @@ func selectiveFolderRemoval(cc CleanupContext, folders []popoutFolderInfo) {
 		}
 		answer := strings.ToLower(strings.TrimSpace(cc.Scanner.Text()))
 		if answer == "y" || answer == "yes" {
-			removeFolder(cc.Database, f.path, f.name, cc.BatchID)
+			removeFolder(FolderRemoveInput{Database: cc.Database, DirPath: f.path, DirName: f.name, BatchID: cc.BatchID})
 			continue
 		}
 		fmt.Println("    Kept.")
@@ -141,20 +141,23 @@ func listThenDecide(cc CleanupContext, folders []popoutFolderInfo) {
 		}
 		answer := strings.ToLower(strings.TrimSpace(cc.Scanner.Text()))
 		if answer == "y" || answer == "yes" {
-			removeFolder(cc.Database, f.path, f.name, cc.BatchID)
+			removeFolder(FolderRemoveInput{Database: cc.Database, DirPath: f.path, DirName: f.name, BatchID: cc.BatchID})
 			continue
 		}
 		fmt.Println("    Kept.")
 	}
 }
 
-func removeFolder(database *db.DB, dirPath, dirName, batchID string) {
-	if err := os.RemoveAll(dirPath); err != nil {
-		errlog.Error("Failed to remove %s: %v", dirPath, err)
+func removeFolder(input FolderRemoveInput) {
+	if err := os.RemoveAll(input.DirPath); err != nil {
+		errlog.Error("Failed to remove %s: %v", input.DirPath, err)
 		return
 	}
-	fmt.Printf("    🗑  Removed: %s/\n", dirName)
-	detail := fmt.Sprintf("Removed folder: %s/", dirName)
-	snapshot := fmt.Sprintf(`{"folder_path":"%s"}`, dirPath)
-	database.InsertActionSimple(db.FileActionDelete, 0, snapshot, detail, batchID)
+	fmt.Printf("    🗑  Removed: %s/\n", input.DirName)
+	detail := fmt.Sprintf("Removed folder: %s/", input.DirName)
+	snapshot := fmt.Sprintf(`{"folder_path":"%s"}`, input.DirPath)
+	input.Database.InsertActionSimple(db.ActionSimpleInput{
+		FileAction: db.FileActionDelete, Snapshot: snapshot,
+		Detail: detail, BatchID: input.BatchID,
+	})
 }

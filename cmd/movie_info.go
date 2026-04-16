@@ -170,7 +170,7 @@ func downloadInfoThumbnail(input ThumbnailInput) {
 	if input.PosterPath == "" {
 		return
 	}
-	downloadThumbnailForMedia(input.Client, input.Database, input.Media, input.PosterPath)
+	downloadThumbnailForMedia(input)
 }
 
 func saveInfoMedia(database *db.DB, m *db.Media) {

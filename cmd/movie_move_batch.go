@@ -27,7 +27,9 @@ type moveItem struct {
 // runBatchMove moves all video files at once, auto-routing by type.
 func runBatchMove(mc MoveContext) {
 	moviesDir, tvDir := resolveMoveTargetDirs(mc.Database, mc.Home)
-	moves := previewBatchMoves(mc.Files, mc.SourceDir, moviesDir, tvDir)
+	moves := previewBatchMoves(BatchMovePreview{
+		Files: mc.Files, SourceDir: mc.SourceDir, MoviesDir: moviesDir, TVDir: tvDir,
+	})
 
 	fmt.Println("  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 	fmt.Printf("\n  Move all %d files? [y/N]: ", len(moves))
@@ -65,23 +67,23 @@ func resolveMoveTargetDirs(database *db.DB, home string) (string, string) {
 	return moviesDir, tvDir
 }
 
-func previewBatchMoves(files []os.FileInfo, sourceDir string, moviesDir, tvDir string) []moveItem {
+func previewBatchMoves(input BatchMovePreview) []moveItem {
 	var moves []moveItem
 
-	fmt.Printf("\n🎬 Batch move — %d video files in: %s\n\n", len(files), sourceDir)
+	fmt.Printf("\n🎬 Batch move — %d video files in: %s\n\n", len(input.Files), input.SourceDir)
 	fmt.Println("  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 
-	for _, f := range files {
+	for _, f := range input.Files {
 		result := cleaner.Clean(f.Name())
 		cleanName := cleaner.ToCleanFileName(result.CleanTitle, result.Year, result.Extension)
 
-		destDir := moviesDir
+		destDir := input.MoviesDir
 		typeIcon := db.TypeIcon(result.Type)
 		if result.Type == string(db.MediaTypeTV) {
-			destDir = tvDir
+			destDir = input.TVDir
 		}
 
-		srcPath := filepath.Join(sourceDir, f.Name())
+		srcPath := filepath.Join(input.SourceDir, f.Name())
 		destPath := filepath.Join(destDir, cleanName)
 
 		yearStr := ""
@@ -121,7 +123,10 @@ func executeBatchMoves(database *db.DB, moves []moveItem) {
 			continue
 		}
 
-		trackMove(database, moves[i].result, moves[i].fileInfo, moves[i].srcPath, moves[i].destPath, moves[i].cleanName)
+		trackMove(TrackMoveInput{
+			Database: database, Result: moves[i].result, FileInfo: moves[i].fileInfo,
+			SrcPath: moves[i].srcPath, DestPath: moves[i].destPath, CleanName: moves[i].cleanName,
+		})
 		success++
 	}
 
@@ -137,8 +142,11 @@ func executeBatchMoves(database *db.DB, moves []moveItem) {
 func runInteractiveMove(mc MoveContext) {
 	printFileList(mc.Files, mc.SourceDir)
 
-	selectedFile, selectedPath := selectFile(mc.Scanner, mc.Files, mc.SourceDir)
+	selectedFile, _ := selectFile(mc.Scanner, mc.Files)
 	if selectedFile == nil {
+		return
+	}
+	selectedPath := filepath.Join(mc.SourceDir, selectedFile.Name())
 		return
 	}
 	result := cleaner.Clean(selectedFile.Name())
@@ -171,7 +179,10 @@ func runInteractiveMove(mc MoveContext) {
 		return
 	}
 
-	trackMove(mc.Database, result, selectedFile, selectedPath, destPath, cleanName)
+	trackMove(TrackMoveInput{
+		Database: mc.Database, Result: result, FileInfo: selectedFile,
+		SrcPath: selectedPath, DestPath: destPath, CleanName: cleanName,
+	})
 
 	fmt.Println()
 	fmt.Println("  ✅ Moved successfully!")
@@ -192,7 +203,7 @@ func printFileList(files []os.FileInfo, sourceDir string) {
 	}
 }
 
-func selectFile(scanner *bufio.Scanner, files []os.FileInfo, sourceDir string) (os.FileInfo, string) {
+func selectFile(scanner *bufio.Scanner, files []os.FileInfo) (os.FileInfo, string) {
 	fmt.Println()
 	fmt.Print("  Select file [number]: ")
 	if !scanner.Scan() {
@@ -204,7 +215,7 @@ func selectFile(scanner *bufio.Scanner, files []os.FileInfo, sourceDir string) (
 		return nil, ""
 	}
 	selected := files[choice-1]
-	return selected, filepath.Join(sourceDir, selected.Name())
+	return selected, ""
 }
 
 func confirmInteractiveMove(scanner *bufio.Scanner, srcPath, destPath string) bool {
@@ -224,59 +235,66 @@ func confirmInteractiveMove(scanner *bufio.Scanner, srcPath, destPath string) bo
 }
 
 // trackMove records a move in the database and JSON history log.
-func trackMove(database *db.DB, result cleaner.Result, fileInfo os.FileInfo, srcPath, destPath, cleanName string) {
-	mediaID := findOrCreateMoveMedia(database, result, fileInfo, srcPath, destPath)
+func trackMove(input TrackMoveInput) {
+	mediaID := findOrCreateMoveMedia(FindMoveMediaInput{
+		Database: input.Database, Result: input.Result, FileInfo: input.FileInfo,
+		SrcPath: input.SrcPath, DestPath: input.DestPath,
+	})
 
 	if mediaID > 0 {
-		if histErr := database.InsertMoveHistory(db.MoveInput{
+		if histErr := input.Database.InsertMoveHistory(db.MoveInput{
 			MediaID: mediaID, FileActionID: int(db.FileActionMove),
-			FromPath: srcPath, ToPath: destPath,
-			OrigName: fileInfo.Name(), NewName: cleanName,
+			FromPath: input.SrcPath, ToPath: input.DestPath,
+			OrigName: input.FileInfo.Name(), NewName: input.CleanName,
 		}); histErr != nil {
 			errlog.Warn("DB history error: %v", histErr)
 		}
 	}
 
 	saveHistoryLog(HistoryLogInput{
-		BasePath: database.BasePath, Title: result.CleanTitle,
-		Year: result.Year, FromPath: srcPath, ToPath: destPath,
+		BasePath: input.Database.BasePath, Title: input.Result.CleanTitle,
+		Year: input.Result.Year, FromPath: input.SrcPath, ToPath: input.DestPath,
 	})
 }
 
-func findOrCreateMoveMedia(database *db.DB, result cleaner.Result, fileInfo os.FileInfo, srcPath, destPath string) int64 {
+func findOrCreateMoveMedia(input FindMoveMediaInput) int64 {
 	var mediaID int64
-	existing, searchErr := database.SearchMedia(result.CleanTitle)
+	existing, searchErr := input.Database.SearchMedia(input.Result.CleanTitle)
 	if searchErr != nil {
 		errlog.Warn("DB search error: %v", searchErr)
 	}
 	for i := range existing {
-		if existing[i].CurrentFilePath == srcPath || existing[i].OriginalFilePath == srcPath {
+		if existing[i].CurrentFilePath == input.SrcPath || existing[i].OriginalFilePath == input.SrcPath {
 			mediaID = existing[i].ID
 			break
 		}
 	}
 
 	if mediaID != 0 {
-		if updateErr := database.UpdateMediaPath(mediaID, destPath); updateErr != nil {
+		if updateErr := input.Database.UpdateMediaPath(mediaID, input.DestPath); updateErr != nil {
 			errlog.Error("DB update path error: %v", updateErr)
 		}
 		return mediaID
 	}
 
 	m := &db.Media{
-		Title:            result.CleanTitle,
-		CleanTitle:       result.CleanTitle,
-		Year:             result.Year,
-		Type:             result.Type,
-		OriginalFileName: fileInfo.Name(),
-		OriginalFilePath: srcPath,
-		CurrentFilePath:  destPath,
-		FileExtension:    result.Extension,
-		FileSize:         fileInfo.Size(),
+		Title:            input.Result.CleanTitle,
+		CleanTitle:       input.Result.CleanTitle,
+		Year:             input.Result.Year,
+		Type:             input.Result.Type,
+		OriginalFileName: input.FileInfo.Name(),
+		OriginalFilePath: input.SrcPath,
+		CurrentFilePath:  input.DestPath,
+		FileExtension:    input.Result.Extension,
+		FileSize:         input.FileInfo.Size(),
 	}
 	var insertErr error
-	mediaID, insertErr = database.InsertMedia(m)
+	mediaID, insertErr = input.Database.InsertMedia(m)
 	if insertErr != nil {
+		errlog.Error("DB insert error: %v", insertErr)
+	}
+	return mediaID
+}
 		errlog.Error("DB insert error: %v", insertErr)
 	}
 	return mediaID

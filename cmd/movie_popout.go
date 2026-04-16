@@ -21,7 +21,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/alimtvnetwork/movie-cli-v4/cleaner"
-	"github.com/alimtvnetwork/movie-cli-v4/db"
 	"github.com/alimtvnetwork/movie-cli-v4/errlog"
 )
 
@@ -85,7 +84,8 @@ func runMoviePopout(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	rootDir := resolvePopoutDir(args, scanner, database, home)
+	mc := MoveContext{Scanner: scanner, Database: database, Home: home}
+	rootDir := resolvePopoutDir(args, mc)
 	if rootDir == "" {
 		return
 	}
@@ -107,14 +107,14 @@ func runMoviePopout(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	executeAndCleanupPopout(scanner, database, items, rootDir)
+	executeAndCleanupPopout(mc, items, rootDir)
 }
 
-func resolvePopoutDir(args []string, scanner *bufio.Scanner, database *db.DB, home string) string {
+func resolvePopoutDir(args []string, mc MoveContext) string {
 	if len(args) > 0 {
-		return expandHome(args[0], home)
+		return expandHome(args[0], mc.Home)
 	}
-	return promptSourceDirectory(scanner, database, home)
+	return promptSourceDirectory(mc.Scanner, mc.Database, mc.Home)
 }
 
 func validateDirectory(path string) bool {
@@ -130,19 +130,19 @@ func validateDirectory(path string) bool {
 	return true
 }
 
-func executeAndCleanupPopout(scanner *bufio.Scanner, database *db.DB, items []popoutItem, rootDir string) {
-	if !confirmPopout(scanner, len(items)) {
+func executeAndCleanupPopout(mc MoveContext, items []popoutItem, rootDir string) {
+	if !confirmPopout(mc.Scanner, len(items)) {
 		return
 	}
 
 	batchID := generateBatchID()
-	success, failed := executePopout(database, items, batchID)
+	success, failed := executePopout(mc.Database, items, batchID)
 	printPopoutResult(success, failed, batchID)
 
 	if success > 0 {
 		fmt.Println()
 		offerFolderCleanup(CleanupContext{
-			Scanner: scanner, Database: database, BatchID: batchID,
+			Scanner: mc.Scanner, Database: mc.Database, BatchID: batchID,
 		}, rootDir, items)
 	}
 }

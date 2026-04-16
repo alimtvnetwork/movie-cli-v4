@@ -38,7 +38,9 @@ func collectRecursive(scanDir string, maxDepth int) []videoFile {
 		if d.IsDir() {
 			return handleRecursiveDir(d, path, opts)
 		}
-		return handleRecursiveFile(d, path, scanDir, opts, &files)
+		return handleRecursiveFile(RecursiveFileContext{
+			Entry: d, Path: path, ScanDir: scanDir, Opts: opts, Files: &files,
+		})
 	})
 	return files
 }
@@ -57,22 +59,22 @@ func handleRecursiveDir(d os.DirEntry, path string, opts RecursiveWalkOpts) erro
 	return nil
 }
 
-func handleRecursiveFile(d os.DirEntry, path, scanDir string, opts RecursiveWalkOpts, files *[]videoFile) error {
-	if opts.MaxDepth > 0 {
-		fileParts := len(splitPath(filepath.Clean(filepath.Dir(path))))
-		if fileParts-opts.BaseParts > opts.MaxDepth {
+func handleRecursiveFile(ctx RecursiveFileContext) error {
+	if ctx.Opts.MaxDepth > 0 {
+		fileParts := len(splitPath(filepath.Clean(filepath.Dir(ctx.Path))))
+		if fileParts-ctx.Opts.BaseParts > ctx.Opts.MaxDepth {
 			return nil
 		}
 	}
-	if !cleaner.IsVideoFile(d.Name()) {
+	if !cleaner.IsVideoFile(ctx.Entry.Name()) {
 		return nil
 	}
-	parentDir := filepath.Dir(path)
-	name := d.Name()
-	if parentDir != scanDir {
+	parentDir := filepath.Dir(ctx.Path)
+	name := ctx.Entry.Name()
+	if parentDir != ctx.ScanDir {
 		name = filepath.Base(parentDir)
 	}
-	*files = append(*files, videoFile{Name: name, FullPath: path})
+	*ctx.Files = append(*ctx.Files, videoFile{Name: name, FullPath: ctx.Path})
 	return nil
 }
 
