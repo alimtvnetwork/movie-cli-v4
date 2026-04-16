@@ -10,8 +10,8 @@ type WatchlistEntry struct {
 	TmdbID    int
 	Title     string
 	Year      int
-	Type      string // "movie" or "tv"
-	Status    string // "to-watch" or "watched"
+	Type      string // MediaTypeMovie or MediaTypeTV
+	Status    string // WatchStatusToWatch or WatchStatusWatched
 	AddedAt   string
 	WatchedAt sql.NullString
 }
