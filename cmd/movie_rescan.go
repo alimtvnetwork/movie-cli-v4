@@ -47,13 +47,15 @@ func regenerateReportForDir(scanDir string, items []db.Media) {
 	}
 
 	movieCount, tvCount := countByType(items)
+	stats := ScanStats{
+		ScanDir: scanDir, OutputDir: outputDir, Items: items,
+		Total: len(items), Movies: movieCount, TV: tvCount,
+	}
 
-	if summaryErr := writeScanSummary(outputDir, scanDir, items,
-		len(items), movieCount, tvCount, 0); summaryErr != nil {
+	if summaryErr := writeScanSummary(stats); summaryErr != nil {
 		errlog.Warn("Could not regenerate summary.json for %s: %v", scanDir, summaryErr)
 	}
-	htmlErr := writeHTMLReport(outputDir, scanDir, items,
-		len(items), movieCount, tvCount, 0)
+	htmlErr := writeHTMLReport(stats)
 	if htmlErr != nil {
 		errlog.Warn("Could not regenerate report.html for %s: %v", scanDir, htmlErr)
 		return

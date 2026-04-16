@@ -110,8 +110,7 @@ func printScanHeader(scanDir, outputDir string) {
 }
 
 // printScanFooter prints the summary after scanning completes (gitmap-style).
-func printScanFooter(scanDir, outputDir string, scannedItems []db.Media,
-	totalFiles, movieCount, tvCount, skipped, removed int) {
+func printScanFooter(stats ScanStats) {
 	fmt.Println()
 	fmt.Println("  ■ Summary")
 	fmt.Println("  ──────────────────────────────────────────")
@@ -120,13 +119,13 @@ func printScanFooter(scanDir, outputDir string, scannedItems []db.Media,
 		label = "📊 Dry Run Complete!"
 	}
 	fmt.Println("  " + label)
-	printScanCounts(totalFiles, movieCount, tvCount, skipped, removed)
+	printScanCounts(stats)
 
 	if scanDryRun {
 		fmt.Println("\n  💡 Run without --dry-run to actually scan and save.")
 		return
 	}
 
-	printScanOutputFiles(outputDir, scanDir, scannedItems, totalFiles, movieCount, tvCount, skipped)
+	printScanOutputFiles(stats)
 	fmt.Println()
 }
