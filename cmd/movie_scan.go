@@ -101,7 +101,7 @@ func runMovieScan(cmd *cobra.Command, args []string) {
 	useTable := scanFormat == string(db.OutputFormatTable)
 	useTMDb := creds.HasAuth()
 
-	tmdbClient := tmdb.NewClientWithToken(creds.APIKey, creds.AccessToken)
+	tmdbClient := tmdb.NewClientWithToken(creds.APIKey, creds.Token)
 	ctx := &ScanContext{
 		Database:  database,
 		Client:    tmdbClient,
@@ -119,7 +119,7 @@ func runMovieScan(cmd *cobra.Command, args []string) {
 		runDryRunScan(videoFiles, useJSON, useTable,
 			&jsonItems, &ctx.TotalFiles, &ctx.MovieCount, &ctx.TVCount)
 	} else {
-		removed = runMainScanLoop(ctx, videoFiles, creds, scanDir, ctx.BatchID, useJSON, useTable, useTMDb, &jsonItems)
+		removed = runMainScanLoop(ctx, videoFiles, tmdbClient, scanDir, ctx.BatchID, useJSON, useTable, useTMDb, &jsonItems)
 	}
 
 	if useTable {
@@ -140,7 +140,7 @@ func runMovieScan(cmd *cobra.Command, args []string) {
 		})
 	}
 
-	startPostScanServices(cmd, scanDir, outputDir, database, creds)
+	startPostScanServices(cmd, scanDir, outputDir, database, creds, tmdbClient)
 }
 
 func initScanLogger(database *db.DB, outputDir string) {
@@ -177,7 +177,7 @@ func registerScanHistory(database *db.DB, scanDir string, ctx *ScanContext) {
 	}
 }
 
-func startPostScanServices(cmd *cobra.Command, scanDir, outputDir string, database *db.DB, creds *tmdb.Client) {
+func startPostScanServices(cmd *cobra.Command, scanDir, outputDir string, database *db.DB, creds tmdbCredentials, client *tmdb.Client) {
 	if scanDryRun {
 		return
 	}
@@ -190,7 +190,7 @@ func startPostScanServices(cmd *cobra.Command, scanDir, outputDir string, databa
 	}
 }
 
-func startRestWithOptionalWatch(cmd *cobra.Command, scanDir, outputDir string, database *db.DB, creds *tmdb.Client) {
+func startRestWithOptionalWatch(cmd *cobra.Command, scanDir, outputDir string, database *db.DB, creds tmdbCredentials) {
 	restPort = scanRestPort
 	fmt.Printf("\n🚀 Starting REST server on http://localhost:%d ...\n", restPort)
 	go openBrowser(fmt.Sprintf("http://localhost:%d", restPort))
