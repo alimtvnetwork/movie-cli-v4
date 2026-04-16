@@ -226,9 +226,5 @@ func runPowerShellScript(scriptPath string) error {
 	}
 
 	cmd := exec.Command(psBin, "-ExecutionPolicy", "Bypass", "-NoProfile", "-NoLogo", "-File", scriptPath)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	cmd.Stdin = os.Stdin
-
-	return cmd.Run()
+	return runAttached(cmd)
 }

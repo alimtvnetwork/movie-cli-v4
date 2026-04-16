@@ -4,8 +4,10 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 
 	"github.com/spf13/cobra"
 
@@ -27,10 +29,7 @@ The update process:
 If no local repo is found, it clones a fresh copy next to the binary.
 Run 'movie update' again after bootstrap to build.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		if err := updater.Run(); err != nil {
-			fmt.Fprintf(os.Stderr, "❌ Update failed: %v\n", err)
-			os.Exit(1)
-		}
+		exitOnUpdateError("Update failed", updater.Run())
 	},
 }
 
@@ -51,10 +50,7 @@ var updateRunnerCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		if err := updater.RunWorker(repoPath, targetBinary); err != nil {
-			fmt.Fprintf(os.Stderr, "❌ Update worker failed: %v\n", err)
-			os.Exit(1)
-		}
+		exitOnUpdateError("Update worker failed", updater.RunWorker(repoPath, targetBinary))
 	},
 }
 
@@ -82,4 +78,18 @@ var updateCleanupCmd = &cobra.Command{
 func init() {
 	updateRunnerCmd.Flags().String("repo-path", "", "Path to the source repository")
 	updateRunnerCmd.Flags().String("target-binary", "", "Original executable path to redeploy")
+}
+
+func exitOnUpdateError(label string, err error) {
+	if err == nil {
+		return
+	}
+
+	var exitErr *exec.ExitError
+	if errors.As(err, &exitErr) {
+		os.Exit(exitErr.ExitCode())
+	}
+
+	fmt.Fprintf(os.Stderr, "❌ %s: %v\n", label, err)
+	os.Exit(1)
 }
