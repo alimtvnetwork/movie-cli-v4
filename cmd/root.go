@@ -42,7 +42,7 @@ Discovery:
 
 System:
   movie version                             Show version info
-  movie update                              Update to latest version
+  movie update                              Pull, rebuild, and deploy latest version
 
 Documentation: https://github.com/alimtvnetwork/movie-cli-v3`, version.Short()),
 	Version: version.Short(),
