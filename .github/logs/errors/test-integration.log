@@ -1,0 +1,19 @@
+=== TEST: integration ===
+status: fail
+exit_code: 1
+packages: ./db/...
+
+--- FAILED TESTS ---
+(no FAIL lines found)
+
+--- SUMMARY ---
+passed: 0
+0
+failed: 0
+0
+
+--- FULL OUTPUT ---
+# github.com/alimtvnetwork/movie-cli-v3/db [github.com/alimtvnetwork/movie-cli-v3/db.test]
+db/open_test.go:293:14: d.MarkMoveUndone undefined (type *DB has no field or method MarkMoveUndone)
+FAIL	github.com/alimtvnetwork/movie-cli-v3/db [build failed]
+FAIL

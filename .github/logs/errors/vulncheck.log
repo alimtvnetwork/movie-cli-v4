@@ -1,0 +1,11 @@
+=== VULNERABILITY SCAN ===
+status: pass
+exit_code: 0
+
+govulncheck: loading packages: 
+There are errors with the provided package patterns:
+
+/home/runner/work/movie-cli-v4/movie-cli-v4/cmd/movie_move_helpers.go:73:22: cannot use bytes (variable of type int64) as float64 value in argument to db.HumanSize
+
+For details on package patterns, see https://pkg.go.dev/cmd/go#hdr-Package_lists_and_patterns.
+

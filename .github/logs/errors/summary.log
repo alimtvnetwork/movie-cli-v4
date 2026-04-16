@@ -1,0 +1,145 @@
+# CI/CD Failure Report
+
+## Run Metadata
+
+| Field         | Value |
+|---------------|-------|
+| Workflow      | CI |
+| Run ID        | 24492207147 |
+| Run Number    | 19 |
+| Commit        | ceaf84755a78b1acfeca633918a7138ca1ee6028 |
+| Branch        | main |
+| Triggered By  | alimtvnetwork |
+| Event         | push |
+| Timestamp     | 2026-04-16T04:33:53Z |
+| Run URL       | https://github.com/alimtvnetwork/movie-cli-v4/actions/runs/24492207147 |
+
+## Job Results
+
+| Job | Status | Log File |
+|-----|--------|----------|
+| Lint | success | errors/lint.log |
+| Vulnerability Scan | success | errors/vulncheck.log |
+| Test | failure | errors/test-integration.log,errors/test-unit.log |
+| Build | skipped |  |
+
+## Failed Stages
+
+### lint
+
+```
+=== GO VET ===
+status: success
+# github.com/alimtvnetwork/movie-cli-v3/cmd
+cmd/movie_move_helpers.go:73:22: cannot use bytes (variable of type int64) as float64 value in argument to db.HumanSize
+# github.com/alimtvnetwork/movie-cli-v3/db
+# [github.com/alimtvnetwork/movie-cli-v3/db]
+vet: db/open_test.go:293:14: d.MarkMoveUndone undefined (type *DB has no field or method MarkMoveUndone)
+
+=== GOLANGCI-LINT ===
+status: success
+cmd/changelog.go:1: : # github.com/alimtvnetwork/movie-cli-v3/cmd
+cmd/movie_move_helpers.go:73:22: cannot use bytes (variable of type int64) as float64 value in argument to db.HumanSize (typecheck)
+// changelog.go — implements the `movie changelog` command.
+main.go:5:2: could not import github.com/alimtvnetwork/movie-cli-v3/cmd (-: # github.com/alimtvnetwork/movie-cli-v3/cmd
+cmd/movie_move_helpers.go:73:22: cannot use bytes (variable of type int64) as float64 value in argument to db.HumanSize) (typecheck)
+	"github.com/alimtvnetwork/movie-cli-v3/cmd"
+	^
+db/action_history.go:1: : # github.com/alimtvnetwork/movie-cli-v3/db [github.com/alimtvnetwork/movie-cli-v3/db.test]
+db/open_test.go:293:14: d.MarkMoveUndone undefined (type *DB has no field or method MarkMoveUndone) (typecheck)
+// action_history.go — ActionHistory table: types and helpers.
+```
+
+### test-integration
+
+```
+=== TEST: integration ===
+status: fail
+exit_code: 1
+packages: ./db/...
+
+--- FAILED TESTS ---
+(no FAIL lines found)
+
+--- SUMMARY ---
+passed: 0
+0
+failed: 0
+0
+
+--- FULL OUTPUT ---
+# github.com/alimtvnetwork/movie-cli-v3/db [github.com/alimtvnetwork/movie-cli-v3/db.test]
+db/open_test.go:293:14: d.MarkMoveUndone undefined (type *DB has no field or method MarkMoveUndone)
+FAIL	github.com/alimtvnetwork/movie-cli-v3/db [build failed]
+FAIL
+```
+
+### test-unit
+
+```
+=== TEST: unit ===
+status: fail
+exit_code: 1
+packages: ./...
+
+--- FAILED TESTS ---
+(no FAIL lines found)
+
+--- SUMMARY ---
+passed: 0
+0
+failed: 0
+0
+
+--- FULL OUTPUT ---
+# github.com/alimtvnetwork/movie-cli-v3/cmd
+cmd/movie_move_helpers.go:73:22: cannot use bytes (variable of type int64) as float64 value in argument to db.HumanSize
+FAIL	github.com/alimtvnetwork/movie-cli-v3 [build failed]
+FAIL	github.com/alimtvnetwork/movie-cli-v3/cmd [build failed]
+# github.com/alimtvnetwork/movie-cli-v3/db [github.com/alimtvnetwork/movie-cli-v3/db.test]
+db/open_test.go:293:14: d.MarkMoveUndone undefined (type *DB has no field or method MarkMoveUndone)
+FAIL	github.com/alimtvnetwork/movie-cli-v3/db [build failed]
+?   	github.com/alimtvnetwork/movie-cli-v3/templates	[no test files]
+	github.com/alimtvnetwork/movie-cli-v3/cleaner		coverage: 0.0% of statements
+	github.com/alimtvnetwork/movie-cli-v3/updater		coverage: 0.0% of statements
+	github.com/alimtvnetwork/movie-cli-v3/errlog		coverage: 0.0% of statements
+	github.com/alimtvnetwork/movie-cli-v3/tmdb		coverage: 0.0% of statements
+	github.com/alimtvnetwork/movie-cli-v3/version		coverage: 0.0% of statements
+FAIL
+```
+
+### vulncheck
+
+```
+=== VULNERABILITY SCAN ===
+status: pass
+exit_code: 0
+
+govulncheck: loading packages: 
+There are errors with the provided package patterns:
+
+/home/runner/work/movie-cli-v4/movie-cli-v4/cmd/movie_move_helpers.go:73:22: cannot use bytes (variable of type int64) as float64 value in argument to db.HumanSize
+
+For details on package patterns, see https://pkg.go.dev/cmd/go#hdr-Package_lists_and_patterns.
+
+```
+
+---
+
+## AI Fix Instructions
+
+1. Read each `.log` file in `.github/logs/errors/`.
+2. Identify the root cause from the error output.
+3. Apply the fix to the relevant source file.
+4. Push — CI will re-run, clear the folder, and only write new failures.
+
+### Common Fix Patterns
+
+| Failure Type | Typical Fix |
+|-------------|-------------|
+| `go vet` | Fix the reported code issue (unused vars, wrong types, etc.) |
+| `golangci-lint` | Fix the linting violation or add a `//nolint` comment with justification |
+| `govulncheck` (3rd-party) | Run `go get <package>@latest && go mod tidy` |
+| `govulncheck` (stdlib) | Upgrade Go version in `go.mod` or wait for patch |
+| Test failure | Read the FAIL output, fix the logic or update the test assertion |
+| Build failure | Fix compilation errors shown in the build output |
