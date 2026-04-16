@@ -6,12 +6,25 @@ import (
 	"fmt"
 )
 
+// ErrorLogEntry holds all fields for an error log row.
+type ErrorLogEntry struct {
+	Timestamp  string
+	Level      string
+	Source     string
+	Function   string
+	Command    string
+	WorkDir    string
+	Message    string
+	StackTrace string
+}
+
 // InsertErrorLog writes an error entry to the ErrorLog table.
-func (d *DB) InsertErrorLog(timestamp, level, source, function, command, workDir, message, stackTrace string) error {
+func (d *DB) InsertErrorLog(entry ErrorLogEntry) error {
 	_, err := d.Exec(`
 		INSERT INTO ErrorLog (Timestamp, Level, Source, Function, Command, WorkDir, Message, StackTrace)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-		timestamp, level, source, function, command, workDir, message, stackTrace,
+		entry.Timestamp, entry.Level, entry.Source, entry.Function,
+		entry.Command, entry.WorkDir, entry.Message, entry.StackTrace,
 	)
 	if err != nil {
 		return apperror.Wrap("insert error log", err)

@@ -40,11 +40,21 @@ func (d *DB) ListMoveHistory(limit int) ([]MoveRecord, error) {
 	return records, rows.Err()
 }
 
+// MoveInput holds fields needed to insert a move history record.
+type MoveInput struct {
+	MediaID      int64
+	FileActionID int
+	FromPath     string
+	ToPath       string
+	OrigName     string
+	NewName      string
+}
+
 // InsertMoveHistory logs a move operation.
-func (d *DB) InsertMoveHistory(mediaID int64, fileActionId int, fromPath, toPath, origName, newName string) error {
+func (d *DB) InsertMoveHistory(input MoveInput) error {
 	_, err := d.Exec(`
 		INSERT INTO MoveHistory (MediaId, FileActionId, FromPath, ToPath, OriginalFileName, NewFileName)
-		VALUES (?, ?, ?, ?, ?, ?)`, mediaID, fileActionId, fromPath, toPath, origName, newName)
+		VALUES (?, ?, ?, ?, ?, ?)`, input.MediaID, input.FileActionID, input.FromPath, input.ToPath, input.OrigName, input.NewName)
 	return err
 }
 
@@ -133,13 +143,27 @@ func (d *DB) ListScanHistory(limit int) ([]ScanRecord, error) {
 	return records, rows.Err()
 }
 
+// ScanHistoryInput holds fields for a scan history record.
+type ScanHistoryInput struct {
+	ScanFolderID int
+	TotalFiles   int
+	Movies       int
+	TV           int
+	NewFiles     int
+	Removed      int
+	Updated      int
+	Errors       int
+	DurationMs   int
+}
+
 // InsertScanHistory logs a scan operation.
-func (d *DB) InsertScanHistory(scanFolderId int, total, movies, tv, newFiles, removed, updated, errors, durationMs int) error {
+func (d *DB) InsertScanHistory(input ScanHistoryInput) error {
 	_, err := d.Exec(`
 		INSERT INTO ScanHistory (ScanFolderId, TotalFiles, MoviesFound, TvFound,
 			NewFiles, RemovedFiles, UpdatedFiles, ErrorCount, DurationMs)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		scanFolderId, total, movies, tv, newFiles, removed, updated, errors, durationMs)
+		input.ScanFolderID, input.TotalFiles, input.Movies, input.TV,
+		input.NewFiles, input.Removed, input.Updated, input.Errors, input.DurationMs)
 	return err
 }
 
