@@ -128,9 +128,9 @@
 **Scope:** Created `db/constants.go` with `MediaType`, `OutputFormat`, `WatchStatus` typed constants + helpers (`TypeIcon`, `TypeLabel`, `TypeLabelPlural`, `JSONSubDir`). Replaced 100+ magic strings across 20 files.
 **Estimated effort:** Medium
 
-### Phase 2: Flatten Nested `if` (High priority)
-**Scope:** Refactor the top 10 worst nested-if functions using guard clauses and extracted helpers.
-**Target files:** `movie_scan_process.go`, `movie_info.go`, `movie_undo.go`, `movie_redo.go`, `movie_popout.go`
+### Phase 2: Flatten Nested `if` ✅ DONE (2026-04-16)
+**Result:** Refactored `movie_scan_process.go` — extracted 8 helpers (`isAlreadyScanned`, `logStatError`, `handleInsertError`, `trackScanAction`, `downloadThumbnail`, `logMkdirError`, `logPosterDownloadError`, `copyThumbnailToDataDir`, `incrementTypeCount`). Max nesting reduced from 7 to 1.
+**Target files:** `movie_scan_process.go` → `movie_scan_process_helpers.go`
 **Estimated effort:** Large
 
 ### Phase 3: Split Oversized Functions (Reduces complexity)
