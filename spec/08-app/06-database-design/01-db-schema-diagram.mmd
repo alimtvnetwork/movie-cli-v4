@@ -1,5 +1,5 @@
 %% 01-db-schema-diagram.mmd — Complete Database Schema (all tables + relationships)
-%% Version: 2.2.0 | Updated: 2026-04-16
+%% Version: 2.3.0 | Updated: 2026-04-16
 %% Follows: PascalCase naming, {TableName}Id PKs, Is/Has Boolean prefix
 %% Single database: mahin.db
 
@@ -137,7 +137,7 @@ erDiagram
         TEXT ToPath "NOT NULL"
         TEXT OriginalFileName "NULLABLE"
         TEXT NewFileName "NULLABLE"
-        BOOLEAN IsUndone "NOT NULL, DEFAULT 0"
+        BOOLEAN IsReverted "NOT NULL, DEFAULT 0"
         TEXT MovedAt "DEFAULT CURRENT_TIMESTAMP"
     }
 
@@ -148,7 +148,7 @@ erDiagram
         TEXT MediaSnapshot "NULLABLE, JSON"
         TEXT Detail "NULLABLE"
         TEXT BatchId "NULLABLE, groups related actions"
-        BOOLEAN IsUndone "NOT NULL, DEFAULT 0"
+        BOOLEAN IsReverted "NOT NULL, DEFAULT 0"
         TEXT CreatedAt "DEFAULT CURRENT_TIMESTAMP"
     }
 
