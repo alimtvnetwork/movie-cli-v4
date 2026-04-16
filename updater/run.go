@@ -8,6 +8,7 @@
 package updater
 
 import (
+	"github.com/alimtvnetwork/movie-cli-v4/apperror"
 	"fmt"
 	"os"
 	"os/exec"
@@ -21,7 +22,7 @@ const repoURL = "https://github.com/alimtvnetwork/movie-cli-v4.git"
 // Run executes the update command: resolves repo, creates handoff copy, launches worker.
 func Run() error {
 	if _, err := exec.LookPath("git"); err != nil {
-		return fmt.Errorf("git is not installed or not in PATH")
+		return apperror.New("git is not installed or not in PATH")
 	}
 
 	repoPath, bootstrapped, err := findRepoPath()
@@ -40,15 +41,15 @@ func Run() error {
 	// Check for local changes
 	dirty, err := gitOutput(repoPath, "status", "--porcelain")
 	if err != nil {
-		return fmt.Errorf("cannot check git status: %w", err)
+		return apperror.Wrap("cannot check git status", err)
 	}
 	if strings.TrimSpace(dirty) != "" {
-		return fmt.Errorf("repository has local changes; commit or stash them before update")
+		return apperror.New("repository has local changes; commit or stash them before update")
 	}
 
 	selfPath, err := os.Executable()
 	if err != nil {
-		return fmt.Errorf("cannot determine executable path: %w", err)
+		return apperror.Wrap("cannot determine executable path", err)
 	}
 
 	copyPath := createHandoffCopy(selfPath)

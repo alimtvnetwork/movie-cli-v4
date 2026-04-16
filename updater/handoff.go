@@ -1,6 +1,7 @@
 package updater
 
 import (
+	"github.com/alimtvnetwork/movie-cli-v4/apperror"
 	"errors"
 	"fmt"
 	"io"
@@ -44,7 +45,7 @@ func launchHandoff(copyPath, repoPath string) error {
 		if errors.As(err, &exitErr) {
 			os.Exit(exitErr.ExitCode())
 		}
-		return fmt.Errorf("update worker failed: %w", err)
+		return apperror.Wrap("update worker failed", err)
 	}
 	return nil
 }

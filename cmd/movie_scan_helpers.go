@@ -2,6 +2,7 @@
 package cmd
 
 import (
+	"github.com/alimtvnetwork/movie-cli-v4/apperror"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -33,7 +34,7 @@ func scanDirFromArgs(args []string, quiet bool) (string, error) {
 	}
 	dir, err := os.Getwd()
 	if err != nil {
-		return "", fmt.Errorf("cannot determine current directory: %v", err)
+		return "", apperror.Wrap("cannot determine current directory", err)
 	}
 	if !quiet {
 		fmt.Printf("📂 No folder specified — scanning current directory\n\n")
@@ -47,7 +48,7 @@ func expandTilde(path string) (string, error) {
 	}
 	home, err := os.UserHomeDir()
 	if err != nil {
-		return "", fmt.Errorf("cannot determine home directory: %v", err)
+		return "", apperror.Wrap("cannot determine home directory", err)
 	}
 	return filepath.Join(home, path[1:]), nil
 }
@@ -55,7 +56,7 @@ func expandTilde(path string) (string, error) {
 func validateDirPath(path string) (string, error) {
 	info, err := os.Stat(path)
 	if err != nil || !info.IsDir() {
-		return "", fmt.Errorf("folder not found: %s", path)
+		return "", apperror.New("folder not found: %s", path)
 	}
 	return path, nil
 }
@@ -63,13 +64,13 @@ func validateDirPath(path string) (string, error) {
 // createOutputDirs creates the .movie-output directory structure.
 func createOutputDirs(outputDir string) error {
 	if err := os.MkdirAll(outputDir, 0755); err != nil {
-		return fmt.Errorf("cannot create output directory: %v", err)
+		return apperror.Wrap("cannot create output directory", err)
 	}
 	if err := os.MkdirAll(filepath.Join(outputDir, "json", string(db.MediaTypeMovie)), 0755); err != nil {
-		return fmt.Errorf("cannot create json/%s dir: %v", db.MediaTypeMovie, err)
+		return apperror.Wrap("cannot create json/%s dir", db.MediaTypeMovie, err)
 	}
 	if err := os.MkdirAll(filepath.Join(outputDir, "json", string(db.MediaTypeTV)), 0755); err != nil {
-		return fmt.Errorf("cannot create json/%s dir: %v", db.MediaTypeTV, err)
+		return apperror.Wrap("cannot create json/%s dir", db.MediaTypeTV, err)
 	}
 	return nil
 }

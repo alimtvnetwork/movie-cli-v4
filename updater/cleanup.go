@@ -1,6 +1,7 @@
 package updater
 
 import (
+	"github.com/alimtvnetwork/movie-cli-v4/apperror"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -13,7 +14,7 @@ func Cleanup() (int, error) {
 
 	selfPath, err := os.Executable()
 	if err != nil {
-		return 0, fmt.Errorf("cannot determine executable path: %w", err)
+		return 0, apperror.Wrap("cannot determine executable path", err)
 	}
 	selfPath, _ = filepath.EvalSymlinks(selfPath)
 

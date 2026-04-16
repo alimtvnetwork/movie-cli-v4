@@ -2,6 +2,7 @@
 package db
 
 import (
+	"github.com/alimtvnetwork/movie-cli-v4/apperror"
 	"database/sql"
 	"fmt"
 )
@@ -74,7 +75,7 @@ func (d *DB) InsertAction(fileAction FileActionType, mediaId sql.NullInt64, snap
 		int(fileAction), mediaId, snapshot, detail, batchId,
 	)
 	if err != nil {
-		return 0, fmt.Errorf("insert action (%s): %w", fileAction, err)
+		return 0, apperror.Wrap("insert action (%s)", fileAction, err)
 	}
 	return res.LastInsertId()
 }
@@ -123,7 +124,7 @@ func (d *DB) ListActions(limit int) ([]ActionRecord, error) {
 		FROM ActionHistory
 		ORDER BY ActionHistoryId DESC LIMIT ?`, limit)
 	if err != nil {
-		return nil, fmt.Errorf("list actions: %w", err)
+		return nil, apperror.Wrap("list actions", err)
 	}
 	defer rows.Close()
 	return scanActionRows(rows)
@@ -140,7 +141,7 @@ func (d *DB) ListActionsByType(fileAction FileActionType, limit int) ([]ActionRe
 		WHERE FileActionId = ?
 		ORDER BY ActionHistoryId DESC LIMIT ?`, int(fileAction), limit)
 	if err != nil {
-		return nil, fmt.Errorf("list actions by type: %w", err)
+		return nil, apperror.Wrap("list actions by type", err)
 	}
 	defer rows.Close()
 	return scanActionRows(rows)
@@ -154,7 +155,7 @@ func (d *DB) ListActionsByBatch(batchId string) ([]ActionRecord, error) {
 		WHERE BatchId = ?
 		ORDER BY ActionHistoryId ASC`, batchId)
 	if err != nil {
-		return nil, fmt.Errorf("list actions by batch: %w", err)
+		return nil, apperror.Wrap("list actions by batch", err)
 	}
 	defer rows.Close()
 	return scanActionRows(rows)
@@ -164,7 +165,7 @@ func (d *DB) ListActionsByBatch(batchId string) ([]ActionRecord, error) {
 func (d *DB) MarkActionReverted(id int64) error {
 	_, err := d.Exec("UPDATE ActionHistory SET IsReverted = 1 WHERE ActionHistoryId = ?", id)
 	if err != nil {
-		return fmt.Errorf("mark action reverted %d: %w", id, err)
+		return apperror.Wrap("mark action reverted %d", id, err)
 	}
 	return nil
 }
@@ -173,7 +174,7 @@ func (d *DB) MarkActionReverted(id int64) error {
 func (d *DB) MarkActionRestored(id int64) error {
 	_, err := d.Exec("UPDATE ActionHistory SET IsReverted = 0 WHERE ActionHistoryId = ?", id)
 	if err != nil {
-		return fmt.Errorf("mark action restored %d: %w", id, err)
+		return apperror.Wrap("mark action restored %d", id, err)
 	}
 	return nil
 }
@@ -182,7 +183,7 @@ func (d *DB) MarkActionRestored(id int64) error {
 func (d *DB) MarkBatchReverted(batchId string) error {
 	_, err := d.Exec("UPDATE ActionHistory SET IsReverted = 1 WHERE BatchId = ?", batchId)
 	if err != nil {
-		return fmt.Errorf("mark batch reverted %s: %w", batchId, err)
+		return apperror.Wrap("mark batch reverted %s", batchId, err)
 	}
 	return nil
 }
@@ -191,7 +192,7 @@ func (d *DB) MarkBatchReverted(batchId string) error {
 func (d *DB) MarkBatchRestored(batchId string) error {
 	_, err := d.Exec("UPDATE ActionHistory SET IsReverted = 0 WHERE BatchId = ?", batchId)
 	if err != nil {
-		return fmt.Errorf("mark batch restored %s: %w", batchId, err)
+		return apperror.Wrap("mark batch restored %s", batchId, err)
 	}
 	return nil
 }
@@ -201,7 +202,7 @@ func scanActionRow(row *sql.Row) (*ActionRecord, error) {
 	err := row.Scan(&r.ActionHistoryId, &r.FileActionId, &r.MediaId, &r.MediaSnapshot,
 		&r.Detail, &r.BatchId, &r.IsReverted, &r.CreatedAt)
 	if err != nil {
-		return nil, fmt.Errorf("scan action row: %w", err)
+		return nil, apperror.Wrap("scan action row", err)
 	}
 	return r, nil
 }
@@ -212,12 +213,12 @@ func scanActionRows(rows *sql.Rows) ([]ActionRecord, error) {
 		var r ActionRecord
 		if err := rows.Scan(&r.ActionHistoryId, &r.FileActionId, &r.MediaId, &r.MediaSnapshot,
 			&r.Detail, &r.BatchId, &r.IsReverted, &r.CreatedAt); err != nil {
-			return nil, fmt.Errorf("scan action rows: %w", err)
+			return nil, apperror.Wrap("scan action rows", err)
 		}
 		records = append(records, r)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("action rows iteration: %w", err)
+		return nil, apperror.Wrap("action rows iteration", err)
 	}
 	return records, nil
 }

@@ -5,6 +5,7 @@
 package errlog
 
 import (
+	"github.com/alimtvnetwork/movie-cli-v4/apperror"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -60,13 +61,13 @@ func Init(outputDir, command string) error {
 
 	logDir := filepath.Join(outputDir, "logs")
 	if err := os.MkdirAll(logDir, 0755); err != nil {
-		return fmt.Errorf("cannot create log dir %s: %w", logDir, err)
+		return apperror.Wrap("cannot create log dir %s", logDir, err)
 	}
 
 	logPath := filepath.Join(logDir, "error.txt")
 	f, err := os.OpenFile(logPath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
 	if err != nil {
-		return fmt.Errorf("cannot open log file %s: %w", logPath, err)
+		return apperror.Wrap("cannot open log file %s", logPath, err)
 	}
 
 	wd, _ := os.Getwd()
