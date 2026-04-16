@@ -3,7 +3,8 @@ package db
 
 import (
 	"database/sql"
-	"fmt"
+
+	"github.com/alimtvnetwork/movie-cli-v3/apperror"
 )
 
 // FileActionType maps to the FileAction lookup table's FileActionId.

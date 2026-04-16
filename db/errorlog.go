@@ -1,7 +1,7 @@
 // errorlog.go — ErrorLog table helpers.
 package db
 
-import "fmt"
+import "github.com/alimtvnetwork/movie-cli-v3/apperror"
 
 // InsertErrorLog writes an error entry to the ErrorLog table.
 func (d *DB) InsertErrorLog(timestamp, level, source, function, command, workDir, message, stackTrace string) error {

@@ -1,7 +1,7 @@
 // duplicates.go — duplicate detection queries for the Media table.
 package db
 
-import "fmt"
+import "github.com/alimtvnetwork/movie-cli-v3/apperror"
 
 // DuplicateGroup represents a set of media records that share a duplicate key.
 type DuplicateGroup struct {

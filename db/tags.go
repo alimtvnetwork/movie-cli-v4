@@ -1,7 +1,7 @@
 // tags.go — Tag lookup + MediaTag join table helpers.
 package db
 
-import "fmt"
+import "github.com/alimtvnetwork/movie-cli-v3/apperror"
 
 // TagCount holds a tag name and its usage count.
 type TagCount struct {
