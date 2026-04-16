@@ -86,7 +86,6 @@ func runMovieSuggest(cmd *cobra.Command, args []string) {
 
 func suggestByType(database *db.DB, client *tmdb.Client, mediaType string, count int) {
 	typeName := db.TypeLabelPlural(mediaType)
-	}
 
 	fmt.Printf("🔍 Analyzing your %s library...\n\n", typeName)
 

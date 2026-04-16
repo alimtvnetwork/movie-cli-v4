@@ -209,7 +209,6 @@ func runInteractiveMove(database *db.DB, scanner *bufio.Scanner, sourceDir strin
 	for i, f := range files {
 		result := cleaner.Clean(f.Name())
 		typeIcon := db.TypeIcon(result.Type)
-		}
 		yearStr := ""
 		if result.Year > 0 {
 			yearStr = fmt.Sprintf("(%d)", result.Year)
