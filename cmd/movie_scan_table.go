@@ -36,6 +36,7 @@ func printScanTableHeader() {
 }
 
 // printScanTableRow prints a single row in the scan table.
+// SHARED: used by scan, scan_process, scan_process_helpers
 func printScanTableRow(row scanTableRow) {
 	fileName := truncate(row.FileName, 30)
 	title := truncate(row.CleanTitle, 30)
@@ -97,6 +98,7 @@ func buildDryRunTableRows(videoFiles []videoFile) (rows []scanTableRow, movies, 
 }
 
 // buildMediaTableRow creates a table row from a processed Media item.
+// SHARED: used by scan, scan_process, scan_process_helpers
 func buildMediaTableRow(index int, m *db.Media, status string) scanTableRow {
 	return scanTableRow{
 		Index:      index,

@@ -20,6 +20,7 @@ func showMediaDetail(database *db.DB, id int64) {
 	printMediaDetail(m)
 }
 
+// SHARED: used by info, info_json, info_table
 func printMediaDetail(m *db.Media) {
 	typeIcon := db.TypeIcon(m.Type) + " " + db.TypeLabel(m.Type)
 
@@ -106,6 +107,7 @@ func formatMoney(n int64) string {
 	return string(result)
 }
 
+// SHARED: used by ls, ls_table
 func capitalize(s string) string {
 	if len(s) == 0 {
 		return s

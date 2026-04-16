@@ -21,6 +21,7 @@ func (c tmdbCredentials) HasAuth() bool {
 }
 
 // resolveScanTMDbCredentials loads saved/env credentials or prompts before scan.
+// SHARED: used by rescan, scan
 func resolveScanTMDbCredentials(database *db.DB) tmdbCredentials {
 	creds := readTMDbCredentials(database)
 	if creds.HasAuth() {

@@ -35,6 +35,7 @@ import (
 )
 
 // expandHome replaces ~ with actual home directory.
+// SHARED: used by move, popout
 func expandHome(path, home string) string {
 	if strings.HasPrefix(path, "~") {
 		return filepath.Join(home, path[1:])
@@ -70,11 +71,13 @@ func listVideoFiles(dir string) ([]os.FileInfo, error) {
 
 // humanSize formats bytes into human-readable form.
 // Delegates to db.HumanSize to avoid duplication.
+// SHARED: used by move, popout
 func humanSize(bytes int64) string {
 	return db.HumanSize(bytes)
 }
 
 // promptSourceDirectory asks the user to pick a directory.
+// SHARED: used by move, popout
 func promptSourceDirectory(scanner interface {
 	Scan() bool
 	Text() string
@@ -200,6 +203,7 @@ func promptDestination(scanner interface {
 }
 
 // MoveFile moves a file from src to dst using os.Rename with cross-device fallback.
+// SHARED: used by move, popout, redo, rename, undo
 func MoveFile(src, dst string) error {
 	err := os.Rename(src, dst)
 	if err != nil && isCrossDeviceError(err) {
@@ -260,6 +264,7 @@ func crossDeviceMove(src, dst string) error {
 
 // saveHistoryLog writes a JSON move record to the history log.
 // All errors are logged via errlog — never swallowed.
+// SHARED: used by move, popout
 func saveHistoryLog(basePath, title string, year int, fromPath, toPath string) {
 	historyDir := filepath.Join(basePath, "json", "history")
 	if err := os.MkdirAll(historyDir, 0755); err != nil {

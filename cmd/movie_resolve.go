@@ -22,6 +22,7 @@ import (
 )
 
 // resolveMediaByQuery resolves a media item by numeric ID or fuzzy title query.
+// SHARED: used by info, search, ls, play, tag, watch
 func resolveMediaByQuery(database *db.DB, query string) (*db.Media, error) {
 	query = strings.TrimSpace(query)
 	if query == "" {

@@ -48,6 +48,7 @@ type scanSummaryItem struct {
 }
 
 // writeScanSummary writes .movie-output/summary.json with the full scan report.
+// SHARED: used by rescan, scan_helpers
 func writeScanSummary(outputDir, scanDir string, items []db.Media, total, movies, tv, skipped int) error {
 	// Build categories (genre → titles)
 	categories := make(map[string][]string)

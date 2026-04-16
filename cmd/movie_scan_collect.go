@@ -18,6 +18,7 @@ type videoFile struct {
 
 // collectVideoFiles finds video files in the given directory.
 // When recursive is true, it walks subdirectories up to maxDepth levels (0 = unlimited).
+// SHARED: used by scan, scan_watch
 func collectVideoFiles(scanDir string, recursive bool, maxDepth int) []videoFile {
 	var files []videoFile
 
