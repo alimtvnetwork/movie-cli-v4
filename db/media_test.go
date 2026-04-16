@@ -251,7 +251,7 @@ func TestMoveHistory(t *testing.T) {
 		t.Errorf("move record: from=%q to=%q", rec.FromPath, rec.ToPath)
 	}
 
-	if err := d.MarkMoveUndone(rec.ID); err != nil {
+	if err := d.MarkMoveReverted(rec.ID); err != nil {
 		t.Fatalf("undo: %v", err)
 	}
 
