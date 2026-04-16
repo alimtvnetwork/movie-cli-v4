@@ -46,9 +46,9 @@ func runMoviePlay(cmd *cobra.Command, args []string) {
 	if _, statErr := os.Stat(filePath); statErr != nil {
 		if os.IsNotExist(statErr) {
 			errlog.Error("File not found: %s", filePath)
-		} else {
-			errlog.Error("Cannot access file %s: %v", filePath, statErr)
+			return
 		}
+		errlog.Error("Cannot access file %s: %v", filePath, statErr)
 		return
 	}
 

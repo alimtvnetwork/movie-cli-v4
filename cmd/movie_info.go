@@ -158,10 +158,10 @@ func enrichInfoMedia(client *tmdb.Client, m *db.Media, selected tmdb.SearchResul
 	if selected.MediaType == string(db.MediaTypeTV) {
 		m.Type = string(db.MediaTypeTV)
 		fetchTVDetails(client, selected.ID, m)
-	} else {
-		m.Type = string(db.MediaTypeMovie)
-		fetchMovieDetails(client, selected.ID, m)
+		return
 	}
+	m.Type = string(db.MediaTypeMovie)
+	fetchMovieDetails(client, selected.ID, m)
 }
 
 func downloadInfoThumbnail(client *tmdb.Client, database *db.DB, m *db.Media, posterPath string) {

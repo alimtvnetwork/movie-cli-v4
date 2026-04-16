@@ -57,7 +57,8 @@ func runMovieDiscover(cmd *cobra.Command, args []string) {
 	genreName := ""
 	if len(args) > 0 {
 		genreName = args[0]
-	} else {
+	}
+	if genreName == "" {
 		genreName = promptGenre()
 		if genreName == "" {
 			return

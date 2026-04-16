@@ -85,10 +85,11 @@ func runMoviePopout(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	var rootDir string
+	rootDir := ""
 	if len(args) > 0 {
 		rootDir = expandHome(args[0], home)
-	} else {
+	}
+	if rootDir == "" {
 		rootDir = promptSourceDirectory(scanner, database, home)
 	}
 	if rootDir == "" {
@@ -164,7 +165,8 @@ func printPopoutResult(success, failed int, batchID string) {
 	fmt.Println()
 	if failed == 0 {
 		fmt.Printf("  ✅ All %d files popped out successfully!\n", success)
-	} else {
+	}
+	if failed > 0 {
 		fmt.Printf("  ⚠️  %d moved, %d failed\n", success, failed)
 	}
 	fmt.Printf("  📋 Batch: %s\n", batchID[:8])

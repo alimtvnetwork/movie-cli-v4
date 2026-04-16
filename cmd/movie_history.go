@@ -84,9 +84,9 @@ func runMovieHistory(cmd *cobra.Command, args []string) {
 	if len(records) == 0 {
 		if historyFormat == "json" {
 			fmt.Println("[]")
-		} else {
-			fmt.Println("📭 No history found.")
+			return
 		}
+		fmt.Println("📭 No history found.")
 		return
 	}
 

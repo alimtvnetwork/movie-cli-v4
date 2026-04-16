@@ -128,9 +128,9 @@ func executeBatchMoves(database *db.DB, moves []moveItem) {
 	fmt.Println()
 	if failed == 0 {
 		fmt.Printf("  ✅ All %d files moved successfully!\n", success)
-	} else {
-		fmt.Printf("  ⚠️  %d moved, %d failed\n", success, failed)
+		return
 	}
+	fmt.Printf("  ⚠️  %d moved, %d failed\n", success, failed)
 }
 
 // runInteractiveMove is the original single-file interactive flow.
@@ -253,27 +253,28 @@ func findOrCreateMoveMedia(database *db.DB, result cleaner.Result, fileInfo os.F
 		}
 	}
 
-	if mediaID == 0 {
-		m := &db.Media{
-			Title:            result.CleanTitle,
-			CleanTitle:       result.CleanTitle,
-			Year:             result.Year,
-			Type:             result.Type,
-			OriginalFileName: fileInfo.Name(),
-			OriginalFilePath: srcPath,
-			CurrentFilePath:  destPath,
-			FileExtension:    result.Extension,
-			FileSize:         fileInfo.Size(),
-		}
-		var insertErr error
-		mediaID, insertErr = database.InsertMedia(m)
-		if insertErr != nil {
-			errlog.Error("DB insert error: %v", insertErr)
-		}
-	} else {
+	if mediaID != 0 {
 		if updateErr := database.UpdateMediaPath(mediaID, destPath); updateErr != nil {
 			errlog.Error("DB update path error: %v", updateErr)
 		}
+		return mediaID
+	}
+
+	m := &db.Media{
+		Title:            result.CleanTitle,
+		CleanTitle:       result.CleanTitle,
+		Year:             result.Year,
+		Type:             result.Type,
+		OriginalFileName: fileInfo.Name(),
+		OriginalFilePath: srcPath,
+		CurrentFilePath:  destPath,
+		FileExtension:    result.Extension,
+		FileSize:         fileInfo.Size(),
+	}
+	var insertErr error
+	mediaID, insertErr = database.InsertMedia(m)
+	if insertErr != nil {
+		errlog.Error("DB insert error: %v", insertErr)
 	}
 	return mediaID
 }

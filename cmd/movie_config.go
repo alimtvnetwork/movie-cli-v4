@@ -58,9 +58,9 @@ func runMovieConfig(cmd *cobra.Command, args []string) {
 		val, getErr := database.GetConfig(args[1])
 		if getErr != nil {
 			fmt.Printf("  %s = (not set)\n", args[1])
-		} else {
-			fmt.Printf("  %s = %s\n", args[1], val)
+			return
 		}
+		fmt.Printf("  %s = %s\n", args[1], val)
 
 	case "set":
 		if len(args) < 3 {

@@ -90,9 +90,9 @@ func filterLogEntries(entries []map[string]string) []map[string]string {
 func printEmptyLogs() {
 	if logsFormat == "json" {
 		fmt.Println("[]")
-	} else {
-		fmt.Println("✅ No log entries found.")
+		return
 	}
+	fmt.Println("✅ No log entries found.")
 }
 
 func printLogsJSON(entries []map[string]string) {
