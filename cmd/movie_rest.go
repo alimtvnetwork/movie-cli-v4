@@ -231,11 +231,16 @@ func handleMediaByID(w http.ResponseWriter, r *http.Request, database *db.DB) {
 			http.Error(w, "invalid json", http.StatusBadRequest)
 			return
 		}
-		// For now, support updating basic fields via direct SQL
+		// Support updating basic fields; genre goes through M:N tables
 		for key, val := range updates {
 			switch key {
-			case "title", "genre", "director", "description", "tagline":
-				if _, execErr := database.Exec("UPDATE media SET "+key+" = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?", val, id); execErr != nil {
+			case "genre":
+				// Update genres via M:N join tables
+				if genreStr, ok := val.(string); ok {
+					database.ReplaceMediaGenres(id, genreStr)
+				}
+			case "title", "director", "description", "tagline":
+				if _, execErr := database.Exec("UPDATE Media SET "+key+" = ?, UpdatedAt = datetime('now') WHERE MediaId = ?", val, id); execErr != nil {
 					errlog.Error("DB update error for media %d field %s: %v", id, key, execErr)
 				}
 			}
