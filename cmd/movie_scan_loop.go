@@ -27,7 +27,7 @@ func runMainScanLoop(ctx *ScanContext, videoFiles []videoFile, cfg ScanLoopConfi
 		existingPaths[existingMedia[i].OriginalFilePath] = &existingMedia[i]
 	}
 
-	client := tmdb.NewClientWithToken(cfg.Client.APIKey, cfg.Client.AccessToken)
+	client := cfg.Client
 	for _, vf := range videoFiles {
 		if em, found := existingPaths[vf.FullPath]; found {
 			processExistingMedia(ctx, em, vf, client, database, ScanOutputOpts{UseTable: cfg.UseTable, UseJSON: cfg.UseJSON}, cfg.BatchID, cfg.HasTMDb)
