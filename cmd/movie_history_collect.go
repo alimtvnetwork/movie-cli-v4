@@ -118,6 +118,17 @@ func shouldIncludeActions() bool {
 	}
 }
 
+// detectMoveType returns "rename" if source and dest share a directory, otherwise "move".
+func detectMoveType(m db.MoveRecord) string {
+	if m.FromPath == "" || m.ToPath == "" {
+		return "move"
+	}
+	if dirOf(m.FromPath) == dirOf(m.ToPath) {
+		return "rename"
+	}
+	return "move"
+}
+
 func showBatchHistory(database *db.DB) {
 	actions, err := database.ListActionsByBatch(historyBatch)
 	if err != nil {
