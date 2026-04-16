@@ -1,4 +1,4 @@
-// schema.go — Full PascalCase schema creation, seed data, and views.
+// schema.go — Full PascalCase schema creation and views.
 package db
 
 import (
@@ -21,7 +21,6 @@ func (d *DB) migrateSchema() error {
 	if err := d.createViews(); err != nil {
 		return fmt.Errorf("create views: %w", err)
 	}
-	// Always stamp current app version
 	if err := d.SetConfig("AppVersion", version.Short()); err != nil {
 		return fmt.Errorf("stamp app version: %w", err)
 	}
@@ -269,8 +268,12 @@ func (d *DB) createTables() error {
 		StackTrace TEXT,
 		CreatedAt  TEXT NOT NULL DEFAULT (datetime('now'))
 	);
+	`) + d.createIndexes()
+	return err
+}
 
-	-- Indexes
+func (d *DB) createIndexes() error {
+	_, err := d.Exec(`
 	CREATE INDEX IF NOT EXISTS IdxCast_TmdbPersonId       ON Cast(TmdbPersonId);
 	CREATE INDEX IF NOT EXISTS IdxCollection_TmdbCollectionId ON Collection(TmdbCollectionId);
 	CREATE INDEX IF NOT EXISTS IdxScanHistory_ScanFolderId ON ScanHistory(ScanFolderId);
@@ -305,38 +308,4 @@ func (d *DB) createTables() error {
 	CREATE INDEX IF NOT EXISTS IdxEpisode_IsWatched        ON Episode(IsWatched);
 	`)
 	return err
-}
-
-// seedFileActions inserts the 14 predefined FileAction types.
-func (d *DB) seedFileActions() error {
-	actions := []string{
-		"Move", "Rename", "Delete", "Popout", "Restore",
-		"ScanAdd", "ScanRemove", "RescanUpdate",
-		"TagAdd", "TagRemove",
-		"WatchlistAdd", "WatchlistRemove", "WatchlistStatusChange",
-		"ConfigChange",
-	}
-	for _, name := range actions {
-		if _, err := d.Exec("INSERT OR IGNORE INTO FileAction (Name) VALUES (?)", name); err != nil {
-			return fmt.Errorf("seed FileAction %q: %w", name, err)
-		}
-	}
-	return nil
-}
-
-// seedDefaultConfig inserts default config values if not already present.
-func (d *DB) seedDefaultConfig() error {
-	defaults := [][2]string{
-		{"MoviesDir", "~/Movies"},
-		{"TvDir", "~/TVShows"},
-		{"ArchiveDir", "~/Archive"},
-		{"ScanDir", "~/Downloads"},
-		{"PageSize", "20"},
-	}
-	for _, kv := range defaults {
-		if _, err := d.Exec("INSERT OR IGNORE INTO Config (ConfigKey, ConfigValue) VALUES (?, ?)", kv[0], kv[1]); err != nil {
-			return fmt.Errorf("seed config %q: %w", kv[0], err)
-		}
-	}
-	return nil
 }

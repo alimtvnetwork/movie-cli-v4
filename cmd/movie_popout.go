@@ -16,13 +16,11 @@ import (
 	"crypto/rand"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/spf13/cobra"
 
 	"github.com/alimtvnetwork/movie-cli-v4/cleaner"
-	"github.com/alimtvnetwork/movie-cli-v4/db"
 	"github.com/alimtvnetwork/movie-cli-v4/errlog"
 )
 
@@ -55,12 +53,12 @@ func init() {
 
 // popoutItem represents a video file discovered in a subfolder.
 type popoutItem struct {
-	srcPath   string         // full path to the nested file
-	destPath  string         // target path at root level
-	cleanName string         // cleaned filename
-	result    cleaner.Result // parsed metadata
-	size      int64          // file size in bytes
-	subDir    string         // immediate subfolder name (for cleanup tracking)
+	srcPath   string
+	destPath  string
+	cleanName string
+	result    cleaner.Result
+	size      int64
+	subDir    string
 }
 
 // popoutFolderInfo holds info about a subfolder for the cleanup phase.
@@ -72,49 +70,84 @@ type popoutFolderInfo struct {
 }
 
 func runMoviePopout(cmd *cobra.Command, args []string) {
-	database, openErr := db.Open()
+	database, openErr := openDB()
 	if openErr != nil {
-		errlog.Error("Database error: %v", openErr)
 		return
 	}
 	defer database.Close()
 
 	scanner := bufio.NewScanner(os.Stdin)
-	home, homeErr := os.UserHomeDir()
-	if homeErr != nil {
-		errlog.Error("Cannot determine home directory: %v", homeErr)
+	rootDir := resolvePopoutDir(args, scanner, database)
+	if rootDir == "" {
 		return
 	}
 
-	// Determine target directory
-	rootDir := ""
-	if len(args) > 0 {
-		rootDir = expandHome(args[0], home)
-	} else {
-		rootDir = promptSourceDirectory(scanner, database, home)
-		if rootDir == "" {
-			return
-		}
-	}
-
-	info, statErr := os.Stat(rootDir)
-	if statErr != nil {
-		errlog.Error("Cannot access directory: %v", statErr)
-		return
-	}
-	if !info.IsDir() {
-		errlog.Error("Path is not a directory: %s", rootDir)
-		return
-	}
-
-	// Discovery phase: find nested video files
 	items := discoverNestedVideos(rootDir, popoutDepth)
 	if len(items) == 0 {
 		fmt.Printf("📭 No nested video files found in: %s\n", rootDir)
 		return
 	}
 
-	// Display preview
+	printPopoutPreview(items)
+
+	if popoutDryRun {
+		fmt.Println("\n  (dry-run mode — no files moved)")
+		return
+	}
+
+	if !confirmPopout(scanner, len(items)) {
+		return
+	}
+
+	batchID := generateBatchID()
+	success, failed := executePopout(database, items, batchID)
+	printPopoutResult(success, failed, batchID)
+
+	if success > 0 {
+		fmt.Println()
+		offerFolderCleanup(scanner, database, rootDir, items, batchID)
+	}
+}
+
+func openDB() (*dbWrapper, error) {
+	database, err := dbOpen()
+	if err != nil {
+		errlog.Error("Database error: %v", err)
+		return nil, err
+	}
+	return database, nil
+}
+
+func resolvePopoutDir(args []string, scanner *bufio.Scanner, database *dbWrapper) string {
+	home, homeErr := os.UserHomeDir()
+	if homeErr != nil {
+		errlog.Error("Cannot determine home directory: %v", homeErr)
+		return ""
+	}
+
+	var rootDir string
+	if len(args) > 0 {
+		rootDir = expandHome(args[0], home)
+	} else {
+		rootDir = promptSourceDirectory(scanner, database.DB, home)
+	}
+	if rootDir == "" {
+		return ""
+	}
+
+	info, statErr := os.Stat(rootDir)
+	if statErr != nil {
+		errlog.Error("Cannot access directory: %v", statErr)
+		return ""
+	}
+	if !info.IsDir() {
+		errlog.Error("Path is not a directory: %s", rootDir)
+		return ""
+	}
+	return rootDir
+}
+
+func printPopoutPreview(items []popoutItem) {
 	fmt.Printf("\n🎬 Movie Popout — %d files found in subfolders\n\n", len(items))
 	fmt.Println("  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 	for i, item := range items {
@@ -127,27 +160,22 @@ func runMoviePopout(cmd *cobra.Command, args []string) {
 		fmt.Printf("     To:   %s\n", item.destPath)
 	}
 	fmt.Println("\n  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+}
 
-	if popoutDryRun {
-		fmt.Println("\n  (dry-run mode — no files moved)")
-		return
-	}
-
-	// Confirmation
-	fmt.Printf("\n  Pop out all %d files? [y/N]: ", len(items))
+func confirmPopout(scanner *bufio.Scanner, count int) bool {
+	fmt.Printf("\n  Pop out all %d files? [y/N]: ", count)
 	if !scanner.Scan() {
-		return
+		return false
 	}
 	confirm := strings.ToLower(strings.TrimSpace(scanner.Text()))
 	if confirm != "y" && confirm != "yes" {
 		fmt.Println("  ❌ Popout canceled.")
-		return
+		return false
 	}
+	return true
+}
 
-	// Execute moves
-	batchID := generateBatchID()
-	success, failed := executePopout(database, items, batchID)
-
+func printPopoutResult(success, failed int, batchID string) {
 	fmt.Println()
 	if failed == 0 {
 		fmt.Printf("  ✅ All %d files popped out successfully!\n", success)
@@ -155,12 +183,6 @@ func runMoviePopout(cmd *cobra.Command, args []string) {
 		fmt.Printf("  ⚠️  %d moved, %d failed\n", success, failed)
 	}
 	fmt.Printf("  📋 Batch: %s\n", batchID[:8])
-
-	// Folder cleanup phase
-	if success > 0 {
-		fmt.Println()
-		offerFolderCleanup(scanner, database, rootDir, items, batchID)
-	}
 }
 
 // discoverNestedVideos walks the directory tree and finds video files that are

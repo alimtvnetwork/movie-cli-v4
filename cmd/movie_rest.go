@@ -4,21 +4,16 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
-	"html/template"
 	"net/http"
-	
 	"os/exec"
 	"path/filepath"
 	"runtime"
-	"strconv"
 	"strings"
-	"time"
 
 	"github.com/spf13/cobra"
 
 	"github.com/alimtvnetwork/movie-cli-v4/db"
 	"github.com/alimtvnetwork/movie-cli-v4/errlog"
-	"github.com/alimtvnetwork/movie-cli-v4/templates"
 )
 
 var restPort int
@@ -68,11 +63,26 @@ func runMovieRest(cmd *cobra.Command, args []string) {
 	}
 	defer database.Close()
 
-	// Initialize error logger — writes to data/logs/error.txt + DB
+	initRestLogger(database)
+	mux := buildRESTMux(database)
+
+	printRESTBanner()
+
+	if restOpen || scanRest {
+		go openBrowser(fmt.Sprintf("http://localhost:%d", restPort))
+	}
+
+	handler := logMiddleware(mux)
+	addr := fmt.Sprintf(":%d", restPort)
+	if srvErr := http.ListenAndServe(addr, handler); srvErr != nil {
+		errlog.Error("Server error: %v", srvErr)
+	}
+}
+
+func initRestLogger(database *db.DB) {
 	if initErr := errlog.Init(database.BasePath, "rest"); initErr != nil {
 		errlog.Warn("Could not init error logger: %v", initErr)
 	} else {
-		defer errlog.Close()
 		errlog.SetDBWriter(func(e errlog.Entry) {
 			if dbErr := database.InsertErrorLog(
 				e.Timestamp, string(e.Level), e.Source, e.Function,
@@ -82,14 +92,14 @@ func runMovieRest(cmd *cobra.Command, args []string) {
 			}
 		})
 	}
+}
 
+func buildRESTMux(database *db.DB) *http.ServeMux {
 	mux := http.NewServeMux()
 
-	// Serve thumbnails from the data directory
 	thumbDir := filepath.Join(database.BasePath, "thumbnails")
 	mux.Handle("/thumbnails/", http.StripPrefix("/thumbnails/", http.FileServer(http.Dir(thumbDir))))
 
-	// Serve live HTML report at root
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/" && !strings.HasPrefix(r.URL.Path, "/thumbnails/") {
 			http.NotFound(w, r)
@@ -100,7 +110,6 @@ func runMovieRest(cmd *cobra.Command, args []string) {
 		}
 	})
 
-	// Routes with sub-paths must be registered before the parent catch-all.
 	mux.HandleFunc("/api/tags", corsWrap(func(w http.ResponseWriter, r *http.Request) {
 		handleTags(w, r, database)
 	}))
@@ -129,7 +138,10 @@ func runMovieRest(cmd *cobra.Command, args []string) {
 		handleLogs(w, r, database)
 	}))
 
-	addr := fmt.Sprintf(":%d", restPort)
+	return mux
+}
+
+func printRESTBanner() {
 	url := fmt.Sprintf("http://localhost:%d", restPort)
 	fmt.Printf("\n🚀 Movie CLI REST server running on %s\n", url)
 	fmt.Println("   Press Ctrl+C to stop")
@@ -147,15 +159,6 @@ func runMovieRest(cmd *cobra.Command, args []string) {
 	fmt.Printf("     DELETE /api/tags\n")
 	fmt.Printf("     GET    /api/stats\n")
 	fmt.Printf("     GET    /api/logs?level=ERROR&limit=50\n\n")
-
-	if restOpen || scanRest {
-		go openBrowser(url)
-	}
-
-	handler := logMiddleware(mux)
-	if srvErr := http.ListenAndServe(addr, handler); srvErr != nil {
-		errlog.Error("Server error: %v", srvErr)
-	}
 }
 
 // openBrowser opens the given URL in the default browser.
@@ -174,7 +177,7 @@ func openBrowser(url string) {
 	}
 }
 
-// corsWrap adds CORS headers so the HTML report can call the API from file:// or another port.
+// corsWrap adds CORS headers so the HTML report can call the API.
 func corsWrap(handler http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
@@ -201,58 +204,6 @@ func handleListMedia(w http.ResponseWriter, r *http.Request, database *db.DB) {
 	writeJSON(w, items)
 }
 
-func handleMediaByID(w http.ResponseWriter, r *http.Request, database *db.DB) {
-	idStr := strings.TrimPrefix(r.URL.Path, "/api/media/")
-	id, err := strconv.ParseInt(idStr, 10, 64)
-	if err != nil {
-		http.Error(w, "invalid id", http.StatusBadRequest)
-		return
-	}
-
-	switch r.Method {
-	case http.MethodGet:
-		m, getErr := database.GetMediaByID(id)
-		if getErr != nil {
-			http.Error(w, "not found", http.StatusNotFound)
-			return
-		}
-		writeJSON(w, m)
-
-	case http.MethodDelete:
-		if delErr := database.DeleteMedia(id); delErr != nil {
-			http.Error(w, delErr.Error(), http.StatusInternalServerError)
-			return
-		}
-		writeJSON(w, map[string]string{"status": "deleted"})
-
-	case http.MethodPatch:
-		var updates map[string]interface{}
-		if decErr := json.NewDecoder(r.Body).Decode(&updates); decErr != nil {
-			http.Error(w, "invalid json", http.StatusBadRequest)
-			return
-		}
-		// Support updating basic fields; genre goes through M:N tables
-		for key, val := range updates {
-			switch key {
-			case "genre":
-				// Update genres via M:N join tables
-				if genreStr, ok := val.(string); ok {
-					database.ReplaceMediaGenres(id, genreStr)
-				}
-			case "title", "director", "description", "tagline":
-				if _, execErr := database.Exec("UPDATE Media SET "+key+" = ?, UpdatedAt = datetime('now') WHERE MediaId = ?", val, id); execErr != nil {
-					errlog.Error("DB update error for media %d field %s: %v", id, key, execErr)
-				}
-			}
-		}
-		m, _ := database.GetMediaByID(id)
-		writeJSON(w, m)
-
-	default:
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-	}
-}
-
 func handleStats(w http.ResponseWriter, r *http.Request, database *db.DB) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -269,98 +220,4 @@ func writeJSON(w http.ResponseWriter, data interface{}) {
 	if err := json.NewEncoder(w).Encode(data); err != nil {
 		errlog.Error("JSON encode error: %v", err)
 	}
-}
-
-// serveHTMLReport renders the HTML report template with live data from the database.
-func serveHTMLReport(w http.ResponseWriter, database *db.DB, port int) {
-	tmplBytes, err := templates.FS.ReadFile("report.html")
-	if err != nil {
-		http.Error(w, "template not found", http.StatusInternalServerError)
-		return
-	}
-
-	tmpl, parseErr := template.New("report").Parse(string(tmplBytes))
-	if parseErr != nil {
-		http.Error(w, "template parse error", http.StatusInternalServerError)
-		return
-	}
-
-	items, listErr := database.ListMedia(0, 10000)
-	if listErr != nil {
-		http.Error(w, "database error", http.StatusInternalServerError)
-		return
-	}
-
-	movies, tv := 0, 0
-	reportItems := make([]htmlReportItem, 0, len(items))
-	for _, m := range items {
-		if m.Type == string(db.MediaTypeMovie) {
-			movies++
-		} else {
-			tv++
-		}
-		var genres []string
-		if m.Genre != "" {
-			for _, g := range splitGenres(m.Genre) {
-				genres = append(genres, g)
-			}
-		}
-		thumbSrc := ""
-		if m.ThumbnailPath != "" {
-			// For REST-served HTML, use /thumbnails/ route
-			thumbSrc = "/thumbnails/" + filepath.Base(m.ThumbnailPath)
-		}
-		reportItems = append(reportItems, htmlReportItem{
-			ID:            m.ID,
-			Title:         m.Title,
-			Year:          m.Year,
-			Type:          m.Type,
-			Genre:         m.Genre,
-			GenreList:     genres,
-			Director:      m.Director,
-			CastList:      m.CastList,
-			Description:   m.Description,
-			Tagline:       m.Tagline,
-			TmdbRating:    m.TmdbRating,
-			ImdbRating:    m.ImdbRating,
-			Runtime:       m.Runtime,
-			ThumbnailPath: thumbSrc,
-		})
-	}
-
-	data := htmlReportData{
-		ScannedFolder: "Library",
-		ScannedAt:     "Live",
-		TotalFiles:    len(items),
-		Movies:        movies,
-		TVShows:       tv,
-		Port:          port,
-		Items:         reportItems,
-	}
-
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	if err := tmpl.Execute(w, data); err != nil {
-		errlog.Error("template render error: %v", err)
-	}
-}
-
-// logMiddleware wraps an http.Handler and logs every request via errlog.
-func logMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		start := time.Now()
-		lrw := &loggingResponseWriter{ResponseWriter: w, statusCode: http.StatusOK}
-		next.ServeHTTP(lrw, r)
-		duration := time.Since(start)
-		errlog.Info("[REST] %s %s → %d (%s)", r.Method, r.URL.Path, lrw.statusCode, duration)
-	})
-}
-
-type loggingResponseWriter struct {
-	http.ResponseWriter
-	statusCode int
-}
-
-func (lrw *loggingResponseWriter) WriteHeader(code int) {
-	lrw.statusCode = code
-	lrw.ResponseWriter.WriteHeader(code)
 }

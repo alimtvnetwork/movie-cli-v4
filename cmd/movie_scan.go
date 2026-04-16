@@ -32,24 +32,13 @@ Use --recursive (-r) to scan all subdirectories recursively.
 Use --depth to limit how many levels deep the recursive scan goes.
 Use --dry-run to preview what would be scanned without writing anything.
 
-Results are saved to .movie-output/ inside the scanned folder, including:
-  - summary.json   — full scan report with categories, counts, and per-item metadata
-  - json/movie/    — individual JSON files per movie
-  - json/tv/       — individual JSON files per TV show
-
 Examples:
   movie scan                      Scan current directory (top-level)
   movie scan ~/Movies             Scan specific folder
   movie scan -r                   Scan current directory recursively
-  movie scan ~/Movies --recursive
-  movie scan -r --depth 2         Scan only 2 levels deep
   movie scan --dry-run            Preview files without writing to DB
   movie scan --format table       Show results as a formatted table
-  movie scan --format json        Output results as JSON to stdout
-  movie scan --rest               Scan and start REST server + open browser
-  movie scan --rest --port 9000   Scan and start REST on custom port
-  movie scan --watch              Scan then watch for new files
-  movie scan --watch --interval 5 Watch with 5-second polling`,
+  movie scan --rest               Scan and start REST server + open browser`,
 	Args: cobra.MaximumNArgs(1),
 	Run:  runMovieScan,
 }
@@ -99,21 +88,7 @@ func runMovieScan(cmd *cobra.Command, args []string) {
 		}
 	}
 
-	// Initialize error logger — writes to .movie-output/logs/error.txt + DB
-	if initErr := errlog.Init(outputDir, "scan"); initErr != nil {
-		fmt.Fprintf(os.Stderr, "⚠️  Could not init error logger: %v\n", initErr)
-	} else {
-		defer errlog.Close()
-		// Wire DB writer
-		errlog.SetDBWriter(func(e errlog.Entry) {
-			if dbErr := database.InsertErrorLog(
-				e.Timestamp, string(e.Level), e.Source, e.Function,
-				e.Command, e.WorkDir, e.Message, e.StackTrace,
-			); dbErr != nil {
-				fmt.Fprintf(os.Stderr, "⚠️  Could not write error to DB: %v\n", dbErr)
-			}
-		})
-	}
+	initScanLogger(database, outputDir)
 
 	if !useJSON {
 		printScanHeader(scanDir, outputDir)
@@ -127,15 +102,13 @@ func runMovieScan(cmd *cobra.Command, args []string) {
 	useTMDb := creds.HasAuth()
 
 	ctx := &ScanContext{
-		Database: database,
-		Client:   client,
-		HasTMDb:  useTMDb,
+		Database:  database,
+		Client:    client,
+		HasTMDb:   useTMDb,
 		OutputDir: outputDir,
-		UseTable: useTable || useJSON,
-		BatchID:  generateBatchID(),
+		UseTable:  useTable || useJSON,
+		BatchID:   generateBatchID(),
 	}
-
-	scanBatchID := ctx.BatchID
 
 	if useTable {
 		printScanTableHeader()
@@ -145,129 +118,14 @@ func runMovieScan(cmd *cobra.Command, args []string) {
 		runDryRunScan(videoFiles, useJSON, useTable,
 			&jsonItems, &ctx.TotalFiles, &ctx.MovieCount, &ctx.TVCount)
 	} else {
-		// ── Re-scan: detect removed files and clean up ──
-		existingMedia, _ := database.GetMediaByScanDir(scanDir)
-		diskPaths := make(map[string]bool, len(videoFiles))
-		for _, vf := range videoFiles {
-			diskPaths[vf.FullPath] = true
-		}
-		var removeIDs []int64
-		var removeMedia []*db.Media
-		for i := range existingMedia {
-			if !diskPaths[existingMedia[i].OriginalFilePath] {
-				removeIDs = append(removeIDs, existingMedia[i].ID)
-				removeMedia = append(removeMedia, &existingMedia[i])
-			}
-		}
-		if len(removeIDs) > 0 {
-			// Snapshot each removed entry before deletion for undo support
-			for _, rm := range removeMedia {
-				snapshot, snapErr := db.MediaToJSON(rm)
-				if snapErr != nil {
-					errlog.Warn("Could not snapshot media %d for undo: %v", rm.ID, snapErr)
-					continue
-				}
-				detail := fmt.Sprintf("Scan removed: %s (%s)", rm.CleanTitle, rm.OriginalFilePath)
-				database.InsertActionSimple(db.FileActionScanRemove, rm.ID, snapshot, detail, scanBatchID)
-			}
-
-			delCount, delErr := database.DeleteMediaByIDs(removeIDs)
-			if delErr != nil {
-				errlog.Warn("Could not remove %d stale entries: %v", len(removeIDs), delErr)
-			} else {
-				removed = delCount
-				if !useJSON && !useTable {
-					fmt.Printf("  🗑️  Removed %d entries (files no longer on disk)\n\n", removed)
-				}
-			}
-		}
-
-		// ── Build set of existing DB paths for skip detection ──
-		existingPaths := make(map[string]*db.Media, len(existingMedia))
-		for i := range existingMedia {
-			existingPaths[existingMedia[i].OriginalFilePath] = &existingMedia[i]
-		}
-
-		// ── Process files: skip existing, enrich new ──
-		client := tmdb.NewClientWithToken(creds.APIKey, creds.Token)
-		for _, vf := range videoFiles {
-		if em, found := existingPaths[vf.FullPath]; found {
-				// Already in DB — auto-rescan if missing metadata
-			ctx.TotalFiles++
-				status := "existing"
-				if useTMDb && mediaNeedsRescan(em) {
-					preSnapshot, _ := db.MediaToJSON(em)
-					if rescanMediaEntry(database, client, em) {
-						status = "rescanned"
-						detail := fmt.Sprintf("Rescan updated: %s", em.CleanTitle)
-						database.InsertActionSimple(db.FileActionRescanUpdate, em.ID, preSnapshot, detail, scanBatchID)
-						if !useTable && !useJSON {
-							typeIcon := db.TypeIcon(em.Type)
-							fmt.Printf("\n  %d. %s %s", ctx.TotalFiles, typeIcon, em.CleanTitle)
-							if em.Year > 0 {
-								fmt.Printf(" (%d)", em.Year)
-							}
-							fmt.Printf(" [%s]\n", em.Type)
-							fmt.Printf("     🔄 Rescanned — ⭐%.1f %s\n", em.TmdbRating, em.Genre)
-						}
-					} else {
-						ctx.Skipped++
-						if !useTable && !useJSON {
-							fmt.Printf("\n  %d. %s", ctx.TotalFiles, em.CleanTitle)
-							fmt.Printf(" [%s]\n", em.Type)
-							fmt.Println("     ⚠️  Rescan failed — kept existing data")
-						}
-					}
-				} else {
-					ctx.Skipped++
-					if useTable {
-						printScanTableRow(buildMediaTableRow(ctx.TotalFiles, em, "existing"))
-					} else if !useJSON {
-						typeIcon := db.TypeIcon(em.Type)
-						fmt.Printf("\n  %d. %s %s", ctx.TotalFiles, typeIcon, em.CleanTitle)
-						if em.Year > 0 {
-							fmt.Printf(" (%d)", em.Year)
-						}
-						fmt.Printf(" [%s]\n", em.Type)
-						fmt.Println("     ⏩ Already in database")
-					}
-				}
-				ctx.ScannedItems = append(ctx.ScannedItems, *em)
-				if em.Type == string(db.MediaTypeMovie) {
-					ctx.MovieCount++
-				} else {
-					ctx.TVCount++
-				}
-				if useTable && status != "existing" {
-					printScanTableRow(buildMediaTableRow(ctx.TotalFiles, em, status))
-				}
-				continue
-			}
-			processVideoFile(vf, ctx)
-		}
-		if useJSON {
-			for i := range ctx.ScannedItems {
-				status := "existing"
-				if existingPaths[ctx.ScannedItems[i].OriginalFilePath] == nil {
-					status = "new"
-				}
-				jsonItems = append(jsonItems, buildMediaJSONItem(&ctx.ScannedItems[i], status))
-			}
-		}
+		removed = runMainScanLoop(ctx, videoFiles, creds, scanDir, ctx.BatchID, useJSON, useTable, useTMDb, &jsonItems)
 	}
 
 	if useTable {
 		printScanTableFooter()
 	}
 
-	if !scanDryRun {
-		folderId, folderErr := database.UpsertScanFolder(scanDir)
-		if folderErr != nil {
-			fmt.Fprintf(os.Stderr, "⚠️  Could not register scan folder: %v\n", folderErr)
-		} else if histErr := database.InsertScanHistory(int(folderId), ctx.TotalFiles, ctx.MovieCount, ctx.TVCount, 0, 0, 0, 0, 0); histErr != nil {
-			fmt.Fprintf(os.Stderr, "⚠️  Could not log scan history: %v\n", histErr)
-		}
-	}
+	registerScanHistory(database, scanDir, ctx)
 
 	if useJSON {
 		printScanJSON(scanDir, jsonItems, ctx.TotalFiles, ctx.MovieCount, ctx.TVCount, ctx.Skipped)
@@ -275,20 +133,49 @@ func runMovieScan(cmd *cobra.Command, args []string) {
 		printScanFooter(scanDir, outputDir, ctx.ScannedItems, ctx.TotalFiles, ctx.MovieCount, ctx.TVCount, ctx.Skipped, removed)
 	}
 
-	// Start REST server if --rest was specified
+	startPostScanServices(cmd, scanDir, outputDir, database, creds)
+}
+
+func initScanLogger(database *db.DB, outputDir string) {
+	if initErr := errlog.Init(outputDir, "scan"); initErr != nil {
+		fmt.Fprintf(os.Stderr, "⚠️  Could not init error logger: %v\n", initErr)
+	} else {
+		errlog.SetDBWriter(func(e errlog.Entry) {
+			if dbErr := database.InsertErrorLog(
+				e.Timestamp, string(e.Level), e.Source, e.Function,
+				e.Command, e.WorkDir, e.Message, e.StackTrace,
+			); dbErr != nil {
+				fmt.Fprintf(os.Stderr, "⚠️  Could not write error to DB: %v\n", dbErr)
+			}
+		})
+	}
+}
+
+func registerScanHistory(database *db.DB, scanDir string, ctx *ScanContext) {
+	if scanDryRun {
+		return
+	}
+	folderId, folderErr := database.UpsertScanFolder(scanDir)
+	if folderErr != nil {
+		fmt.Fprintf(os.Stderr, "⚠️  Could not register scan folder: %v\n", folderErr)
+		return
+	}
+	if histErr := database.InsertScanHistory(int(folderId), ctx.TotalFiles, ctx.MovieCount, ctx.TVCount, 0, 0, 0, 0, 0); histErr != nil {
+		fmt.Fprintf(os.Stderr, "⚠️  Could not log scan history: %v\n", histErr)
+	}
+}
+
+func startPostScanServices(cmd *cobra.Command, scanDir, outputDir string, database *db.DB, creds *tmdb.Client) {
 	if scanRest && !scanDryRun {
 		restPort = scanRestPort
 		fmt.Printf("\n🚀 Starting REST server on http://localhost:%d ...\n", restPort)
 		go openBrowser(fmt.Sprintf("http://localhost:%d", restPort))
 		if scanWatch {
-			// Run watch in background, REST in foreground
 			go runWatchLoop(scanDir, outputDir, database, creds)
 		}
 		runMovieRest(cmd, []string{})
 		return
 	}
-
-	// Start watch mode if --watch was specified (without --rest)
 	if scanWatch && !scanDryRun {
 		runWatchLoop(scanDir, outputDir, database, creds)
 	}
