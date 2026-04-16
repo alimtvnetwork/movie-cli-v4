@@ -190,7 +190,8 @@ func discoverByGenres(client *tmdb.Client, sorted []genreCount, mediaType, typeN
 			continue
 		}
 		fmt.Printf("  🎭 Discovering %s %s...\n", g.name, typeName)
-		suggestions = appendUniqueResults(client.DiscoverByGenre(mediaType, genreID, 1), suggestions, existingIDs, count)
+		results, discErr := client.DiscoverByGenre(mediaType, genreID, 1)
+		suggestions = appendUniqueResults(results, discErr, suggestions, existingIDs, count)
 	}
 	return suggestions
 }
