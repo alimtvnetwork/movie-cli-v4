@@ -143,10 +143,11 @@ func initScanLogger(database *db.DB, outputDir string) {
 		return
 	}
 	errlog.SetDBWriter(func(e errlog.Entry) {
-		dbErr := database.InsertErrorLog(
-			e.Timestamp, string(e.Level), e.Source, e.Function,
-			e.Command, e.WorkDir, e.Message, e.StackTrace,
-		)
+		dbErr := database.InsertErrorLog(db.ErrorLogEntry{
+			Timestamp: e.Timestamp, Level: string(e.Level), Source: e.Source,
+			Function: e.Function, Command: e.Command, WorkDir: e.WorkDir,
+			Message: e.Message, StackTrace: e.StackTrace,
+		})
 		if dbErr != nil {
 			fmt.Fprintf(os.Stderr, "⚠️  Could not write error to DB: %v\n", dbErr)
 		}
@@ -162,7 +163,10 @@ func registerScanHistory(database *db.DB, scanDir string, ctx *ScanContext) {
 		fmt.Fprintf(os.Stderr, "⚠️  Could not register scan folder: %v\n", folderErr)
 		return
 	}
-	if histErr := database.InsertScanHistory(int(folderId), ctx.TotalFiles, ctx.MovieCount, ctx.TVCount, 0, 0, 0, 0, 0); histErr != nil {
+	if histErr := database.InsertScanHistory(db.ScanHistoryInput{
+		ScanFolderID: int(folderId), TotalFiles: ctx.TotalFiles,
+		Movies: ctx.MovieCount, TV: ctx.TVCount,
+	}); histErr != nil {
 		fmt.Fprintf(os.Stderr, "⚠️  Could not log scan history: %v\n", histErr)
 	}
 }

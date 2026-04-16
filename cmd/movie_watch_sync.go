@@ -151,7 +151,9 @@ func runWatchImport(cmd *cobra.Command, args []string) {
 			continue
 		}
 
-		if err := database.AddToWatchlist(e.TmdbID, e.Title, e.Year, e.Type, 0); err != nil {
+		if err := database.AddToWatchlist(db.WatchlistInput{
+			TmdbID: e.TmdbID, Title: e.Title, Year: e.Year, MediaType: e.Type,
+		}); err != nil {
 			errlog.Warn("Import error for '%s': %v", e.Title, err)
 			continue
 		}

@@ -104,8 +104,11 @@ func trackPopoutMove(database *db.DB, item popoutItem, batchID string) int64 {
 	}
 
 	if mediaID > 0 {
-		if err := database.InsertMoveHistory(mediaID, int(db.FileActionPopout), item.srcPath, item.destPath,
-			filepath.Base(item.srcPath), item.cleanName); err != nil {
+		if err := database.InsertMoveHistory(db.MoveInput{
+			MediaID: mediaID, FileActionID: int(db.FileActionPopout),
+			FromPath: item.srcPath, ToPath: item.destPath,
+			OrigName: filepath.Base(item.srcPath), NewName: item.cleanName,
+		}); err != nil {
 			errlog.Warn("DB move history error: %v", err)
 		}
 	}

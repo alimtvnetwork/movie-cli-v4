@@ -82,7 +82,10 @@ func runWatchAdd(cmd *cobra.Command, args []string) {
 	}
 	defer database.Close()
 
-	if err := database.AddToWatchlist(media.TmdbID, media.Title, media.Year, media.Type, media.ID); err != nil {
+	if err := database.AddToWatchlist(db.WatchlistInput{
+		TmdbID: media.TmdbID, Title: media.Title, Year: media.Year,
+		MediaType: media.Type, MediaID: media.ID,
+	}); err != nil {
 		errlog.Error("Error: %v", err)
 		return
 	}

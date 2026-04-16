@@ -136,8 +136,11 @@ func executeSingleRename(database *db.DB, item *renameItem) bool {
 	if updateErr := database.UpdateMediaPath(item.media.ID, item.newPath); updateErr != nil {
 		errlog.Warn("DB update path error: %v", updateErr)
 	}
-	if histErr := database.InsertMoveHistory(item.media.ID, int(db.FileActionRename),
-		item.oldPath, item.newPath, item.oldName, item.newName); histErr != nil {
+	if histErr := database.InsertMoveHistory(db.MoveInput{
+		MediaID: item.media.ID, FileActionID: int(db.FileActionRename),
+		FromPath: item.oldPath, ToPath: item.newPath,
+		OrigName: item.oldName, NewName: item.newName,
+	}); histErr != nil {
 		errlog.Warn("DB history error: %v", histErr)
 	}
 	fmt.Printf("  ✅ %s → %s\n", item.oldName, item.newName)
