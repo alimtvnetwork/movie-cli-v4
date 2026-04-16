@@ -2,13 +2,13 @@
 package cmd
 
 import (
-	"fmt"
 	"html/template"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
+	"github.com/alimtvnetwork/movie-cli-v3/apperror"
 	"github.com/alimtvnetwork/movie-cli-v3/db"
 	"github.com/alimtvnetwork/movie-cli-v3/templates"
 )
@@ -49,12 +49,12 @@ type htmlReportItem struct {
 func writeHTMLReport(outputDir, scanDir string, items []db.Media, total, movies, tv, skipped int) error {
 	tmplBytes, err := templates.FS.ReadFile("report.html")
 	if err != nil {
-		return fmt.Errorf("read template: %w", err)
+		return apperror.Wrap("read template", err)
 	}
 
 	tmpl, err := template.New("report").Parse(string(tmplBytes))
 	if err != nil {
-		return fmt.Errorf("parse template: %w", err)
+		return apperror.Wrap("parse template", err)
 	}
 
 	reportItems := make([]htmlReportItem, 0, len(items))
@@ -100,12 +100,12 @@ func writeHTMLReport(outputDir, scanDir string, items []db.Media, total, movies,
 	outPath := filepath.Join(outputDir, "report.html")
 	f, err := os.Create(outPath)
 	if err != nil {
-		return fmt.Errorf("create file: %w", err)
+		return apperror.Wrap("create file", err)
 	}
 	defer f.Close()
 
 	if err := tmpl.Execute(f, data); err != nil {
-		return fmt.Errorf("execute template: %w", err)
+		return apperror.Wrap("execute template", err)
 	}
 
 	return nil

@@ -3,6 +3,8 @@ package tmdb
 
 import (
 	"encoding/json"
+
+	"github.com/alimtvnetwork/movie-cli-v3/apperror"
 	"errors"
 	"fmt"
 	"io"
@@ -103,7 +105,7 @@ func (c *Client) get(reqURL string, target interface{}) error {
 	for attempt := 0; attempt <= MaxRetries; attempt++ {
 		req, reqErr := http.NewRequest(http.MethodGet, reqURL, nil)
 		if reqErr != nil {
-			lastErr = fmt.Errorf("build request failed: %w", reqErr)
+			lastErr = apperror.Wrap("build request failed", reqErr)
 			backoff(attempt)
 			continue
 		}
@@ -121,7 +123,7 @@ func (c *Client) get(reqURL string, target interface{}) error {
 			if IsNetworkError(err) {
 				return fmt.Errorf("%w: %v", ErrNetworkError, err)
 			}
-			lastErr = fmt.Errorf("HTTP request failed: %w", err)
+			lastErr = apperror.Wrap("HTTP request failed", err)
 			backoff(attempt)
 			continue
 		}
@@ -161,14 +163,14 @@ func (c *Client) get(reqURL string, target interface{}) error {
 		case resp.StatusCode != 200:
 			body, _ := io.ReadAll(resp.Body)
 			resp.Body.Close()
-			return fmt.Errorf("TMDb API error %d: %s", resp.StatusCode, string(body))
+			return apperror.Newf("TMDb API error %d: %s", resp.StatusCode, string(body))
 		}
 
 		err = json.NewDecoder(resp.Body).Decode(target)
 		resp.Body.Close()
 		return err
 	}
-	return fmt.Errorf("TMDb request failed after %d retries: %w", MaxRetries, lastErr)
+	return apperror.Wrapf(lastErr, "TMDb request failed after %d retries", MaxRetries)
 }
 
 // backoff sleeps for exponential duration: 1s, 2s, 4s, ...

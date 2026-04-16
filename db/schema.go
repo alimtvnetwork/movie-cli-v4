@@ -2,28 +2,27 @@
 package db
 
 import (
-	"fmt"
-
+	"github.com/alimtvnetwork/movie-cli-v3/apperror"
 	"github.com/alimtvnetwork/movie-cli-v3/version"
 )
 
 // migrateSchema creates all tables, indexes, views, and seed data.
 func (d *DB) migrateSchema() error {
 	if err := d.createTables(); err != nil {
-		return fmt.Errorf("create tables: %w", err)
+		return apperror.Wrap("create tables", err)
 	}
 	if err := d.seedFileActions(); err != nil {
-		return fmt.Errorf("seed FileAction: %w", err)
+		return apperror.Wrap("seed FileAction", err)
 	}
 	if err := d.seedDefaultConfig(); err != nil {
-		return fmt.Errorf("seed Config: %w", err)
+		return apperror.Wrap("seed Config", err)
 	}
 	if err := d.createViews(); err != nil {
-		return fmt.Errorf("create views: %w", err)
+		return apperror.Wrap("create views", err)
 	}
 	// Always stamp current app version
 	if err := d.SetConfig("AppVersion", version.Short()); err != nil {
-		return fmt.Errorf("stamp app version: %w", err)
+		return apperror.Wrap("stamp app version", err)
 	}
 	return nil
 }
@@ -261,7 +260,7 @@ func (d *DB) seedFileActions() error {
 	}
 	for _, name := range actions {
 		if _, err := d.Exec("INSERT OR IGNORE INTO FileAction (Name) VALUES (?)", name); err != nil {
-			return fmt.Errorf("seed FileAction %q: %w", name, err)
+			return apperror.Wrapf(err, "seed FileAction %q", name)
 		}
 	}
 	return nil
@@ -278,7 +277,7 @@ func (d *DB) seedDefaultConfig() error {
 	}
 	for _, kv := range defaults {
 		if _, err := d.Exec("INSERT OR IGNORE INTO Config (ConfigKey, ConfigValue) VALUES (?, ?)", kv[0], kv[1]); err != nil {
-			return fmt.Errorf("seed config %q: %w", kv[0], err)
+			return apperror.Wrapf(err, "seed config %q", kv[0])
 		}
 	}
 	return nil

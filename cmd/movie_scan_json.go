@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/alimtvnetwork/movie-cli-v3/cleaner"
+	"github.com/alimtvnetwork/movie-cli-v3/apperror"
 	"github.com/alimtvnetwork/movie-cli-v3/db"
 )
 
@@ -57,7 +58,7 @@ func writeMediaJSON(basePath string, m *db.Media) error {
 
 	dir := filepath.Join(basePath, "json", subDir)
 	if err := os.MkdirAll(dir, 0755); err != nil {
-		return fmt.Errorf("cannot create json dir: %w", err)
+		return apperror.Wrap("cannot create json dir", err)
 	}
 
 	data := scanMediaJSON{
@@ -86,14 +87,14 @@ func writeMediaJSON(basePath string, m *db.Media) error {
 	jsonPath := filepath.Join(dir, slug+".json")
 	f, err := os.Create(jsonPath)
 	if err != nil {
-		return fmt.Errorf("cannot create json file: %w", err)
+		return apperror.Wrap("cannot create json file", err)
 	}
 	defer f.Close()
 
 	enc := json.NewEncoder(f)
 	enc.SetIndent("", "  ")
 	if err := enc.Encode(data); err != nil {
-		return fmt.Errorf("cannot write json: %w", err)
+		return apperror.Wrap("cannot write json", err)
 	}
 
 	fmt.Printf("     📝 JSON metadata saved: %s\n", jsonPath)

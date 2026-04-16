@@ -151,10 +151,10 @@
 **Result:** Created `ScanContext` struct, refactored `processVideoFile` from 10 params to 2 (vf + ctx). Updated all callers.
 **Estimated effort:** Medium
 
-### Phase 7: Error Handling — `apperror` Migration
-**Scope:** Replace 93 `fmt.Errorf`/`errors.New` calls with `apperror.Wrap()`/`apperror.New()`.
-**Prerequisite:** Must have `apperror` package in project.
-**Estimated effort:** Large (deferred — requires `apperror` package first)
+### Phase 7: Error Handling — `apperror` Migration ✅ DONE (2026-04-16)
+**Result:** Created `apperror` package (Wrap, Wrapf, New, Newf). Migrated 98 of 104 `fmt.Errorf` calls across 21 files. 6 intentional exceptions: 4 sentinel error wraps in `tmdb/` (need `%w` for `errors.Is()`) and 2 in `errlog/` (foundational package, circular dep risk).
+**Prerequisite:** ✅ `apperror` package created.
+**Estimated effort:** Large
 
 ---
 
