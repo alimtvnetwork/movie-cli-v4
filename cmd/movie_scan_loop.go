@@ -112,19 +112,21 @@ func processExistingMedia(ctx *ScanContext, em *db.Media, vf videoFile, client *
 func handleRescan(ctx *ScanContext, em *db.Media, client *tmdb.Client,
 	database *db.DB, scanBatchID string, useTable, useJSON bool) {
 	preSnapshot, _ := db.MediaToJSON(em)
-	if rescanMediaEntry(database, client, em) {
-		detail := fmt.Sprintf("Rescan updated: %s", em.CleanTitle)
-		database.InsertActionSimple(db.FileActionRescanUpdate, em.ID, preSnapshot, detail, scanBatchID)
-		if useTable {
-			printScanTableRow(buildMediaTableRow(ctx.TotalFiles, em, "rescanned"))
-		} else if !useJSON {
-			printRescanSuccess(ctx.TotalFiles, em)
-		}
-	} else {
+	if !rescanMediaEntry(database, client, em) {
 		ctx.Skipped++
 		if !useTable && !useJSON {
 			printRescanFailed(ctx.TotalFiles, em)
 		}
+		return
+	}
+	detail := fmt.Sprintf("Rescan updated: %s", em.CleanTitle)
+	database.InsertActionSimple(db.FileActionRescanUpdate, em.ID, preSnapshot, detail, scanBatchID)
+	if useTable {
+		printScanTableRow(buildMediaTableRow(ctx.TotalFiles, em, "rescanned"))
+		return
+	}
+	if !useJSON {
+		printRescanSuccess(ctx.TotalFiles, em)
 	}
 }
 

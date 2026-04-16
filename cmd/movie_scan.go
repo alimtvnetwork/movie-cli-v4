@@ -140,16 +140,17 @@ func runMovieScan(cmd *cobra.Command, args []string) {
 func initScanLogger(database *db.DB, outputDir string) {
 	if initErr := errlog.Init(outputDir, "scan"); initErr != nil {
 		fmt.Fprintf(os.Stderr, "⚠️  Could not init error logger: %v\n", initErr)
-	} else {
-		errlog.SetDBWriter(func(e errlog.Entry) {
-			if dbErr := database.InsertErrorLog(
-				e.Timestamp, string(e.Level), e.Source, e.Function,
-				e.Command, e.WorkDir, e.Message, e.StackTrace,
-			); dbErr != nil {
-				fmt.Fprintf(os.Stderr, "⚠️  Could not write error to DB: %v\n", dbErr)
-			}
-		})
+		return
 	}
+	errlog.SetDBWriter(func(e errlog.Entry) {
+		dbErr := database.InsertErrorLog(
+			e.Timestamp, string(e.Level), e.Source, e.Function,
+			e.Command, e.WorkDir, e.Message, e.StackTrace,
+		)
+		if dbErr != nil {
+			fmt.Fprintf(os.Stderr, "⚠️  Could not write error to DB: %v\n", dbErr)
+		}
+	})
 }
 
 func registerScanHistory(database *db.DB, scanDir string, ctx *ScanContext) {
@@ -167,19 +168,26 @@ func registerScanHistory(database *db.DB, scanDir string, ctx *ScanContext) {
 }
 
 func startPostScanServices(cmd *cobra.Command, scanDir, outputDir string, database *db.DB, creds *tmdb.Client) {
-	if scanRest && !scanDryRun {
-		restPort = scanRestPort
-		fmt.Printf("\n🚀 Starting REST server on http://localhost:%d ...\n", restPort)
-		go openBrowser(fmt.Sprintf("http://localhost:%d", restPort))
-		if scanWatch {
-			go runWatchLoop(scanDir, outputDir, database, creds)
-		}
-		runMovieRest(cmd, []string{})
+	if scanDryRun {
 		return
 	}
-	if scanWatch && !scanDryRun {
+	if scanRest {
+		startRestWithOptionalWatch(cmd, scanDir, outputDir, database, creds)
+		return
+	}
+	if scanWatch {
 		runWatchLoop(scanDir, outputDir, database, creds)
 	}
+}
+
+func startRestWithOptionalWatch(cmd *cobra.Command, scanDir, outputDir string, database *db.DB, creds *tmdb.Client) {
+	restPort = scanRestPort
+	fmt.Printf("\n🚀 Starting REST server on http://localhost:%d ...\n", restPort)
+	go openBrowser(fmt.Sprintf("http://localhost:%d", restPort))
+	if scanWatch {
+		go runWatchLoop(scanDir, outputDir, database, creds)
+	}
+	runMovieRest(cmd, []string{})
 }
 
 // runDryRunScan handles the dry-run scanning loop for all output formats.

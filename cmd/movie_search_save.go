@@ -36,13 +36,8 @@ func saveSearchResult(client *tmdb.Client, database *db.DB, selected tmdb.Search
 		Genre:       tmdb.GenreNames(selected.GenreIDs),
 	}
 
-	if selected.MediaType == string(db.MediaTypeMovie) || selected.MediaType == "" {
-		m.Type = string(db.MediaTypeMovie)
-		fetchMovieDetails(client, selected.ID, m)
-	} else if selected.MediaType == string(db.MediaTypeTV) {
-		m.Type = string(db.MediaTypeTV)
-		fetchTVDetails(client, selected.ID, m)
-	}
+	m.Type = resolveMediaType(selected.MediaType)
+	fetchDetailsByType(client, selected.ID, m)
 
 	downloadSearchThumbnail(client, database, selected, m)
 	persistMedia(database, m)
@@ -68,10 +63,27 @@ func downloadSearchThumbnail(client *tmdb.Client, database *db.DB, selected tmdb
 	thumbPath := filepath.Join(thumbDir, slug+".jpg")
 	if dlErr := client.DownloadPoster(selected.PosterPath, thumbPath); dlErr != nil {
 		errlog.Warn("Thumbnail download failed: %v", dlErr)
-	} else {
-		m.ThumbnailPath = thumbPath
-		fmt.Println("🖼️  Thumbnail saved")
+		return
 	}
+	m.ThumbnailPath = thumbPath
+	fmt.Println("🖼️  Thumbnail saved")
+}
+
+// resolveMediaType maps a TMDb media type string to the internal type.
+func resolveMediaType(mediaType string) string {
+	if mediaType == string(db.MediaTypeTV) {
+		return string(db.MediaTypeTV)
+	}
+	return string(db.MediaTypeMovie)
+}
+
+// fetchDetailsByType fetches full details based on media type.
+func fetchDetailsByType(client *tmdb.Client, tmdbID int, m *db.Media) {
+	if m.Type == string(db.MediaTypeTV) {
+		fetchTVDetails(client, tmdbID, m)
+		return
+	}
+	fetchMovieDetails(client, tmdbID, m)
 }
 
 // persistMedia inserts (or updates) the media record and links genres.
@@ -83,28 +95,43 @@ func persistMedia(database *db.DB, m *db.Media) {
 
 	mediaID, insertErr := database.InsertMedia(m)
 	if insertErr != nil {
-		if m.TmdbID > 0 {
-			updateErr := database.UpdateMediaByTmdbID(m)
-			if updateErr == nil {
-				fmt.Printf("🔄 Updated existing record for: %s\n", m.Title)
-				// Replace genre links on update
-				if m.Genre != "" {
-					existing, _ := database.GetMediaByTmdbID(m.TmdbID)
-					if existing != nil {
-						database.ReplaceMediaGenres(existing.ID, m.Genre)
-					}
-				}
-			} else {
-				errlog.Error("DB error: %v", updateErr)
-			}
-		} else {
-			errlog.Error("DB error: %v", insertErr)
-		}
-	} else if mediaID > 0 && m.Genre != "" {
-		// Link genres via M:N tables on insert
-		if linkErr := database.LinkMediaGenres(mediaID, m.Genre); linkErr != nil {
-			errlog.Warn("Genre link error: %v", linkErr)
-		}
+		persistMediaUpdate(database, m, insertErr)
+		return
+	}
+	linkGenresOnInsert(database, mediaID, m.Genre)
+}
+
+func persistMediaUpdate(database *db.DB, m *db.Media, originalErr error) {
+	if m.TmdbID <= 0 {
+		errlog.Error("DB error: %v", originalErr)
+		return
+	}
+	updateErr := database.UpdateMediaByTmdbID(m)
+	if updateErr != nil {
+		errlog.Error("DB error: %v", updateErr)
+		return
+	}
+	fmt.Printf("🔄 Updated existing record for: %s\n", m.Title)
+	replaceGenresOnUpdate(database, m.TmdbID, m.Genre)
+}
+
+func replaceGenresOnUpdate(database *db.DB, tmdbID int, genre string) {
+	if genre == "" {
+		return
+	}
+	existing, _ := database.GetMediaByTmdbID(tmdbID)
+	if existing == nil {
+		return
+	}
+	database.ReplaceMediaGenres(existing.ID, genre)
+}
+
+func linkGenresOnInsert(database *db.DB, mediaID int64, genre string) {
+	if mediaID <= 0 || genre == "" {
+		return
+	}
+	if linkErr := database.LinkMediaGenres(mediaID, genre); linkErr != nil {
+		errlog.Warn("Genre link error: %v", linkErr)
 	}
 }
 

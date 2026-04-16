@@ -139,13 +139,7 @@ func runWatchLs(cmd *cobra.Command, args []string) {
 	}
 	defer database.Close()
 
-	status := string(db.WatchStatusToWatch)
-	if watchListAll {
-		status = ""
-	} else if watchListWatched {
-		status = string(db.WatchStatusWatched)
-	}
-
+	status := watchListStatus()
 	entries, err := database.ListWatchlist(status)
 	if err != nil {
 		errlog.Error("Error: %v", err)
@@ -153,36 +147,51 @@ func runWatchLs(cmd *cobra.Command, args []string) {
 	}
 
 	if len(entries) == 0 {
-		label := string(db.WatchStatusToWatch)
-		if watchListAll {
-			label = ""
-		} else if watchListWatched {
-			label = string(db.WatchStatusWatched)
-		}
-		if label != "" {
-			fmt.Printf("📋 No %s entries in your watchlist.\n", label)
-		} else {
-			fmt.Println("📋 Your watchlist is empty.")
-		}
+		printEmptyWatchlist(status)
 		return
 	}
 
-	header := "📋 Watchlist — To Watch"
-	if watchListAll {
-		header = "📋 Watchlist — All"
-	} else if watchListWatched {
-		header = "📋 Watchlist — Watched"
-	}
-	fmt.Println(header)
+	fmt.Println(watchListHeader())
 	fmt.Println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-
 	for i, e := range entries {
-		icon := "🔲"
-		if e.Status == "watched" {
-			icon = "✅"
-		}
+		icon := watchStatusIcon(e.Status)
 		fmt.Printf("  %d. %s %s (%d) [%s]\n", i+1, icon, e.Title, e.Year, e.Type)
 	}
+}
+
+func watchListStatus() string {
+	if watchListAll {
+		return ""
+	}
+	if watchListWatched {
+		return string(db.WatchStatusWatched)
+	}
+	return string(db.WatchStatusToWatch)
+}
+
+func watchListHeader() string {
+	if watchListAll {
+		return "📋 Watchlist — All"
+	}
+	if watchListWatched {
+		return "📋 Watchlist — Watched"
+	}
+	return "📋 Watchlist — To Watch"
+}
+
+func printEmptyWatchlist(status string) {
+	if status == "" {
+		fmt.Println("📋 Your watchlist is empty.")
+		return
+	}
+	fmt.Printf("📋 No %s entries in your watchlist.\n", status)
+}
+
+func watchStatusIcon(status string) string {
+	if status == "watched" {
+		return "✅"
+	}
+	return "🔲"
 }
 
 // openAndGetMedia is a helper to open the DB and fetch media by ID arg.

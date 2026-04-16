@@ -46,38 +46,44 @@ func rescanMediaEntry(database *db.DB, client *tmdb.Client, m *db.Media) bool {
 	m.Description = best.Overview
 	m.Genre = tmdb.GenreNames(best.GenreIDs)
 
-	if best.MediaType == string(db.MediaTypeMovie) || best.MediaType == "" {
-		m.Type = string(db.MediaTypeMovie)
-		fetchMovieDetails(client, best.ID, m)
-	} else if best.MediaType == string(db.MediaTypeTV) {
-		m.Type = string(db.MediaTypeTV)
-		fetchTVDetails(client, best.ID, m)
+	m.Type = resolveMediaType(best.MediaType)
+	fetchDetailsByType(client, best.ID, m)
+
+	if !updateRescanEntry(database, m) {
+		return false
 	}
 
-	// Update in DB
-	if m.TmdbID > 0 {
-		if updateErr := database.UpdateMediaByTmdbID(m); updateErr != nil {
-			if updateErr2 := database.UpdateMediaByID(m); updateErr2 != nil {
-				errlog.Error("rescan DB update failed for '%s': %v", m.Title, updateErr2)
-				return false
-			}
-		}
-	} else {
-		if updateErr := database.UpdateMediaByID(m); updateErr != nil {
-			errlog.Error("rescan DB update failed for '%s': %v", m.Title, updateErr)
-			return false
-		}
-	}
-
-	// Link genres and directors via M:N tables
-	if m.ID > 0 {
-		if m.Genre != "" {
-			database.ReplaceMediaGenres(m.ID, m.Genre)
-		}
-		if m.Director != "" {
-			database.ReplaceMediaDirectors(m.ID, m.Director)
-		}
-	}
-
+	linkRescanRelations(database, m)
 	return true
+}
+
+// updateRescanEntry persists updated media to DB, trying TmdbID first.
+func updateRescanEntry(database *db.DB, m *db.Media) bool {
+	if m.TmdbID <= 0 {
+		return updateByID(database, m)
+	}
+	if err := database.UpdateMediaByTmdbID(m); err == nil {
+		return true
+	}
+	return updateByID(database, m)
+}
+
+func updateByID(database *db.DB, m *db.Media) bool {
+	if err := database.UpdateMediaByID(m); err != nil {
+		errlog.Error("rescan DB update failed for '%s': %v", m.Title, err)
+		return false
+	}
+	return true
+}
+
+func linkRescanRelations(database *db.DB, m *db.Media) {
+	if m.ID <= 0 {
+		return
+	}
+	if m.Genre != "" {
+		database.ReplaceMediaGenres(m.ID, m.Genre)
+	}
+	if m.Director != "" {
+		database.ReplaceMediaDirectors(m.ID, m.Director)
+	}
 }

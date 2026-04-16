@@ -36,31 +36,41 @@ func regenerateReports(database *db.DB) {
 	}
 
 	for scanDir, items := range dirMap {
-		outputDir := filepath.Join(scanDir, ".movie-output")
-		if _, statErr := os.Stat(outputDir); os.IsNotExist(statErr) {
-			continue // no .movie-output folder — skip
-		}
+		regenerateReportForDir(scanDir, items)
+	}
+}
 
-		movieCount, tvCount := 0, 0
-		for _, m := range items {
-			if m.Type == string(db.MediaTypeMovie) {
-				movieCount++
-			} else {
-				tvCount++
-			}
-		}
+func regenerateReportForDir(scanDir string, items []db.Media) {
+	outputDir := filepath.Join(scanDir, ".movie-output")
+	if _, statErr := os.Stat(outputDir); os.IsNotExist(statErr) {
+		return
+	}
 
-		if summaryErr := writeScanSummary(outputDir, scanDir, items,
-			len(items), movieCount, tvCount, 0); summaryErr != nil {
-			errlog.Warn("Could not regenerate summary.json for %s: %v", scanDir, summaryErr)
-		}
-		if htmlErr := writeHTMLReport(outputDir, scanDir, items,
-			len(items), movieCount, tvCount, 0); htmlErr != nil {
-			errlog.Warn("Could not regenerate report.html for %s: %v", scanDir, htmlErr)
+	movieCount, tvCount := countByType(items)
+
+	if summaryErr := writeScanSummary(outputDir, scanDir, items,
+		len(items), movieCount, tvCount, 0); summaryErr != nil {
+		errlog.Warn("Could not regenerate summary.json for %s: %v", scanDir, summaryErr)
+	}
+	htmlErr := writeHTMLReport(outputDir, scanDir, items,
+		len(items), movieCount, tvCount, 0)
+	if htmlErr != nil {
+		errlog.Warn("Could not regenerate report.html for %s: %v", scanDir, htmlErr)
+		return
+	}
+	fmt.Printf("🌐 Regenerated report.html → %s\n", filepath.Join(outputDir, "report.html"))
+}
+
+func countByType(items []db.Media) (int, int) {
+	movieCount, tvCount := 0, 0
+	for _, m := range items {
+		if m.Type == string(db.MediaTypeMovie) {
+			movieCount++
 		} else {
-			fmt.Printf("🌐 Regenerated report.html → %s\n", filepath.Join(outputDir, "report.html"))
+			tvCount++
 		}
 	}
+	return movieCount, tvCount
 }
 
 var rescanAll bool
@@ -103,12 +113,10 @@ func runMovieRescan(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	// Initialize error logger
 	if initErr := errlog.Init("", "rescan"); initErr != nil {
 		fmt.Fprintf(os.Stderr, "⚠️  Could not init error logger: %v\n", initErr)
-	} else {
-		defer errlog.Close()
 	}
+	defer errlog.Close()
 
 	// Fetch entries to rescan
 	var entries []db.Media
