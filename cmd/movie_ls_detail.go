@@ -21,8 +21,16 @@ func showMediaDetail(database *db.DB, id int64) {
 }
 
 func printMediaDetail(m *db.Media) {
-	typeIcon := db.TypeIcon(m.Type) + " " + db.TypeLabel(m.Type)
+	printDetailHeader(m)
+	printDetailIdentifiers(m)
+	printDetailRatings(m)
+	printDetailCredits(m)
+	printDetailFinancials(m)
+	printDetailDescription(m)
+	printDetailFiles(m)
+}
 
+func printDetailHeader(m *db.Media) {
 	fmt.Println("╔══════════════════════════════════════════════════════════╗")
 	fmt.Printf("║  %s\n", m.Title)
 	if m.Tagline != "" {
@@ -30,19 +38,23 @@ func printMediaDetail(m *db.Media) {
 	}
 	fmt.Println("╚══════════════════════════════════════════════════════════╝")
 	fmt.Println()
+}
 
+func printDetailIdentifiers(m *db.Media) {
+	typeIcon := db.TypeIcon(m.Type) + " " + db.TypeLabel(m.Type)
 	if m.Year > 0 {
 		fmt.Printf("  📅 Year:        %d\n", m.Year)
 	}
 	fmt.Printf("  🏷️  Type:        %s\n", typeIcon)
-
 	if m.Runtime > 0 {
 		fmt.Printf("  ⏱️  Runtime:     %d min\n", m.Runtime)
 	}
 	if m.Language != "" {
 		fmt.Printf("  🌐 Language:    %s\n", strings.ToUpper(m.Language))
 	}
+}
 
+func printDetailRatings(m *db.Media) {
 	if m.ImdbRating > 0 {
 		fmt.Printf("  ⭐ IMDb:        %.1f\n", m.ImdbRating)
 	}
@@ -52,7 +64,9 @@ func printMediaDetail(m *db.Media) {
 	if m.Popularity > 0 {
 		fmt.Printf("  📈 Popularity:  %.0f\n", m.Popularity)
 	}
+}
 
+func printDetailCredits(m *db.Media) {
 	if m.Genre != "" {
 		fmt.Printf("  🎭 Genre:       %s\n", m.Genre)
 	}
@@ -62,28 +76,32 @@ func printMediaDetail(m *db.Media) {
 	if m.CastList != "" {
 		fmt.Printf("  👥 Cast:        %s\n", m.CastList)
 	}
+}
 
+func printDetailFinancials(m *db.Media) {
 	if m.Budget > 0 {
 		fmt.Printf("  💰 Budget:      $%s\n", formatMoney(m.Budget))
 	}
 	if m.Revenue > 0 {
 		fmt.Printf("  💵 Revenue:     $%s\n", formatMoney(m.Revenue))
 	}
+}
 
+func printDetailDescription(m *db.Media) {
 	if m.Description != "" {
 		fmt.Println()
 		fmt.Printf("  📝 %s\n", m.Description)
 	}
-
 	if m.TrailerURL != "" {
 		fmt.Println()
 		fmt.Printf("  🎥 Trailer:     %s\n", m.TrailerURL)
 	}
+}
 
+func printDetailFiles(m *db.Media) {
 	if m.ThumbnailPath != "" {
 		fmt.Printf("  🖼️  Thumbnail:   %s\n", m.ThumbnailPath)
 	}
-
 	if m.CurrentFilePath != "" {
 		fmt.Println()
 		fmt.Printf("  📁 File:        %s\n", m.CurrentFilePath)

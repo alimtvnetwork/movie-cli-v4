@@ -53,20 +53,25 @@ func runMovieCd(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	// No argument: list all folders
 	if len(args) == 0 {
-		fmt.Fprintln(os.Stderr, "📂 Scanned folders:")
-		fmt.Fprintln(os.Stderr, "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-		for i, f := range folders {
-			fmt.Fprintf(os.Stderr, "  %d. %s\n", i+1, f)
-		}
-		fmt.Fprintln(os.Stderr)
-		fmt.Fprintln(os.Stderr, "💡 Usage: cd $(movie cd <name-or-number>)")
+		listScanFolders(folders)
 		return
 	}
 
-	query := args[0]
+	matchScanFolder(args[0], folders)
+}
 
+func listScanFolders(folders []string) {
+	fmt.Fprintln(os.Stderr, "📂 Scanned folders:")
+	fmt.Fprintln(os.Stderr, "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+	for i, f := range folders {
+		fmt.Fprintf(os.Stderr, "  %d. %s\n", i+1, f)
+	}
+	fmt.Fprintln(os.Stderr)
+	fmt.Fprintln(os.Stderr, "💡 Usage: cd $(movie cd <name-or-number>)")
+}
+
+func matchScanFolder(query string, folders []string) {
 	// Try as a number first
 	if num := 0; true {
 		_, scanErr := fmt.Sscanf(query, "%d", &num)
