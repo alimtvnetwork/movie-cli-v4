@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## v2.7.0
+
+### Fixed
+- **Updater: wrong GitHub repo URL** — `repoURL` used `movie-cli-v4.git` but actual GitHub repo is `movie-cli-v3`; sibling dir search also looked for wrong name
+- **run.ps1: stale version file path** — referenced `version/version.go` (renamed to `version/info.go`), causing version detection to fail
+- **run.ps1: wrong ldflags module path** — used `movie-cli-v3` instead of `movie-cli-v4` Go module path in build ldflags
+
+### Added
+- **run.ps1: `-Deploy` and `-Update` flags** — matches gitmap-v2 pattern; `-Deploy` forces deploy, `-Update` enables rename-first PATH sync
+- **run.ps1: PATH binary sync** — when deployed binary differs from PATH binary, auto-syncs with retry and rename-first fallback (ported from gitmap-v2)
+- **Updater: passes `-Update` flag to run.ps1** — enables PATH sync during `movie update` flow
+
 ## v2.6.0
 
 ### Changed
