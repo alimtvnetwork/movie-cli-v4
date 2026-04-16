@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## v2.9.0
+
+### Changed
+- **Eliminated all 41 `} else {` violations in Go code** — converted to early-return guard clauses, `continue` in loops, and extracted helpers across 30 files
+- Remaining 2 `} else {` are in PowerShell template strings (`updater/script.go`) — not Go logic
+- Extracted `runDryRunPlainOutput` and `incrementTypeCountPtr` helpers from oversized `runDryRunScan`
+- Simplified `CountMedia` and `ListWatchlist` with early-return patterns
+- Files changed: `movie_config.go`, `movie_discover.go`, `movie_history.go`, `movie_info.go`, `movie_logs.go`, `movie_move_batch.go`, `movie_play.go`, `movie_popout.go`, `movie_popout_cleanup.go`, `movie_popout_discover.go`, `movie_redo_exec.go`, `movie_redo_handlers.go`, `movie_rescan.go`, `movie_rest.go`, `movie_rest_report.go`, `movie_scan.go`, `movie_scan_json_output.go`, `movie_scan_loop.go`, `movie_scan_process.go`, `movie_scan_process_helpers.go`, `movie_scan_table.go`, `movie_search.go`, `movie_stats.go`, `movie_tmdb.go`, `movie_undo_handlers.go`, `update.go`, `db/cleanup.go`, `db/media_query.go`, `db/watchlist.go`
+
 ## v2.8.0
 
 ### Added
