@@ -1,0 +1,15 @@
+{
+  "version": "2.6.0",
+  "branch": "release/v2.6.0",
+  "sourceBranch": "main",
+  "commit": "f4b9341a4e30c1c94572f6b51d556793c421f88f",
+  "tag": "v2.6.0",
+  "assets": [],
+  "changelog": [
+    "**P4: Option structs for \u003e3 params** — introduced 6 new input structs (`ErrorLogEntry`, `MoveInput`, `ScanHistoryInput`, `ActionInput`, `WatchlistInput`, `ScanStats`) to replace functions with 4–9 positional parameters; reduced violations from 58 → 47 across 18 files"
+  ],
+  "draft": false,
+  "preRelease": false,
+  "createdAt": "2026-04-16T08:00:27Z",
+  "isLatest": false
+}
