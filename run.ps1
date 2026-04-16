@@ -466,6 +466,7 @@ function Test-SourceFiles {
         "db/schema_tables.go",
         "db/schema_indexes.go",
         "cmd/movie_suggest_helpers.go",
+        "cmd/types.go",
         "cleaner/parse.go",
         "apperror/apperror.go",
         "errlog/logger.go",

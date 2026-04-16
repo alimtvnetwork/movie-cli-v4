@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented in this file.
 
+## v2.13.0
+
+### Changed
+- **Added 11 option structs for 39 functions with >3 params** — all functions now comply with the ≤3 parameter guideline
+  - `StatsCounts` — groups totalMovies/totalTV/total for stats rendering
+  - `MoveContext` — groups database/scanner/sourceDir/files/home for move flows
+  - `CleanupContext` — groups scanner/database/batchID for popout cleanup
+  - `ScanServiceConfig` — groups scanDir/outputDir/database/creds for post-scan services
+  - `ScanLoopConfig` — groups client/scanDir/batchID/format flags for main scan loop
+  - `ScanOutputOpts` — groups useTable/useJSON flags for scan output
+  - `SuggestCollector` — groups client/existingIDs/count for suggestion helpers
+  - `LsPage` — groups offset/pageSize/total for list pagination
+  - `RecursiveWalkOpts` — groups baseParts/maxDepth for recursive directory walks
+  - `ThumbnailInput` — groups client/database/media/posterPath/outputDir for thumbnail downloads
+  - `HistoryLogInput` — groups basePath/title/year/fromPath/toPath for history logging
+- New `cmd/types.go` with all option struct definitions
+- Updated `Test-SourceFiles` in `run.ps1` (88 total)
+
 ## v2.12.0
 
 ### Changed
