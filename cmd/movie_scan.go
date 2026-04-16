@@ -129,7 +129,9 @@ func runMovieScan(cmd *cobra.Command, args []string) {
 	registerScanHistory(database, scanDir, ctx)
 
 	if useJSON {
-		printScanJSON(scanDir, jsonItems, ctx.TotalFiles, ctx.MovieCount, ctx.TVCount, ctx.Skipped)
+		printScanJSON(scanDir, jsonItems, ScanStats{
+			Total: ctx.TotalFiles, Movies: ctx.MovieCount, TV: ctx.TVCount, Skipped: ctx.Skipped,
+		})
 	} else {
 		printScanFooter(ScanStats{
 			ScanDir: scanDir, OutputDir: outputDir, Items: ctx.ScannedItems,
