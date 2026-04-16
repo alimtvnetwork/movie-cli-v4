@@ -31,8 +31,8 @@ func createHandoffCopy(selfPath string) string {
 	return copyPath
 }
 
-// launchHandoff starts the handoff binary and returns immediately so the
-// current process can exit and release its file lock before rebuild/deploy.
+// launchHandoff starts the handoff binary in foreground (blocking) so
+// the terminal stays stable and the user sees all output.
 func launchHandoff(copyPath, repoPath, targetBinary string) error {
 	args := []string{
 		"update-runner",
@@ -40,16 +40,16 @@ func launchHandoff(copyPath, repoPath, targetBinary string) error {
 		"--target-binary", targetBinary,
 	}
 
+	fmt.Printf("🚀 Update handed off to %s\n", copyPath)
+
 	cmd := exec.Command(copyPath, args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Stdin = os.Stdin
 
-	if err := cmd.Start(); err != nil {
-		return apperror.Wrap("cannot start update worker", err)
+	if err := cmd.Run(); err != nil {
+		return apperror.Wrap("update worker failed", err)
 	}
-	_ = cmd.Process.Release()
-	fmt.Printf("🚀 Update handed off to %s\n", copyPath)
 	return nil
 }
 

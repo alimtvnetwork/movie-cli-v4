@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## v2.15.0
+
+### Fixed
+- **Update handoff now blocks (foreground)** — changed `cmd.Start()` + `Process.Release()` to `cmd.Run()` so the terminal stays stable and the user sees all worker output
+- **Reads `.gitmap/release/latest.json`** — the update command now reads gitmap to determine the correct release branch, and checks out that branch before pulling
+- New `updater/gitmap.go` with `GitMapRelease` struct and `readGitMapLatest()` reader
+
 ## v2.13.0
 
 ### Changed
