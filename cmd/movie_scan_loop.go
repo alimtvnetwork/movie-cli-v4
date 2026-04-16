@@ -160,24 +160,3 @@ func handleSkippedMedia(ctx *ScanContext, em *db.Media, useTable, useJSON bool) 
 		fmt.Println("     ⏩ Already in database")
 	}
 }
-
-// printScanFooter shows the scan summary at the end.
-func printScanFooter(scanDir, outputDir string, items []db.Media, total, movies, tv, skipped, removed int) {
-	fmt.Println()
-	fmt.Println("  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-	fmt.Printf("  📊 Scan complete: %d total (%d movies, %d TV shows)\n", total, movies, tv)
-	if skipped > 0 {
-		fmt.Printf("     ⏩ %d skipped (already in DB)\n", skipped)
-	}
-	if removed > 0 {
-		fmt.Printf("     🗑️  %d removed (files deleted from disk)\n", removed)
-	}
-	fmt.Printf("  📂 Output: %s\n", outputDir)
-
-	if !scanDryRun {
-		writeScanSummary(scanDir, outputDir, items, total, movies, tv, skipped)
-		if err := writeHTMLReport(scanDir, outputDir, items, total, movies, tv, scanRestPort); err != nil {
-			fmt.Fprintf(os.Stderr, "⚠️  HTML report: %v\n", err)
-		}
-	}
-}
