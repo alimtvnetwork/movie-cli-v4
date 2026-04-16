@@ -40,13 +40,15 @@ func (d *DB) FindStaleEntries(limit int) ([]StaleEntry, error) {
 		if path == "" {
 			continue
 		}
-		if _, statErr := os.Stat(path); statErr != nil {
-			if os.IsNotExist(statErr) {
-				stale = append(stale, StaleEntry{Media: m, FilePath: path})
-				continue
-			}
-			fmt.Fprintf(os.Stderr, "⚠️  Cannot stat %s: %v\n", path, statErr)
+		_, statErr := os.Stat(path)
+		if statErr == nil {
+			continue
 		}
+		if os.IsNotExist(statErr) {
+			stale = append(stale, StaleEntry{Media: m, FilePath: path})
+			continue
+		}
+		fmt.Fprintf(os.Stderr, "⚠️  Cannot stat %s: %v\n", path, statErr)
 	}
 	return stale, nil
 }

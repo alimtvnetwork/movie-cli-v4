@@ -75,13 +75,11 @@ func redoScanAdd(database *db.DB, a *db.ActionRecord) error {
 }
 
 func redoDelete(database *db.DB, a *db.ActionRecord) error {
-	if a.MediaId.Valid {
-		media, _ := database.GetMediaByID(a.MediaId.Int64)
-		if media != nil {
-			if err := database.DeleteMediaByID(a.MediaId.Int64); err != nil {
-				return apperror.Wrapf(err, "redo delete media %d", a.MediaId.Int64)
-			}
-		}
+	if !a.MediaId.Valid {
+		return database.MarkActionRestored(a.ActionHistoryId)
+	}
+	if err := database.DeleteMediaByID(a.MediaId.Int64); err != nil {
+		return apperror.Wrapf(err, "redo delete media %d", a.MediaId.Int64)
 	}
 	return database.MarkActionRestored(a.ActionHistoryId)
 }

@@ -50,12 +50,7 @@ func collectMoveRecords(database *db.DB, records []unifiedRecord) []unifiedRecor
 		errlog.Warn("Error reading move history: %v", err)
 	}
 	for _, m := range moves {
-		recType := "move"
-		if m.FromPath != "" && m.ToPath != "" {
-			if dirOf(m.FromPath) == dirOf(m.ToPath) {
-				recType = "rename"
-			}
-		}
+		recType := detectMoveType(m)
 		if historyType != "all" && historyType != recType {
 			continue
 		}
