@@ -119,3 +119,11 @@ func backoff(attempt int) {
 	d := time.Duration(1<<uint(attempt)) * time.Second
 	time.Sleep(d)
 }
+
+// serverRetryDelay returns the retry delay for server errors based on status code.
+func serverRetryDelay(statusCode int) time.Duration {
+	if statusCode == 502 || statusCode == 503 || statusCode == 504 {
+		return 5 * time.Second
+	}
+	return 3 * time.Second
+}
