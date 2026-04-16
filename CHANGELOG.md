@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## v2.14.0
+
+### Fixed
+- **TMDb search now uses clean title only** — removed codec/audio/source junk (DDP, ESub, AMZN, 10bit, etc.) that caused zero-match failures
+  - Added 30+ new junk patterns: audio codecs (DDP, EAC3, TrueHD, Opus), streaming sources (AMZN, NF, DSNP, ATVP), bit depth (10bit, HDR10), release groups (Immortal, MSubs, Pahe), languages (Tamil, Telugu, Korean, etc.)
+  - Fixed year-in-parentheses handling: `(2025)` no longer removed as junk — year extracted first, then brackets stripped
+  - Truncation now cuts *before* the year (title only), not after — no more `Kis Kisko Pyaar Karoon 2 DDP 5 1 ESub 2025` queries
+  - Simplified `buildTMDbSearchQuery` — no more regex manipulation, just `CleanTitle + Year`
+
 ## v2.13.0
 
 ### Changed

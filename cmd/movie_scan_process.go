@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"regexp"
 	"strconv"
 
 	"github.com/alimtvnetwork/movie-cli-v4/cleaner"
