@@ -69,9 +69,14 @@ func rescanMediaEntry(database *db.DB, client *tmdb.Client, m *db.Media) bool {
 		}
 	}
 
-	// Link genres via M:N tables
-	if m.Genre != "" && m.ID > 0 {
-		database.ReplaceMediaGenres(m.ID, m.Genre)
+	// Link genres and directors via M:N tables
+	if m.ID > 0 {
+		if m.Genre != "" {
+			database.ReplaceMediaGenres(m.ID, m.Genre)
+		}
+		if m.Director != "" {
+			database.ReplaceMediaDirectors(m.ID, m.Director)
+		}
 	}
 
 	return true
