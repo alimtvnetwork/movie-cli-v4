@@ -46,6 +46,7 @@ type htmlReportItem struct {
 }
 
 // writeHTMLReport generates report.html in the output directory.
+// SHARED: used by rescan, scan_helpers
 func writeHTMLReport(outputDir, scanDir string, items []db.Media, total, movies, tv, skipped int) error {
 	tmplBytes, err := templates.FS.ReadFile("report.html")
 	if err != nil {

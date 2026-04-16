@@ -127,6 +127,7 @@ func infoFetchFromTMDb(database *db.DB, query string) *db.Media {
 }
 
 // buildTMDbClient creates a TMDb client from config or env.
+// SHARED: used by info, search_save
 func buildTMDbClient(database *db.DB) (*tmdb.Client, error) {
 	apiKey, cfgErr := database.GetConfig("TmdbApiKey")
 	if cfgErr != nil && cfgErr.Error() != "sql: no rows in result set" {

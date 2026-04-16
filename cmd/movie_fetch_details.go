@@ -27,6 +27,7 @@ import (
 )
 
 // fetchMovieDetails populates a Media record with TMDb movie details + credits + videos.
+// SHARED: used by info, rescan, scan_process, search_save
 func fetchMovieDetails(client *tmdb.Client, tmdbID int, m *db.Media) {
 	details, detailErr := client.GetMovieDetails(tmdbID)
 	if detailErr != nil {
@@ -79,6 +80,7 @@ func fetchMovieDetails(client *tmdb.Client, tmdbID int, m *db.Media) {
 }
 
 // fetchTVDetails populates a Media record with TMDb TV details + credits + videos.
+// SHARED: used by info, rescan, scan_process, search_save
 func fetchTVDetails(client *tmdb.Client, tmdbID int, m *db.Media) {
 	details, detailErr := client.GetTVDetails(tmdbID)
 	if detailErr != nil {
