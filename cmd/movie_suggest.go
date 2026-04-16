@@ -108,13 +108,14 @@ func suggestByType(database *db.DB, client *tmdb.Client, mediaType string, count
 	}
 
 	printTopGenres(sorted)
-
 	existingIDs := collectExistingIDs(database, mediaType)
+
+	sc := SuggestCollector{Client: client, ExistingIDs: existingIDs, Count: count}
 	var suggestions []tmdb.SearchResult
 
-	suggestions = discoverByGenres(client, sorted, mediaType, typeName, existingIDs, count)
-	suggestions = fillFromRecommendations(client, database, mediaType, existingIDs, suggestions, count)
-	suggestions = fillFromTrending(client, mediaType, existingIDs, suggestions, count)
+	suggestions = discoverByGenres(sc, sorted, mediaType, typeName)
+	suggestions = fillFromRecommendations(sc, database, mediaType, suggestions)
+	suggestions = fillFromTrending(sc, mediaType, suggestions)
 
 	fmt.Println()
 	printSuggestions(suggestions, typeName)

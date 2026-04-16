@@ -123,12 +123,13 @@ func runMovieLsInteractive(database *db.DB) {
 			return
 		}
 
-		printLsPage(database, media, offset, pageSize, total)
+		pg := LsPage{Offset: offset, PageSize: pageSize, Total: total}
+		printLsPage(database, media, pg)
 
 		if !scanner.Scan() {
 			break
 		}
-		offset = handleLsInput(scanner.Text(), offset, pageSize, total, database)
+		offset = handleLsInput(scanner.Text(), pg, database)
 		if offset < 0 {
 			return
 		}
@@ -147,11 +148,11 @@ func resolvePageSize(database *db.DB) int {
 	return pageSize
 }
 
-func printLsPage(database *db.DB, media []db.Media, offset, pageSize, total int) {
+func printLsPage(database *db.DB, media []db.Media, pg LsPage) {
 	fmt.Print("\033[H\033[2J")
-	page := (offset / pageSize) + 1
-	totalPages := (total + pageSize - 1) / pageSize
-	fmt.Printf("🎬 Your Library — Page %d/%d (%d total)\n", page, totalPages, total)
+	page := (pg.Offset / pg.PageSize) + 1
+	totalPages := (pg.Total + pg.PageSize - 1) / pg.PageSize
+	fmt.Printf("🎬 Your Library — Page %d/%d (%d total)\n", page, totalPages, pg.Total)
 	fmt.Println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 
 	if page == 1 {
@@ -159,7 +160,7 @@ func printLsPage(database *db.DB, media []db.Media, offset, pageSize, total int)
 	}
 
 	for i := range media {
-		printLsMediaRow(offset+i+1, &media[i])
+		printLsMediaRow(pg.Offset+i+1, &media[i])
 	}
 
 	fmt.Println()
@@ -208,20 +209,20 @@ func bestRating(m *db.Media) string {
 	return "N/A"
 }
 
-func handleLsInput(input string, offset, pageSize, total int, database *db.DB) int {
+func handleLsInput(input string, pg LsPage, database *db.DB) int {
 	switch {
 	case input == "n" || input == "N":
-		if offset+pageSize < total {
-			return offset + pageSize
+		if pg.Offset+pg.PageSize < pg.Total {
+			return pg.Offset + pg.PageSize
 		}
 		fmt.Println("  ⚠️  Already on last page")
-		return offset
+		return pg.Offset
 	case input == "p" || input == "P":
-		if offset-pageSize >= 0 {
-			return offset - pageSize
+		if pg.Offset-pg.PageSize >= 0 {
+			return pg.Offset - pg.PageSize
 		}
 		fmt.Println("  ⚠️  Already on first page")
-		return offset
+		return pg.Offset
 	case input == "q" || input == "Q":
 		fmt.Println("👋 Bye!")
 		return -1
