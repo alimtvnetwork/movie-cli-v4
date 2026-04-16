@@ -44,7 +44,14 @@ var updateRunnerCmd = &cobra.Command{
 			fmt.Fprintln(os.Stderr, "❌ --repo-path is required for update-runner")
 			os.Exit(1)
 		}
-		if err := updater.RunWorker(repoPath); err != nil {
+
+		targetBinary, _ := cmd.Flags().GetString("target-binary")
+		if targetBinary == "" {
+			fmt.Fprintln(os.Stderr, "❌ --target-binary is required for update-runner")
+			os.Exit(1)
+		}
+
+		if err := updater.RunWorker(repoPath, targetBinary); err != nil {
 			fmt.Fprintf(os.Stderr, "❌ Update worker failed: %v\n", err)
 			os.Exit(1)
 		}
@@ -74,4 +81,5 @@ var updateCleanupCmd = &cobra.Command{
 
 func init() {
 	updateRunnerCmd.Flags().String("repo-path", "", "Path to the source repository")
+	updateRunnerCmd.Flags().String("target-binary", "", "Original executable path to redeploy")
 }

@@ -1,17 +1,19 @@
 package updater
 
 import (
-	"github.com/alimtvnetwork/movie-cli-v4/apperror"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
+
+	"github.com/alimtvnetwork/movie-cli-v4/apperror"
 )
 
 // executeUpdateWindows writes a temp PowerShell script and runs it.
-func executeUpdateWindows(repoPath string) error {
-	scriptPath, err := writeUpdateScript(repoPath)
+func executeUpdateWindows(repoPath, targetBinary string) error {
+	scriptPath, err := writeUpdateScript(repoPath, targetBinary)
 	if err != nil {
 		return apperror.Wrap("cannot write update script", err)
 	}
@@ -21,11 +23,11 @@ func executeUpdateWindows(repoPath string) error {
 }
 
 // executeUpdateUnix runs the update via pwsh (if available) or direct commands.
-func executeUpdateUnix(repoPath string) error {
+func executeUpdateUnix(repoPath, targetBinary string) error {
 	if !hasPwshWithRunPS1(repoPath) {
-		return executeUpdateDirect(repoPath)
+		return executeUpdateDirect(repoPath, targetBinary)
 	}
-	scriptPath, err := writeUpdateScript(repoPath)
+	scriptPath, err := writeUpdateScript(repoPath, targetBinary)
 	if err != nil {
 		return apperror.Wrap("cannot write update script", err)
 	}
@@ -43,8 +45,7 @@ func hasPwshWithRunPS1(repoPath string) bool {
 }
 
 // executeUpdateDirect runs the update pipeline directly without PowerShell.
-func executeUpdateDirect(repoPath string) error {
-	// Pull
+func executeUpdateDirect(repoPath, targetBinary string) error {
 	fmt.Println("📥 Pulling latest changes...")
 	pullOut, err := gitOutput(repoPath, "pull", "--ff-only")
 	if err != nil {
@@ -57,9 +58,16 @@ func executeUpdateDirect(repoPath string) error {
 	}
 	fmt.Printf("  %s\n", pullOut)
 
-	// Build
 	fmt.Println("🔨 Building...")
-	buildCmd := exec.Command("go", "build", "-ldflags=-s -w", "-o", binaryOutputPath(repoPath), ".")
+	outputPath := binaryOutputPath(repoPath)
+	if targetBinary != "" {
+		outputPath = targetBinary
+	}
+	if err := os.MkdirAll(filepath.Dir(outputPath), 0o755); err != nil {
+		return apperror.Wrap("cannot create target directory", err)
+	}
+
+	buildCmd := exec.Command("go", "build", "-ldflags=-s -w", "-o", outputPath, ".")
 	buildCmd.Dir = repoPath
 	buildCmd.Stdout = os.Stdout
 	buildCmd.Stderr = os.Stderr
@@ -83,8 +91,8 @@ func binaryOutputPath(repoPath string) string {
 }
 
 // writeUpdateScript generates a temp PowerShell script for the update.
-func writeUpdateScript(repoPath string) (string, error) {
-	script := buildUpdateScriptContent(repoPath)
+func writeUpdateScript(repoPath, targetBinary string) (string, error) {
+	script := buildUpdateScriptContent(repoPath, targetBinary)
 
 	tmpFile, err := os.CreateTemp(os.TempDir(), "movie-update-script-*.ps1")
 	if err != nil {
@@ -105,15 +113,32 @@ func writeUpdateScript(repoPath string) (string, error) {
 }
 
 // buildUpdateScriptContent generates the PowerShell script content.
-func buildUpdateScriptContent(repoPath string) string {
+func buildUpdateScriptContent(repoPath, targetBinary string) string {
+	repoPath = powerShellString(repoPath)
+	targetBinary = powerShellString(targetBinary)
+
 	return fmt.Sprintf(`$ErrorActionPreference = "Stop"
 $repoPath = "%s"
+$targetBinary = "%s"
+
+function Resolve-VersionBinary {
+    if ($targetBinary) {
+        return $targetBinary
+    }
+
+    $movieBin = Get-Command movie -ErrorAction SilentlyContinue
+    if ($movieBin -and $movieBin.Source -and (Test-Path $movieBin.Source)) {
+        return $movieBin.Source
+    }
+
+    return $null
+}
 
 # Capture current version
+$versionBinary = Resolve-VersionBinary
 $oldVersion = "unknown"
-$movieBin = Get-Command movie -ErrorAction SilentlyContinue
-if ($movieBin -and $movieBin.Source -and (Test-Path $movieBin.Source)) {
-    $oldVersion = (& $movieBin.Source version 2>&1) -join " "
+if ($versionBinary -and (Test-Path $versionBinary)) {
+    $oldVersion = (& $versionBinary version 2>&1) -join " "
 }
 Write-Host "  Version before: $oldVersion" -ForegroundColor Gray
 
@@ -137,20 +162,28 @@ foreach ($line in $pullOutput) {
 # Wait for parent to release file handles
 Start-Sleep -Seconds 1.2
 
-# Build and deploy (skip pull — already done)
+# Build and deploy from repo root via run.ps1
 $runScript = Join-Path $repoPath "run.ps1"
-if (Test-Path $runScript) {
-    & $runScript -NoPull -Update
-} else {
+if (-not (Test-Path $runScript)) {
     Write-Host "  run.ps1 not found at $runScript" -ForegroundColor Red
     exit 1
 }
 
-# Compare versions
+$deployArgs = @("-NoPull", "-Update")
+if ($targetBinary) {
+    $deployDir = Split-Path -Parent $targetBinary
+    if ($deployDir) {
+        $deployArgs += @("-DeployPath", $deployDir)
+        Write-Host "  Deploy target: $targetBinary" -ForegroundColor Gray
+    }
+}
+& $runScript @deployArgs
+
+# Compare versions from the original target binary
+$versionBinary = Resolve-VersionBinary
 $newVersion = "unknown"
-$movieBin = Get-Command movie -ErrorAction SilentlyContinue
-if ($movieBin -and $movieBin.Source -and (Test-Path $movieBin.Source)) {
-    $newVersion = (& $movieBin.Source version 2>&1) -join " "
+if ($versionBinary -and (Test-Path $versionBinary)) {
+    $newVersion = (& $versionBinary version 2>&1) -join " "
 }
 
 Write-Host ""
@@ -161,18 +194,24 @@ if ($oldVersion -eq $newVersion) {
     Write-Host "  Updated: $oldVersion -> $newVersion" -ForegroundColor Green
 }
 
-# Show changelog
-if ($movieBin -and $movieBin.Source -and (Test-Path $movieBin.Source)) {
+# Show changelog from the updated target binary
+if ($versionBinary -and (Test-Path $versionBinary)) {
     Write-Host ""
-    $clOutput = & $movieBin.Source changelog --latest 2>&1
+    $clOutput = & $versionBinary changelog --latest 2>&1
     foreach ($cl in $clOutput) { Write-Host "  $cl" }
 }
 
 # Auto-cleanup
-if ($movieBin -and $movieBin.Source -and (Test-Path $movieBin.Source)) {
-    & $movieBin.Source update-cleanup 2>&1 | Out-Null
+if ($versionBinary -and (Test-Path $versionBinary)) {
+    & $versionBinary update-cleanup 2>&1 | Out-Null
 }
-`, repoPath)
+`, repoPath, targetBinary)
+}
+
+func powerShellString(value string) string {
+	value = strings.ReplaceAll(value, "`", "``")
+	value = strings.ReplaceAll(value, "\"", "`\"")
+	return value
 }
 
 // runPowerShellScript executes a PowerShell script with output piped to terminal.

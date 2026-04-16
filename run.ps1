@@ -615,7 +615,13 @@ function Deploy-Binary {
 
     Write-Step "4/4" "Deploying binary"
 
-    $deployPath = $config.deployPath
+    $deployPath = $DeployPath
+    if ($DeployPath) {
+        Write-Info "Using deploy path override: $deployPath"
+    }
+    if (-not $deployPath) {
+        $deployPath = $config.deployPath
+    }
     if (-not $deployPath) {
         $deployPath = if (($PSVersionTable.PSEdition -eq "Desktop") -or ($IsWindows -eq $true)) {
             "E:\bin-run"

@@ -8,12 +8,14 @@
 package updater
 
 import (
-	"github.com/alimtvnetwork/movie-cli-v4/apperror"
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 	"strings"
+
+	"github.com/alimtvnetwork/movie-cli-v4/apperror"
 )
 
 // repoURL is the canonical GitHub URL used when no local repo exists.
@@ -51,20 +53,25 @@ func Run() error {
 	if err != nil {
 		return apperror.Wrap("cannot determine executable path", err)
 	}
+	resolvedSelfPath, resolveErr := filepath.EvalSymlinks(selfPath)
+	if resolveErr == nil {
+		selfPath = resolvedSelfPath
+	}
 
 	copyPath := createHandoffCopy(selfPath)
 	fmt.Printf("🔄 Starting update from %s\n", repoPath)
 
-	return launchHandoff(copyPath, repoPath)
+	return launchHandoff(copyPath, repoPath, selfPath)
 }
 
 // RunWorker is the hidden update-runner entry point called from the handoff copy.
-func RunWorker(repoPath string) error {
+func RunWorker(repoPath, targetBinary string) error {
 	fmt.Println("🔧 Update worker started")
 	fmt.Printf("📂 Repo: %s\n", repoPath)
+	fmt.Printf("🎯 Target: %s\n", targetBinary)
 
 	if runtime.GOOS == "windows" {
-		return executeUpdateWindows(repoPath)
+		return executeUpdateWindows(repoPath, targetBinary)
 	}
-	return executeUpdateUnix(repoPath)
+	return executeUpdateUnix(repoPath, targetBinary)
 }

@@ -1,14 +1,14 @@
 package updater
 
 import (
-	"github.com/alimtvnetwork/movie-cli-v4/apperror"
-	"errors"
 	"fmt"
 	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
+
+	"github.com/alimtvnetwork/movie-cli-v4/apperror"
 )
 
 // createHandoffCopy creates a temporary copy of the binary for the handoff worker.
@@ -31,22 +31,25 @@ func createHandoffCopy(selfPath string) string {
 	return copyPath
 }
 
-// launchHandoff runs the handoff binary with the update-runner command (foreground/blocking).
-func launchHandoff(copyPath, repoPath string) error {
-	args := []string{"update-runner", "--repo-path", repoPath}
+// launchHandoff starts the handoff binary and returns immediately so the
+// current process can exit and release its file lock before rebuild/deploy.
+func launchHandoff(copyPath, repoPath, targetBinary string) error {
+	args := []string{
+		"update-runner",
+		"--repo-path", repoPath,
+		"--target-binary", targetBinary,
+	}
 
 	cmd := exec.Command(copyPath, args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Stdin = os.Stdin
 
-	if err := cmd.Run(); err != nil {
-		var exitErr *exec.ExitError
-		if errors.As(err, &exitErr) {
-			os.Exit(exitErr.ExitCode())
-		}
-		return apperror.Wrap("update worker failed", err)
+	if err := cmd.Start(); err != nil {
+		return apperror.Wrap("cannot start update worker", err)
 	}
+	_ = cmd.Process.Release()
+	fmt.Printf("🚀 Update handed off to %s\n", copyPath)
 	return nil
 }
 

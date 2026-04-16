@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## v2.10.0
+
+### Fixed
+- **Self-update now redeploys the exact binary that launched `movie update`** — the original executable path is passed into the handoff worker and forwarded into `run.ps1` as a deploy-path override
+- **True handoff flow** — the parent process now starts the copied worker and exits immediately so the original binary can release its file lock before rebuild/deploy
+- **Repo-driven rebuild path** — the worker still runs `run.ps1` from the cloned/local GitHub repo, but now targets the original executable directory instead of only the default `powershell.json` deploy path
+- **Hidden worker contract tightened** — `update-runner` now requires both `--repo-path` and `--target-binary`
+
 ## v2.9.0
 
 ### Changed
