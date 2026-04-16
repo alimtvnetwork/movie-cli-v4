@@ -48,26 +48,26 @@ func saveSearchResult(client *tmdb.Client, database *db.DB, selected tmdb.Search
 
 // downloadSearchThumbnail downloads the poster image for a search result.
 func downloadSearchThumbnail(input ThumbnailInput) {
-	if selected.PosterPath == "" {
+	if input.PosterPath == "" {
 		return
 	}
 
-	slug := cleaner.ToSlug(m.CleanTitle)
-	if m.Year > 0 {
-		slug += "-" + strconv.Itoa(m.Year)
+	slug := cleaner.ToSlug(input.Media.CleanTitle)
+	if input.Media.Year > 0 {
+		slug += "-" + strconv.Itoa(input.Media.Year)
 	}
 
-	thumbDir := filepath.Join(database.BasePath, "thumbnails", slug)
+	thumbDir := filepath.Join(input.Database.BasePath, "thumbnails", slug)
 	if mkdirErr := os.MkdirAll(thumbDir, 0755); mkdirErr != nil {
 		errlog.Warn("Cannot create thumbnail dir: %v", mkdirErr)
 	}
 
 	thumbPath := filepath.Join(thumbDir, slug+".jpg")
-	if dlErr := client.DownloadPoster(selected.PosterPath, thumbPath); dlErr != nil {
+	if dlErr := input.Client.DownloadPoster(input.PosterPath, thumbPath); dlErr != nil {
 		errlog.Warn("Thumbnail download failed: %v", dlErr)
 		return
 	}
-	m.ThumbnailPath = thumbPath
+	input.Media.ThumbnailPath = thumbPath
 	fmt.Println("🖼️  Thumbnail saved")
 }
 
