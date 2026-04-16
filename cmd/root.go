@@ -59,7 +59,9 @@ func init() {
 	rootCmd.AddCommand(
 		helloCmd,
 		versionCmd,
-		selfUpdateCmd,
+		updateCmd,
+		updateRunnerCmd,
+		updateCleanupCmd,
 		movieScanCmd,
 		movieLsCmd,
 		movieSearchCmd,
