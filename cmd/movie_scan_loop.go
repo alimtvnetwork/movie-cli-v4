@@ -20,7 +20,7 @@ func runMainScanLoop(ctx *ScanContext, videoFiles []videoFile, cfg ScanLoopConfi
 		diskPaths[vf.FullPath] = true
 	}
 
-	removed := removeStaleEntries(database, existingMedia, diskPaths, cfg.BatchID, cfg.UseJSON, cfg.UseTable)
+	removed := removeStaleEntries(database, existingMedia, diskPaths, cfg.BatchID, ScanOutputOpts{UseJSON: cfg.UseJSON, UseTable: cfg.UseTable})
 
 	existingPaths := make(map[string]*db.Media, len(existingMedia))
 	for i := range existingMedia {
@@ -50,7 +50,7 @@ func runMainScanLoop(ctx *ScanContext, videoFiles []videoFile, cfg ScanLoopConfi
 }
 
 func removeStaleEntries(database *db.DB, existingMedia []db.Media, diskPaths map[string]bool,
-	scanBatchID string, useJSON, useTable bool) int {
+	batchID string, opts ScanOutputOpts) int {
 	var removeIDs []int64
 	var removeMedia []*db.Media
 	for i := range existingMedia {
@@ -64,7 +64,7 @@ func removeStaleEntries(database *db.DB, existingMedia []db.Media, diskPaths map
 		return 0
 	}
 
-	snapshotRemovedMedia(database, removeMedia, scanBatchID)
+	snapshotRemovedMedia(database, removeMedia, batchID)
 
 	delCount, delErr := database.DeleteMediaByIDs(removeIDs)
 	if delErr != nil {
@@ -72,7 +72,7 @@ func removeStaleEntries(database *db.DB, existingMedia []db.Media, diskPaths map
 		return 0
 	}
 
-	if !useJSON && !useTable {
+	if !opts.UseJSON && !opts.UseTable {
 		fmt.Printf("  🗑️  Removed %d entries (files no longer on disk)\n\n", delCount)
 	}
 	return delCount

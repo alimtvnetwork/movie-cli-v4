@@ -48,7 +48,7 @@ func runMovieMove(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	sourceDir := resolveSourceDir(args, scanner, database, home)
+	sourceDir := resolveSourceDir(args, mc)
 	if sourceDir == "" {
 		return
 	}
@@ -85,9 +85,9 @@ func runMovieMove(cmd *cobra.Command, args []string) {
 	runInteractiveMove(mc)
 }
 
-func resolveSourceDir(args []string, scanner *bufio.Scanner, database *db.DB, home string) string {
+func resolveSourceDir(args []string, mc MoveContext) string {
 	if len(args) > 0 {
-		return expandHome(args[0], home)
+		return expandHome(args[0], mc.Home)
 	}
-	return promptSourceDirectory(scanner, database, home)
+	return promptSourceDirectory(mc.Scanner, mc.Database, mc.Home)
 }
