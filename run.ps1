@@ -440,7 +440,7 @@ function Build-Binary {
         $buildDate = (Get-Date -Format "yyyy-MM-ddTHH:mm:ssK")
 
         $sourceVersion = "dev"
-        $versionFile = Join-Path (Join-Path $RepoRoot "version") "version.go"
+        $versionFile = Join-Path (Join-Path $RepoRoot "version") "info.go"
         if (Test-Path $versionFile) {
             $versionMatch = Select-String -Path $versionFile -Pattern 'Version\s*=\s*"([^"]+)"' -AllMatches
             if ($versionMatch -and $versionMatch.Matches.Count -gt 0) {
@@ -450,7 +450,7 @@ function Build-Binary {
 
         $ErrorActionPreference = $prevPref
 
-        $ldflags = "-s -w -X github.com/alimtvnetwork/movie-cli-v3/version.Commit=$gitCommit -X github.com/alimtvnetwork/movie-cli-v3/version.BuildDate=$buildDate"
+        $ldflags = "-s -w -X github.com/alimtvnetwork/movie-cli-v4/version.Commit=$gitCommit -X github.com/alimtvnetwork/movie-cli-v4/version.BuildDate=$buildDate"
         Write-Info "Version: $sourceVersion | Commit: $gitCommit"
 
         # Build
