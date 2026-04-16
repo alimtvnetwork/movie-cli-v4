@@ -30,10 +30,7 @@ func printSearchResultsTable(results []tmdb.SearchResult) {
 		if year == "" {
 			year = "  -   "
 		}
-		mediaType := "Movie"
-		if r.MediaType == "tv" {
-			mediaType = "TV Show"
-		}
+		mediaType := db.TypeLabel(r.MediaType)
 		rating := "   -  "
 		if r.VoteAvg > 0 {
 			rating = fmt.Sprintf("%5.1f ", r.VoteAvg)

@@ -43,7 +43,7 @@ func regenerateReports(database *db.DB) {
 
 		movieCount, tvCount := 0, 0
 		for _, m := range items {
-			if m.Type == "movie" {
+			if m.Type == string(db.MediaTypeMovie) {
 				movieCount++
 			} else {
 				tvCount++

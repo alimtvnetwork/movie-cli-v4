@@ -139,11 +139,11 @@ func runWatchLs(cmd *cobra.Command, args []string) {
 	}
 	defer database.Close()
 
-	status := "to-watch"
+	status := string(db.WatchStatusToWatch)
 	if watchListAll {
 		status = ""
 	} else if watchListWatched {
-		status = "watched"
+		status = string(db.WatchStatusWatched)
 	}
 
 	entries, err := database.ListWatchlist(status)
@@ -153,11 +153,11 @@ func runWatchLs(cmd *cobra.Command, args []string) {
 	}
 
 	if len(entries) == 0 {
-		label := "to-watch"
+		label := string(db.WatchStatusToWatch)
 		if watchListAll {
 			label = ""
 		} else if watchListWatched {
-			label = "watched"
+			label = string(db.WatchStatusWatched)
 		}
 		if label != "" {
 			fmt.Printf("📋 No %s entries in your watchlist.\n", label)

@@ -36,11 +36,11 @@ func saveSearchResult(client *tmdb.Client, database *db.DB, selected tmdb.Search
 		Genre:       tmdb.GenreNames(selected.GenreIDs),
 	}
 
-	if selected.MediaType == "movie" || selected.MediaType == "" {
-		m.Type = "movie"
+	if selected.MediaType == string(db.MediaTypeMovie) || selected.MediaType == "" {
+		m.Type = string(db.MediaTypeMovie)
 		fetchMovieDetails(client, selected.ID, m)
-	} else if selected.MediaType == "tv" {
-		m.Type = "tv"
+	} else if selected.MediaType == string(db.MediaTypeTV) {
+		m.Type = string(db.MediaTypeTV)
 		fetchTVDetails(client, selected.ID, m)
 	}
 
@@ -110,14 +110,9 @@ func persistMedia(database *db.DB, m *db.Media) {
 
 // printSavedSummary prints the saved media summary to stdout.
 func printSavedSummary(m *db.Media) {
-	typeIcon := "🎬"
-	typeLabel := "Movie"
-	folder := "movie"
-	if m.Type == "tv" {
-		typeIcon = "📺"
-		typeLabel = "TV Show"
-		folder = "tv"
-	}
+	typeIcon := db.TypeIcon(m.Type)
+	typeLabel := db.TypeLabel(m.Type)
+	folder := db.JSONSubDir(m.Type)
 
 	fmt.Println()
 	fmt.Println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")

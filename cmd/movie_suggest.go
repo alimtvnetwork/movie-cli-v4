@@ -74,9 +74,9 @@ func runMovieSuggest(cmd *cobra.Command, args []string) {
 
 	switch choice {
 	case "1":
-		suggestByType(database, client, "movie", count)
+		suggestByType(database, client, string(db.MediaTypeMovie), count)
 	case "2":
-		suggestByType(database, client, "tv", count)
+		suggestByType(database, client, string(db.MediaTypeTV), count)
 	case "3":
 		suggestRandom(client, count)
 	default:
@@ -85,9 +85,7 @@ func runMovieSuggest(cmd *cobra.Command, args []string) {
 }
 
 func suggestByType(database *db.DB, client *tmdb.Client, mediaType string, count int) {
-	typeName := "Movies"
-	if mediaType == "tv" {
-		typeName = "TV Shows"
+	typeName := db.TypeLabelPlural(mediaType)
 	}
 
 	fmt.Printf("🔍 Analyzing your %s library...\n\n", typeName)
@@ -214,11 +212,11 @@ func suggestRandom(client *tmdb.Client, count int) {
 	seenIDs := make(map[int]bool)
 
 	// Mix movie and TV trending
-	movieTrending, err := client.Trending("movie")
+	movieTrending, err := client.Trending(string(db.MediaTypeMovie))
 	if err != nil {
 		errlog.Warn("Movie trending error: %v", err)
 	}
-	tvTrending, err := client.Trending("tv")
+	tvTrending, err := client.Trending(string(db.MediaTypeTV))
 	if err != nil {
 		errlog.Warn("TV trending error: %v", err)
 	}
@@ -251,10 +249,7 @@ func showTrending(client *tmdb.Client, mediaType string, count int) {
 		trending = trending[:count]
 	}
 
-	typeName := "Movies"
-	if mediaType == "tv" {
-		typeName = "TV Shows"
-	}
+	typeName := db.TypeLabelPlural(mediaType)
 	printSuggestions(trending, typeName)
 }
 

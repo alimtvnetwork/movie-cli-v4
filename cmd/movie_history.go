@@ -92,9 +92,9 @@ func runMovieHistory(cmd *cobra.Command, args []string) {
 	}
 
 	switch historyFormat {
-	case "json":
+	case string(db.OutputFormatJSON):
 		printUnifiedJSON(records)
-	case "table":
+	case string(db.OutputFormatTable):
 		printUnifiedTable(records)
 	default:
 		printUnifiedDefault(records)

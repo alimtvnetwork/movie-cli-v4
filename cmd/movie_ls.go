@@ -62,9 +62,9 @@ func runMovieLs(cmd *cobra.Command, args []string) {
 	defer database.Close()
 
 	switch lsFormat {
-	case "json":
+	case string(db.OutputFormatJSON):
 		runMovieLsJSON(database)
-	case "table":
+	case string(db.OutputFormatTable):
 		runMovieLsTable(database)
 	default:
 		runMovieLsInteractive(database)
@@ -180,10 +180,7 @@ func runMovieLsInteractive(database *db.DB) {
 				rating = fmt.Sprintf("%.1f", media[i].ImdbRating)
 			}
 
-			typeIcon := "🎬"
-			if media[i].Type == "tv" {
-				typeIcon = "📺"
-			}
+			typeIcon := db.TypeIcon(media[i].Type)
 
 			fmt.Printf("  %3d. %-40s %-6s  ⭐ %-4s  %s %s\n",
 				num, media[i].CleanTitle, yearStr, rating, typeIcon, capitalize(media[i].Type))

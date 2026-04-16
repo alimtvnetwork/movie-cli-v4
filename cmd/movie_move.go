@@ -133,10 +133,9 @@ func runBatchMove(database *db.DB, scanner *bufio.Scanner, sourceDir string, fil
 		cleanName := cleaner.ToCleanFileName(result.CleanTitle, result.Year, result.Extension)
 
 		destDir := moviesDir
-		typeIcon := "🎬"
-		if result.Type == "tv" {
+		typeIcon := db.TypeIcon(result.Type)
+		if result.Type == string(db.MediaTypeTV) {
 			destDir = tvDir
-			typeIcon = "📺"
 		}
 
 		srcPath := filepath.Join(sourceDir, f.Name())
@@ -209,9 +208,7 @@ func runInteractiveMove(database *db.DB, scanner *bufio.Scanner, sourceDir strin
 	fmt.Printf("\n🎬 Video files in: %s\n\n", sourceDir)
 	for i, f := range files {
 		result := cleaner.Clean(f.Name())
-		typeIcon := "🎬"
-		if result.Type == "tv" {
-			typeIcon = "📺"
+		typeIcon := db.TypeIcon(result.Type)
 		}
 		yearStr := ""
 		if result.Year > 0 {

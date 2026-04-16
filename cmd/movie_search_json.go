@@ -32,7 +32,7 @@ func printSearchResultsJSON(results []tmdb.SearchResult) {
 		}
 		mediaType := r.MediaType
 		if mediaType == "" {
-			mediaType = "movie"
+			mediaType = string(db.MediaTypeMovie)
 		}
 		items = append(items, searchJSONItem{
 			Index:      i + 1,
