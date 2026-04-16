@@ -162,3 +162,8 @@ func HumanSize(mb float64) string {
 		return fmt.Sprintf("%.0f KB", mb*1024)
 	}
 }
+
+// NowUTC returns the current UTC time as RFC3339 string.
+func NowUTC() string {
+	return time.Now().UTC().Format(time.RFC3339)
+}
