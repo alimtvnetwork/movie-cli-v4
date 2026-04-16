@@ -1,0 +1,15 @@
+{
+  "version": "2.8.0",
+  "branch": "release/v2.8.0",
+  "sourceBranch": "main",
+  "commit": "f1d8de76157a5ccb5a34b74f71a50ae7a54bff90",
+  "tag": "v2.8.0",
+  "assets": [],
+  "changelog": [
+    "**Pre-build source file validation** — `Test-SourceFiles` function in `run.ps1` validates 83 critical source files exist before compilation, catching missing files early (ported from gitmap-v2 pattern)"
+  ],
+  "draft": false,
+  "preRelease": false,
+  "createdAt": "2026-04-16T08:19:53Z",
+  "isLatest": false
+}
