@@ -2,12 +2,10 @@
 package cmd
 
 import (
-	"github.com/alimtvnetwork/movie-cli-v4/apperror"
 	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/alimtvnetwork/movie-cli-v4/db"
