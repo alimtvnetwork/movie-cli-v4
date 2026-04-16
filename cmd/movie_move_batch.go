@@ -235,59 +235,66 @@ func confirmInteractiveMove(scanner *bufio.Scanner, srcPath, destPath string) bo
 }
 
 // trackMove records a move in the database and JSON history log.
-func trackMove(database *db.DB, result cleaner.Result, fileInfo os.FileInfo, srcPath, destPath, cleanName string) {
-	mediaID := findOrCreateMoveMedia(database, result, fileInfo, srcPath, destPath)
+func trackMove(input TrackMoveInput) {
+	mediaID := findOrCreateMoveMedia(FindMoveMediaInput{
+		Database: input.Database, Result: input.Result, FileInfo: input.FileInfo,
+		SrcPath: input.SrcPath, DestPath: input.DestPath,
+	})
 
 	if mediaID > 0 {
-		if histErr := database.InsertMoveHistory(db.MoveInput{
+		if histErr := input.Database.InsertMoveHistory(db.MoveInput{
 			MediaID: mediaID, FileActionID: int(db.FileActionMove),
-			FromPath: srcPath, ToPath: destPath,
-			OrigName: fileInfo.Name(), NewName: cleanName,
+			FromPath: input.SrcPath, ToPath: input.DestPath,
+			OrigName: input.FileInfo.Name(), NewName: input.CleanName,
 		}); histErr != nil {
 			errlog.Warn("DB history error: %v", histErr)
 		}
 	}
 
 	saveHistoryLog(HistoryLogInput{
-		BasePath: database.BasePath, Title: result.CleanTitle,
-		Year: result.Year, FromPath: srcPath, ToPath: destPath,
+		BasePath: input.Database.BasePath, Title: input.Result.CleanTitle,
+		Year: input.Result.Year, FromPath: input.SrcPath, ToPath: input.DestPath,
 	})
 }
 
-func findOrCreateMoveMedia(database *db.DB, result cleaner.Result, fileInfo os.FileInfo, srcPath, destPath string) int64 {
+func findOrCreateMoveMedia(input FindMoveMediaInput) int64 {
 	var mediaID int64
-	existing, searchErr := database.SearchMedia(result.CleanTitle)
+	existing, searchErr := input.Database.SearchMedia(input.Result.CleanTitle)
 	if searchErr != nil {
 		errlog.Warn("DB search error: %v", searchErr)
 	}
 	for i := range existing {
-		if existing[i].CurrentFilePath == srcPath || existing[i].OriginalFilePath == srcPath {
+		if existing[i].CurrentFilePath == input.SrcPath || existing[i].OriginalFilePath == input.SrcPath {
 			mediaID = existing[i].ID
 			break
 		}
 	}
 
 	if mediaID != 0 {
-		if updateErr := database.UpdateMediaPath(mediaID, destPath); updateErr != nil {
+		if updateErr := input.Database.UpdateMediaPath(mediaID, input.DestPath); updateErr != nil {
 			errlog.Error("DB update path error: %v", updateErr)
 		}
 		return mediaID
 	}
 
 	m := &db.Media{
-		Title:            result.CleanTitle,
-		CleanTitle:       result.CleanTitle,
-		Year:             result.Year,
-		Type:             result.Type,
-		OriginalFileName: fileInfo.Name(),
-		OriginalFilePath: srcPath,
-		CurrentFilePath:  destPath,
-		FileExtension:    result.Extension,
-		FileSize:         fileInfo.Size(),
+		Title:            input.Result.CleanTitle,
+		CleanTitle:       input.Result.CleanTitle,
+		Year:             input.Result.Year,
+		Type:             input.Result.Type,
+		OriginalFileName: input.FileInfo.Name(),
+		OriginalFilePath: input.SrcPath,
+		CurrentFilePath:  input.DestPath,
+		FileExtension:    input.Result.Extension,
+		FileSize:         input.FileInfo.Size(),
 	}
 	var insertErr error
-	mediaID, insertErr = database.InsertMedia(m)
+	mediaID, insertErr = input.Database.InsertMedia(m)
 	if insertErr != nil {
+		errlog.Error("DB insert error: %v", insertErr)
+	}
+	return mediaID
+}
 		errlog.Error("DB insert error: %v", insertErr)
 	}
 	return mediaID
