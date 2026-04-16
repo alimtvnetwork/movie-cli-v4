@@ -1,5 +1,5 @@
 // movie_export.go — movie export
-// Dumps the media table as JSON to ./data/json/export/media.json.
+// Dumps the media table as JSON with optional storage stats and genre breakdown.
 package cmd
 
 import (
@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 
 	"github.com/spf13/cobra"
 
@@ -19,7 +20,7 @@ var exportOutput string
 var movieExportCmd = &cobra.Command{
 	Use:   "export",
 	Short: "Export media library as JSON",
-	Long: `Dump the entire media table to a JSON file.
+	Long: `Dump the entire media table to a JSON file with storage stats and genre breakdown.
 
 Default output: ./data/json/export/media.json
 
@@ -30,7 +31,37 @@ Examples:
 }
 
 func init() {
-	movieExportCmd.Flags().StringVarP(&exportOutput, "output", "o", "", "Output file path (default: ./data/json/export/media.json)")
+	movieExportCmd.Flags().StringVarP(&exportOutput, "output", "o", "",
+		"Output file path (default: ./data/json/export/media.json)")
+}
+
+// exportEnvelope is the top-level JSON structure.
+type exportEnvelope struct {
+	Meta    exportMeta       `json:"meta"`
+	Storage *exportStorage   `json:"storage,omitempty"`
+	Genres  []exportGenre    `json:"genres,omitempty"`
+	Media   []exportMediaJSON `json:"media"`
+}
+
+type exportMeta struct {
+	TotalItems  int    `json:"total_items"`
+	TotalMovies int    `json:"total_movies"`
+	TotalTV     int    `json:"total_tv_shows"`
+	ExportedAt  string `json:"exported_at"`
+}
+
+type exportStorage struct {
+	TotalSizeMb   float64 `json:"total_size_mb"`
+	TotalHuman    string  `json:"total_human"`
+	LargestMb     float64 `json:"largest_file_mb"`
+	LargestTitle  string  `json:"largest_file_title,omitempty"`
+	SmallestMb    float64 `json:"smallest_file_mb"`
+	AverageMb     float64 `json:"average_file_mb"`
+}
+
+type exportGenre struct {
+	Name  string `json:"name"`
+	Count int    `json:"count"`
 }
 
 // exportMediaJSON mirrors db.Media with JSON tags for clean output.
@@ -52,7 +83,7 @@ type exportMediaJSON struct {
 	TrailerURL       string  `json:"trailer_url,omitempty"`
 	Tagline          string  `json:"tagline,omitempty"`
 	ID               int64   `json:"id"`
-	FileSize         int64   `json:"file_size,omitempty"`
+	FileSizeMb       float64 `json:"file_size_mb,omitempty"`
 	Budget           int64   `json:"budget,omitempty"`
 	Revenue          int64   `json:"revenue,omitempty"`
 	ImdbRating       float64 `json:"imdb_rating,omitempty"`
@@ -72,7 +103,7 @@ func toExportMediaJSON(m db.Media) exportMediaJSON {
 		CastList: m.CastList, ThumbnailPath: m.ThumbnailPath,
 		OriginalFileName: m.OriginalFileName, OriginalFilePath: m.OriginalFilePath,
 		CurrentFilePath: m.CurrentFilePath, FileExtension: m.FileExtension,
-		FileSize: m.FileSize, Runtime: m.Runtime, Language: m.Language,
+		FileSizeMb: m.FileSizeMb, Runtime: m.Runtime, Language: m.Language,
 		Budget: m.Budget, Revenue: m.Revenue, TrailerURL: m.TrailerURL,
 		Tagline: m.Tagline,
 	}
@@ -86,42 +117,80 @@ func runExport(cmd *cobra.Command, args []string) {
 	}
 	defer database.Close()
 
-	// Fetch all media (large limit)
 	items, err := database.ListMedia(0, 100000)
 	if err != nil {
 		errlog.Error("Failed to read media: %v", err)
 		return
 	}
-
 	if len(items) == 0 {
 		fmt.Println("📭 No media to export. Run 'movie scan <folder>' first.")
 		return
 	}
 
-	// Convert to JSON-friendly structs
-	out := make([]exportMediaJSON, len(items))
+	// Build media array
+	mediaOut := make([]exportMediaJSON, len(items))
 	for i := range items {
-		out[i] = toExportMediaJSON(items[i])
+		mediaOut[i] = toExportMediaJSON(items[i])
 	}
 
-	data, err := json.MarshalIndent(out, "", "  ")
+	// Counts
+	totalMovies, _ := database.CountMedia(string(db.MediaTypeMovie))
+	totalTV, _ := database.CountMedia(string(db.MediaTypeTV))
+
+	envelope := exportEnvelope{
+		Meta: exportMeta{
+			TotalItems:  len(items),
+			TotalMovies: totalMovies,
+			TotalTV:     totalTV,
+			ExportedAt:  db.NowUTC(),
+		},
+		Media: mediaOut,
+	}
+
+	// Storage stats
+	totalSize, largest, smallest, sizeErr := database.FileSizeStats()
+	if sizeErr == nil && totalSize > 0 {
+		st := &exportStorage{
+			TotalSizeMb: totalSize,
+			TotalHuman:  db.HumanSize(totalSize),
+			LargestMb:   largest,
+			SmallestMb:  smallest,
+		}
+		if len(items) > 0 {
+			st.AverageMb = totalSize / float64(len(items))
+		}
+		lgTitle, _, lgErr := database.LargestMediaBySize()
+		if lgErr == nil {
+			st.LargestTitle = lgTitle
+		}
+		envelope.Storage = st
+	}
+
+	// Genre breakdown
+	genres, genreErr := database.TopGenres(50)
+	if genreErr == nil && len(genres) > 0 {
+		for name, count := range genres {
+			envelope.Genres = append(envelope.Genres, exportGenre{Name: name, Count: count})
+		}
+		sort.Slice(envelope.Genres, func(i, j int) bool {
+			return envelope.Genres[i].Count > envelope.Genres[j].Count
+		})
+	}
+
+	data, err := json.MarshalIndent(envelope, "", "  ")
 	if err != nil {
 		errlog.Error("JSON encoding error: %v", err)
 		return
 	}
 
-	// Determine output path
 	outPath := exportOutput
 	if outPath == "" {
 		outPath = filepath.Join(".", "data", "json", "export", "media.json")
 	}
-
-	// Ensure directory exists
 	if err := os.MkdirAll(filepath.Dir(outPath), 0755); err != nil {
 		errlog.Error("Cannot create directory: %v", err)
 		return
 	}
-
 	if err := os.WriteFile(outPath, data, 0644); err != nil {
 		errlog.Error("Failed to write file: %v", err)
 		return

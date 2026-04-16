@@ -1,7 +1,10 @@
 // duplicates.go — duplicate detection queries for the Media table.
 package db
 
-import "fmt"
+import (
+	"fmt"
+	"time"
+)
 
 // DuplicateGroup represents a set of media records that share a duplicate key.
 type DuplicateGroup struct {
@@ -161,4 +164,9 @@ func HumanSize(mb float64) string {
 	default:
 		return fmt.Sprintf("%.0f KB", mb*1024)
 	}
+}
+
+// NowUTC returns the current UTC time as RFC3339 string.
+func NowUTC() string {
+	return time.Now().UTC().Format(time.RFC3339)
 }

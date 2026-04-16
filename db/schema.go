@@ -123,6 +123,21 @@ func (d *DB) createTables() error {
 	);
 
 	-- Join Tables
+	CREATE TABLE IF NOT EXISTS Director (
+		DirectorId   INTEGER PRIMARY KEY AUTOINCREMENT,
+		Name         TEXT NOT NULL UNIQUE,
+		TmdbPersonId INTEGER UNIQUE
+	);
+
+	CREATE TABLE IF NOT EXISTS MediaDirector (
+		MediaDirectorId INTEGER PRIMARY KEY AUTOINCREMENT,
+		MediaId         INTEGER NOT NULL,
+		DirectorId      INTEGER NOT NULL,
+		UNIQUE (MediaId, DirectorId),
+		FOREIGN KEY (MediaId) REFERENCES Media(MediaId) ON DELETE CASCADE,
+		FOREIGN KEY (DirectorId) REFERENCES Director(DirectorId)
+	);
+
 	CREATE TABLE IF NOT EXISTS MediaGenre (
 		MediaGenreId INTEGER PRIMARY KEY AUTOINCREMENT,
 		MediaId      INTEGER NOT NULL,
@@ -230,6 +245,9 @@ func (d *DB) createTables() error {
 	CREATE INDEX IF NOT EXISTS IdxMedia_LanguageId         ON Media(LanguageId);
 	CREATE INDEX IF NOT EXISTS IdxMedia_CollectionId       ON Media(CollectionId);
 	CREATE INDEX IF NOT EXISTS IdxMedia_ScanHistoryId      ON Media(ScanHistoryId);
+	CREATE INDEX IF NOT EXISTS IdxDirector_TmdbPersonId    ON Director(TmdbPersonId);
+	CREATE INDEX IF NOT EXISTS IdxMediaDirector_MediaId    ON MediaDirector(MediaId);
+	CREATE INDEX IF NOT EXISTS IdxMediaDirector_DirectorId ON MediaDirector(DirectorId);
 	CREATE INDEX IF NOT EXISTS IdxMediaGenre_MediaId       ON MediaGenre(MediaId);
 	CREATE INDEX IF NOT EXISTS IdxMediaGenre_GenreId        ON MediaGenre(GenreId);
 	CREATE INDEX IF NOT EXISTS IdxMediaCast_MediaId        ON MediaCast(MediaId);

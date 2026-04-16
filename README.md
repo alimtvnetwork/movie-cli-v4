@@ -359,6 +359,7 @@ movie history                     # view full operation history
 | Command | Description |
 |---|---|
 | `movie suggest [N]` | Genre-based recommendations + trending |
+| `movie discover [genre]` | Browse TMDb by genre (interactive picker or direct) |
 | `movie tag add <id> <tag>` | Add a tag to a media item |
 | `movie tag remove <id> <tag>` | Remove a tag |
 | `movie tag list [id]` | List tags (per item or all) |
@@ -372,6 +373,10 @@ movie history                     # view full operation history
 
 ```bash
 movie suggest 5                   # get 5 recommendations
+movie discover                    # interactive genre picker
+movie discover Action             # discover Action movies from TMDb
+movie discover Comedy --type tv   # discover Comedy TV shows
+movie discover Horror --page 2    # page 2 of Horror movies
 movie tag add 1 favorite          # tag media #1 as favorite
 movie tag list                    # list all tags
 movie watch add 3                 # add media #3 to watchlist
@@ -459,6 +464,7 @@ movie
 ├── search <name>                 # Live TMDb search → save to DB
 ├── info <id|title>               # Detail view (local DB → TMDb fallback)
 ├── suggest [N]                   # Recommendations + trending
+├── discover [genre]              # Browse TMDb by genre
 ├── move [directory]              # Browse, select, move with clean name
 ├── rename                        # Batch rename to clean format
 ├── popout [directory]            # Extract videos from subfolders

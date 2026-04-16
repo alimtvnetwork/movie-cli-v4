@@ -79,9 +79,16 @@ func processVideoFile(vf videoFile, ctx *ScanContext) bool {
 	mediaID, insertErr := ctx.Database.InsertMedia(m)
 	if insertErr != nil {
 		handleInsertError(ctx, m, insertErr)
-	} else if mediaID > 0 && m.Genre != "" {
-		if linkErr := ctx.Database.LinkMediaGenres(mediaID, m.Genre); linkErr != nil {
-			errlog.Warn("Genre link error for '%s': %v", m.Title, linkErr)
+	} else if mediaID > 0 {
+		if m.Genre != "" {
+			if linkErr := ctx.Database.LinkMediaGenres(mediaID, m.Genre); linkErr != nil {
+				errlog.Warn("Genre link error for '%s': %v", m.Title, linkErr)
+			}
+		}
+		if m.Director != "" {
+			if linkErr := ctx.Database.LinkMediaDirectors(mediaID, m.Director); linkErr != nil {
+				errlog.Warn("Director link error for '%s': %v", m.Title, linkErr)
+			}
 		}
 	}
 
