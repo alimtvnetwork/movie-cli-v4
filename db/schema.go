@@ -298,6 +298,11 @@ func (d *DB) createTables() error {
 	CREATE INDEX IF NOT EXISTS IdxErrorLog_Level           ON ErrorLog(Level);
 	CREATE INDEX IF NOT EXISTS IdxErrorLog_Command         ON ErrorLog(Command);
 	CREATE INDEX IF NOT EXISTS IdxErrorLog_Timestamp       ON ErrorLog(Timestamp);
+	CREATE INDEX IF NOT EXISTS IdxSeason_MediaId           ON Season(MediaId);
+	CREATE INDEX IF NOT EXISTS IdxSeason_TmdbSeasonId      ON Season(TmdbSeasonId);
+	CREATE INDEX IF NOT EXISTS IdxEpisode_SeasonId         ON Episode(SeasonId);
+	CREATE INDEX IF NOT EXISTS IdxEpisode_TmdbEpisodeId    ON Episode(TmdbEpisodeId);
+	CREATE INDEX IF NOT EXISTS IdxEpisode_IsWatched        ON Episode(IsWatched);
 	`)
 	return err
 }
