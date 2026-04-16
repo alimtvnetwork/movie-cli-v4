@@ -137,7 +137,7 @@ func runWatchRm(cmd *cobra.Command, args []string) {
 func runWatchLs(cmd *cobra.Command, args []string) {
 	database, err := db.Open()
 	if err != nil {
-		errlog.Error("Database error: %v", err)
+		errlog.Error(msgDatabaseError, err)
 		return
 	}
 	defer database.Close()
@@ -207,7 +207,7 @@ func openAndGetMedia(idArg string) (*db.DB, *db.Media) {
 
 	database, err := db.Open()
 	if err != nil {
-		errlog.Error("Database error: %v", err)
+		errlog.Error(msgDatabaseError, err)
 		return nil, nil
 	}
 

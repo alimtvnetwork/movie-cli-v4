@@ -9,6 +9,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/alimtvnetwork/movie-cli-v4/apperror"
 	"github.com/alimtvnetwork/movie-cli-v4/db"
 	"github.com/alimtvnetwork/movie-cli-v4/errlog"
 )
@@ -65,7 +66,7 @@ type watchEntryJSON struct {
 func runWatchExport(cmd *cobra.Command, args []string) {
 	database, dbErr := db.Open()
 	if dbErr != nil {
-		errlog.Error("Database error: %v", dbErr)
+		errlog.Error(msgDatabaseError, dbErr)
 		return
 	}
 	defer database.Close()
@@ -124,7 +125,7 @@ func resolveWatchExportPath() string {
 
 func writeExportFile(outPath string, data []byte) error {
 	if err := os.MkdirAll(filepath.Dir(outPath), 0755); err != nil {
-		return fmt.Errorf("Cannot create directory: %v", err)
+		return apperror.Wrapf(err, "cannot create directory %s", filepath.Dir(outPath))
 	}
 	return os.WriteFile(outPath, data, 0644)
 }
@@ -132,7 +133,7 @@ func writeExportFile(outPath string, data []byte) error {
 func runWatchImport(cmd *cobra.Command, args []string) {
 	database, dbErr := db.Open()
 	if dbErr != nil {
-		errlog.Error("Database error: %v", dbErr)
+		errlog.Error(msgDatabaseError, dbErr)
 		return
 	}
 	defer database.Close()

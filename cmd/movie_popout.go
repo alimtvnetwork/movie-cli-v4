@@ -72,7 +72,7 @@ type popoutFolderInfo struct {
 func runMoviePopout(cmd *cobra.Command, args []string) {
 	database, openErr := db.Open()
 	if openErr != nil {
-		errlog.Error("Database error: %v", openErr)
+		errlog.Error(msgDatabaseError, openErr)
 		return
 	}
 	defer database.Close()

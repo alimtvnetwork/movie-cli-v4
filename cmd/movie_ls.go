@@ -56,7 +56,7 @@ type lsJSONItem struct {
 func runMovieLs(cmd *cobra.Command, args []string) {
 	database, err := db.Open()
 	if err != nil {
-		errlog.Error("Database error: %v", err)
+		errlog.Error(msgDatabaseError, err)
 		return
 	}
 	defer database.Close()
@@ -74,7 +74,7 @@ func runMovieLs(cmd *cobra.Command, args []string) {
 func runMovieLsJSON(database *db.DB) {
 	allMedia, err := database.ListMedia(0, 100000)
 	if err != nil {
-		errlog.Error("Database error: %v", err)
+		errlog.Error(msgDatabaseError, err)
 		return
 	}
 
@@ -105,7 +105,7 @@ func runMovieLsInteractive(database *db.DB) {
 
 	total, countErr := database.CountMedia("")
 	if countErr != nil {
-		errlog.Error("Database error: %v", countErr)
+		errlog.Error(msgDatabaseError, countErr)
 		return
 	}
 	if total == 0 {

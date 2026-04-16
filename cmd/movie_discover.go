@@ -44,7 +44,7 @@ func init() {
 func runMovieDiscover(cmd *cobra.Command, args []string) {
 	database, dbErr := db.Open()
 	if dbErr != nil {
-		errlog.Error("Database error: %v", dbErr)
+		errlog.Error(msgDatabaseError, dbErr)
 		return
 	}
 	defer database.Close()
