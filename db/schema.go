@@ -168,7 +168,7 @@ func (d *DB) createTables() error {
 		ToPath           TEXT NOT NULL,
 		OriginalFileName TEXT,
 		NewFileName      TEXT,
-		IsUndone         BOOLEAN NOT NULL DEFAULT 0,
+		IsReverted       BOOLEAN NOT NULL DEFAULT 0,
 		MovedAt          TEXT NOT NULL DEFAULT (datetime('now')),
 		FOREIGN KEY (MediaId) REFERENCES Media(MediaId),
 		FOREIGN KEY (FileActionId) REFERENCES FileAction(FileActionId)
@@ -181,7 +181,7 @@ func (d *DB) createTables() error {
 		MediaSnapshot   TEXT,
 		Detail          TEXT,
 		BatchId         TEXT,
-		IsUndone        BOOLEAN NOT NULL DEFAULT 0,
+		IsReverted      BOOLEAN NOT NULL DEFAULT 0,
 		CreatedAt       TEXT NOT NULL DEFAULT (datetime('now')),
 		FOREIGN KEY (FileActionId) REFERENCES FileAction(FileActionId),
 		FOREIGN KEY (MediaId) REFERENCES Media(MediaId) ON DELETE SET NULL
@@ -238,11 +238,11 @@ func (d *DB) createTables() error {
 	CREATE INDEX IF NOT EXISTS IdxMediaTag_TagId           ON MediaTag(TagId);
 	CREATE INDEX IF NOT EXISTS IdxMoveHistory_MediaId      ON MoveHistory(MediaId);
 	CREATE INDEX IF NOT EXISTS IdxMoveHistory_FileActionId ON MoveHistory(FileActionId);
-	CREATE INDEX IF NOT EXISTS IdxMoveHistory_IsUndone     ON MoveHistory(IsUndone);
+	CREATE INDEX IF NOT EXISTS IdxMoveHistory_IsReverted   ON MoveHistory(IsReverted);
 	CREATE INDEX IF NOT EXISTS IdxActionHistory_FileActionId ON ActionHistory(FileActionId);
 	CREATE INDEX IF NOT EXISTS IdxActionHistory_MediaId      ON ActionHistory(MediaId);
 	CREATE INDEX IF NOT EXISTS IdxActionHistory_BatchId      ON ActionHistory(BatchId);
-	CREATE INDEX IF NOT EXISTS IdxActionHistory_IsUndone     ON ActionHistory(IsUndone);
+	CREATE INDEX IF NOT EXISTS IdxActionHistory_IsReverted   ON ActionHistory(IsReverted);
 	CREATE INDEX IF NOT EXISTS IdxErrorLog_Level           ON ErrorLog(Level);
 	CREATE INDEX IF NOT EXISTS IdxErrorLog_Command         ON ErrorLog(Command);
 	CREATE INDEX IF NOT EXISTS IdxErrorLog_Timestamp       ON ErrorLog(Timestamp);

@@ -1,7 +1,7 @@
 # State History & Undo/Redo Specification
 
-**Version:** 2.0.0  
-**Updated:** 2026-04-15  
+**Version:** 2.1.0  
+**Updated:** 2026-04-16  
 **Status:** Planned
 
 ---
@@ -15,7 +15,9 @@ Every state-changing operation in the CLI must be tracked in the database so tha
 - **File deletions / removals** (`movie cleanup --remove`)
 - **Scan operations** (`movie scan` — adding/removing entries)
 
-The `MoveHistory` table tracks move and rename operations with an `IsUndone` flag. The `ActionHistory` table extends that pattern to cover **all** reversible actions via a `FileActionId` FK to the `FileAction` lookup table.
+The `MoveHistory` table tracks move and rename operations with an `IsReverted` flag. The `ActionHistory` table extends that pattern to cover **all** reversible actions via a `FileActionId` FK to the `FileAction` lookup table.
+
+> **Naming convention:** Boolean columns use positive semantic names with `Is`/`Has` prefix. The flag `IsReverted` means "this action has been reversed" (1 = reverted, 0 = active). Never use negative words like "un", "not", "no" in boolean names.
 
 ---
 
@@ -25,8 +27,8 @@ The `MoveHistory` table tracks move and rename operations with an `IsUndone` fla
 
 | Action | Table | Tracked Fields | Undo Support |
 |--------|-------|----------------|--------------|
-| File move | `MoveHistory` | FromPath, ToPath, OriginalFileName, NewFileName, MovedAt | ✅ `IsUndone` flag |
-| File rename | `MoveHistory` | Same as move (rename = move within same dir) | ✅ `IsUndone` flag |
+| File move | `MoveHistory` | FromPath, ToPath, OriginalFileName, NewFileName, MovedAt | ✅ `IsReverted` flag |
+| File rename | `MoveHistory` | Same as move (rename = move within same dir) | ✅ `IsReverted` flag |
 | Folder scan | `ScanHistory` | ScanFolderId, TotalFiles, MoviesFound, TvFound, ScannedAt | ❌ Log only |
 | Media insert | `Media` | All metadata fields, ScannedAt | ❌ No revert |
 | Media delete | N/A | Not tracked | ❌ No revert |
@@ -54,7 +56,7 @@ CREATE TABLE ActionHistory (
     MediaSnapshot   TEXT,
     Detail          TEXT,
     BatchId         TEXT,
-    IsUndone        BOOLEAN NOT NULL DEFAULT 0,
+    IsReverted      BOOLEAN NOT NULL DEFAULT 0,
     CreatedAt       TEXT NOT NULL DEFAULT (datetime('now')),
     FOREIGN KEY (FileActionId) REFERENCES FileAction(FileActionId),
     FOREIGN KEY (MediaId) REFERENCES Media(MediaId) ON DELETE SET NULL
@@ -63,7 +65,7 @@ CREATE TABLE ActionHistory (
 CREATE INDEX IdxActionHistory_FileActionId ON ActionHistory(FileActionId);
 CREATE INDEX IdxActionHistory_MediaId      ON ActionHistory(MediaId);
 CREATE INDEX IdxActionHistory_BatchId      ON ActionHistory(BatchId);
-CREATE INDEX IdxActionHistory_IsUndone     ON ActionHistory(IsUndone);
+CREATE INDEX IdxActionHistory_IsReverted   ON ActionHistory(IsReverted);
 ```
 
 ### 3.1 Field Descriptions
@@ -75,7 +77,7 @@ CREATE INDEX IdxActionHistory_IsUndone     ON ActionHistory(IsUndone);
 | `MediaSnapshot` | Full JSON of the Media row **before** the change — enables undo by restoring |
 | `Detail` | e.g. `"Deleted: Scream (2022).mkv from /Movies"` |
 | `BatchId` | UUID grouping all actions from one command invocation |
-| `IsUndone` | 0 = active, 1 = undone |
+| `IsReverted` | 0 = active, 1 = reverted (action has been reversed) |
 
 ### 3.2 FileAction Types (relevant to state history)
 
@@ -102,26 +104,26 @@ movie undo --id <id>    # Undo specific action by ID
 ```
 
 **Flow:**
-1. Query latest record where `IsUndone = 0` from `MoveHistory` or `ActionHistory`
+1. Query latest record where `IsReverted = 0` from `MoveHistory` or `ActionHistory`
 2. Display what will be undone, ask confirmation
 3. Reverse the operation:
    - Move/rename → move file back, update `Media.CurrentFilePath`
    - Delete → re-insert from `MediaSnapshot`
    - ScanAdd → delete the Media entry
-4. Set `IsUndone = 1`
+4. Set `IsReverted = 1`
 
 ### 4.2 `movie redo`
 
 ```
-movie redo              # Redo the last undone action
+movie redo              # Redo the last reverted action
 movie redo --list       # Show recent redoable actions
 movie redo --id <id>    # Redo specific action by ID
 ```
 
 **Flow:**
-1. Query latest record where `IsUndone = 1`
+1. Query latest record where `IsReverted = 1`
 2. Re-apply the original operation
-3. Set `IsUndone = 0`
+3. Set `IsReverted = 0`
 
 ### 4.3 `movie history`
 
@@ -196,4 +198,4 @@ All state operations must follow the error management spec:
 
 ---
 
-*State history spec — updated: 2026-04-15*
+*State history spec — updated: 2026-04-16*
