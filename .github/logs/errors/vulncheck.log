@@ -1,0 +1,19 @@
+=== VULNERABILITY SCAN ===
+status: pass
+exit_code: 0
+
+govulncheck: loading packages: 
+There are errors with the provided package patterns:
+
+/home/runner/work/movie-cli-v4/movie-cli-v4/cmd/movie_history.go:135:18: m.Undone undefined (type db.MoveRecord has no field or method Undone)
+/home/runner/work/movie-cli-v4/movie-cli-v4/cmd/movie_history_table.go:76:17: m.Undone undefined (type db.MoveRecord has no field or method Undone)
+/home/runner/work/movie-cli-v4/movie-cli-v4/cmd/movie_move_helpers.go:73:22: cannot use bytes (variable of type int64) as float64 value in argument to db.HumanSize
+/home/runner/work/movie-cli-v4/movie-cli-v4/cmd/movie_redo.go:98:8: m.Undone undefined (type db.MoveRecord has no field or method Undone)
+/home/runner/work/movie-cli-v4/movie-cli-v4/cmd/movie_redo.go:105:10: m.Undone undefined (type db.MoveRecord has no field or method Undone)
+/home/runner/work/movie-cli-v4/movie-cli-v4/cmd/movie_redo.go:196:13: target.Undone undefined (type *db.MoveRecord has no field or method Undone)
+/home/runner/work/movie-cli-v4/movie-cli-v4/cmd/movie_undo.go:102:9: m.Undone undefined (type db.MoveRecord has no field or method Undone)
+/home/runner/work/movie-cli-v4/movie-cli-v4/cmd/movie_undo.go:109:9: m.Undone undefined (type db.MoveRecord has no field or method Undone)
+/home/runner/work/movie-cli-v4/movie-cli-v4/cmd/movie_undo.go:201:12: target.Undone undefined (type *db.MoveRecord has no field or method Undone)
+
+For details on package patterns, see https://pkg.go.dev/cmd/go#hdr-Package_lists_and_patterns.
+

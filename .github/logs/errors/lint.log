@@ -1,0 +1,38 @@
+=== GO VET ===
+status: success
+# github.com/alimtvnetwork/movie-cli-v3/cmd
+cmd/movie_history.go:135:18: m.Undone undefined (type db.MoveRecord has no field or method Undone)
+cmd/movie_history_table.go:76:17: m.Undone undefined (type db.MoveRecord has no field or method Undone)
+cmd/movie_move_helpers.go:73:22: cannot use bytes (variable of type int64) as float64 value in argument to db.HumanSize
+cmd/movie_redo.go:98:8: m.Undone undefined (type db.MoveRecord has no field or method Undone)
+cmd/movie_redo.go:105:10: m.Undone undefined (type db.MoveRecord has no field or method Undone)
+cmd/movie_redo.go:196:13: target.Undone undefined (type *db.MoveRecord has no field or method Undone)
+cmd/movie_undo.go:102:9: m.Undone undefined (type db.MoveRecord has no field or method Undone)
+cmd/movie_undo.go:109:9: m.Undone undefined (type db.MoveRecord has no field or method Undone)
+cmd/movie_undo.go:201:12: target.Undone undefined (type *db.MoveRecord has no field or method Undone)
+
+=== GOLANGCI-LINT ===
+status: success
+cmd/changelog.go:1: : # github.com/alimtvnetwork/movie-cli-v3/cmd
+cmd/movie_history.go:135:18: m.Undone undefined (type db.MoveRecord has no field or method Undone)
+cmd/movie_history_table.go:76:17: m.Undone undefined (type db.MoveRecord has no field or method Undone)
+cmd/movie_move_helpers.go:73:22: cannot use bytes (variable of type int64) as float64 value in argument to db.HumanSize
+cmd/movie_redo.go:98:8: m.Undone undefined (type db.MoveRecord has no field or method Undone)
+cmd/movie_redo.go:105:10: m.Undone undefined (type db.MoveRecord has no field or method Undone)
+cmd/movie_redo.go:196:13: target.Undone undefined (type *db.MoveRecord has no field or method Undone)
+cmd/movie_undo.go:102:9: m.Undone undefined (type db.MoveRecord has no field or method Undone)
+cmd/movie_undo.go:109:9: m.Undone undefined (type db.MoveRecord has no field or method Undone)
+cmd/movie_undo.go:201:12: target.Undone undefined (type *db.MoveRecord has no field or method Undone) (typecheck)
+// changelog.go — implements the `movie changelog` command.
+main.go:5:2: could not import github.com/alimtvnetwork/movie-cli-v3/cmd (-: # github.com/alimtvnetwork/movie-cli-v3/cmd
+cmd/movie_history.go:135:18: m.Undone undefined (type db.MoveRecord has no field or method Undone)
+cmd/movie_history_table.go:76:17: m.Undone undefined (type db.MoveRecord has no field or method Undone)
+cmd/movie_move_helpers.go:73:22: cannot use bytes (variable of type int64) as float64 value in argument to db.HumanSize
+cmd/movie_redo.go:98:8: m.Undone undefined (type db.MoveRecord has no field or method Undone)
+cmd/movie_redo.go:105:10: m.Undone undefined (type db.MoveRecord has no field or method Undone)
+cmd/movie_redo.go:196:13: target.Undone undefined (type *db.MoveRecord has no field or method Undone)
+cmd/movie_undo.go:102:9: m.Undone undefined (type db.MoveRecord has no field or method Undone)
+cmd/movie_undo.go:109:9: m.Undone undefined (type db.MoveRecord has no field or method Undone)
+cmd/movie_undo.go:201:12: target.Undone undefined (type *db.MoveRecord has no field or method Undone)) (typecheck)
+	"github.com/alimtvnetwork/movie-cli-v3/cmd"
+	^
