@@ -12,15 +12,15 @@ import { mockMedia } from "@/data/mock-media";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Button } from "@/components/ui/button";
 import { ChevronDown, ChevronUp, BarChart3, RotateCcw } from "lucide-react";
-import { safeLocalGet, safeLocalSet } from "@/lib/media-utils";
+import { safeLocalGetBool, safeLocalSetBool, LOCAL_KEY_STATS_PANEL_OPEN } from "@/lib/media-utils";
 import { toast } from "sonner";
 
 const Index = () => {
-  const [statsOpen, setStatsOpen] = useState(() => safeLocalGet("statsPanel.open", "true") === "true");
+  const [statsOpen, setStatsOpen] = useState(() => safeLocalGetBool(LOCAL_KEY_STATS_PANEL_OPEN, true));
 
-  const handleStatsToggle = (open: boolean) => {
-    setStatsOpen(open);
-    safeLocalSet("statsPanel.open", String(open));
+  const handleStatsToggle = (isOpen: boolean) => {
+    setStatsOpen(isOpen);
+    safeLocalSetBool(LOCAL_KEY_STATS_PANEL_OPEN, isOpen);
   };
 
   const {

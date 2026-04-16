@@ -3,6 +3,17 @@
  * Consolidates formatting, rating helpers, and constants used across dashboard components.
  */
 
+// ---------------------------------------------------------------------------
+// localStorage keys — use constants, never magic strings
+// ---------------------------------------------------------------------------
+
+/** localStorage key for the stats panel open/closed state. */
+export const LOCAL_KEY_STATS_PANEL_OPEN = "statsPanel.open";
+
+// ---------------------------------------------------------------------------
+// Rating & formatting helpers
+// ---------------------------------------------------------------------------
+
 /** Returns a semantic Tailwind text color class for a numeric rating. */
 export function ratingColorClass(rating: number): string {
   if (rating >= 7) return "text-rating-high";
@@ -18,6 +29,10 @@ export function formatFileSize(bytes: number): string {
   return `${bytes} B`;
 }
 
+// ---------------------------------------------------------------------------
+// Safe localStorage wrappers (string)
+// ---------------------------------------------------------------------------
+
 /** Safely reads a value from localStorage, returning the fallback on any error. */
 export function safeLocalGet(key: string, fallback: string): string {
   try {
@@ -31,6 +46,30 @@ export function safeLocalGet(key: string, fallback: string): string {
 export function safeLocalSet(key: string, value: string): void {
   try {
     localStorage.setItem(key, value);
+  } catch {
+    // Ignore — private browsing or quota exceeded
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Safe localStorage wrappers (boolean) — avoids string ↔ boolean confusion
+// ---------------------------------------------------------------------------
+
+/** Safely reads a boolean from localStorage. Stores as JSON true/false. */
+export function safeLocalGetBool(key: string, fallback: boolean): boolean {
+  try {
+    const raw = localStorage.getItem(key);
+    if (raw === null) return fallback;
+    return JSON.parse(raw) === true;
+  } catch {
+    return fallback;
+  }
+}
+
+/** Safely writes a boolean to localStorage as JSON true/false. */
+export function safeLocalSetBool(key: string, value: boolean): void {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
   } catch {
     // Ignore — private browsing or quota exceeded
   }
