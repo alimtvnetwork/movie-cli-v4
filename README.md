@@ -478,7 +478,7 @@ movie
 ├── duplicates                    # Detect duplicate media entries
 ├── cleanup [--remove]            # Find/remove stale entries
 ├── tag [add|remove|list]         # Manage user-defined tags
-├── watch [add|done|undo|rm|ls]   # Manage watchlist
+├── watch [add|done|undo|rm|ls|export|import]  # Manage watchlist + sync
 ├── cd [folder-name]              # Print scanned folder path
 ├── export [-o path]              # Dump media table as JSON
 ├── db                            # Show database path and status
