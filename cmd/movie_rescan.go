@@ -25,7 +25,6 @@ func regenerateReports(database *db.DB) {
 		return
 	}
 
-	// Group media by scan directory (parent of .movie-output)
 	dirMap := make(map[string][]db.Media)
 	for _, m := range allMedia {
 		if m.OriginalFilePath == "" {
@@ -120,21 +119,10 @@ func runMovieRescan(cmd *cobra.Command, args []string) {
 	}
 	defer errlog.Close()
 
-	// Fetch entries to rescan
-	var entries []db.Media
-	if rescanAll {
-		entries, err = database.ListAllMedia()
-	}
-	if !rescanAll {
-		entries, err = database.GetMediaWithMissingData()
-	}
+	entries, err := fetchRescanEntries(database)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "❌ Database query error: %v\n", err)
 		return
-	}
-
-	if rescanLimit > 0 && len(entries) > rescanLimit {
-		entries = entries[:rescanLimit]
 	}
 
 	if len(entries) == 0 {
@@ -143,9 +131,37 @@ func runMovieRescan(cmd *cobra.Command, args []string) {
 	}
 
 	client := tmdb.NewClientWithToken(creds.APIKey, creds.Token)
+	updated, failed := processRescanEntries(database, client, entries)
+	printRescanResult(updated, failed, len(entries))
 
+	if updated > 0 {
+		regenerateReports(database)
+	}
+}
+
+func fetchRescanEntries(database *db.DB) ([]db.Media, error) {
+	if rescanAll {
+		entries, err := database.ListAllMedia()
+		if err != nil {
+			return nil, err
+		}
+		if rescanLimit > 0 && len(entries) > rescanLimit {
+			entries = entries[:rescanLimit]
+		}
+		return entries, nil
+	}
+	entries, err := database.GetMediaWithMissingData()
+	if err != nil {
+		return nil, err
+	}
+	if rescanLimit > 0 && len(entries) > rescanLimit {
+		entries = entries[:rescanLimit]
+	}
+	return entries, nil
+}
+
+func processRescanEntries(database *db.DB, client *tmdb.Client, entries []db.Media) (int, int) {
 	fmt.Printf("\n🔄 Rescanning %d entries for TMDb metadata...\n\n", len(entries))
-
 	updated, failed := 0, 0
 	for i, m := range entries {
 		fmt.Printf("  %d/%d  %s", i+1, len(entries), m.CleanTitle)
@@ -161,14 +177,12 @@ func runMovieRescan(cmd *cobra.Command, args []string) {
 		fmt.Printf("  ❌ failed\n")
 		failed++
 	}
+	return updated, failed
+}
 
+func printRescanResult(updated, failed, total int) {
 	fmt.Printf("\n📊 Rescan Complete!\n")
 	fmt.Printf("   Updated:  %d\n", updated)
 	fmt.Printf("   Failed:   %d\n", failed)
-	fmt.Printf("   Total:    %d\n\n", len(entries))
-
-	// Regenerate HTML reports for affected scan directories
-	if updated > 0 {
-		regenerateReports(database)
-	}
+	fmt.Printf("   Total:    %d\n\n", total)
 }

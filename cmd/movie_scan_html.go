@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/alimtvnetwork/movie-cli-v4/apperror"
+	"github.com/alimtvnetwork/movie-cli-v4/db"
 	"github.com/alimtvnetwork/movie-cli-v4/templates"
 )
 
@@ -56,35 +57,6 @@ func writeHTMLReport(stats ScanStats) error {
 		return apperror.Wrap("parse template", err)
 	}
 
-	reportItems := make([]htmlReportItem, 0, len(stats.Items))
-	for _, m := range stats.Items {
-		var genres []string
-		if m.Genre != "" {
-			for _, g := range strings.Split(m.Genre, ",") {
-				g = strings.TrimSpace(g)
-				if g != "" {
-					genres = append(genres, g)
-				}
-			}
-		}
-		reportItems = append(reportItems, htmlReportItem{
-			ID:            m.ID,
-			Title:         m.Title,
-			Year:          m.Year,
-			Type:          m.Type,
-			Genre:         m.Genre,
-			GenreList:     genres,
-			Director:      m.Director,
-			CastList:      m.CastList,
-			Description:   m.Description,
-			Tagline:       m.Tagline,
-			TmdbRating:    m.TmdbRating,
-			ImdbRating:    m.ImdbRating,
-			Runtime:       m.Runtime,
-			ThumbnailPath: m.ThumbnailPath,
-		})
-	}
-
 	data := htmlReportData{
 		ScannedFolder: stats.ScanDir,
 		ScannedAt:     time.Now().Format("2006-01-02 15:04:05"),
@@ -93,7 +65,7 @@ func writeHTMLReport(stats ScanStats) error {
 		TVShows:       stats.TV,
 		Skipped:       stats.Skipped,
 		Port:          defaultRESTPort,
-		Items:         reportItems,
+		Items:         buildHTMLReportItems(stats.Items),
 	}
 
 	outPath := filepath.Join(stats.OutputDir, "report.html")
@@ -106,6 +78,34 @@ func writeHTMLReport(stats ScanStats) error {
 	if err := tmpl.Execute(f, data); err != nil {
 		return apperror.Wrap("execute template", err)
 	}
-
 	return nil
+}
+
+func buildHTMLReportItems(media []db.Media) []htmlReportItem {
+	items := make([]htmlReportItem, 0, len(media))
+	for _, m := range media {
+		items = append(items, htmlReportItem{
+			ID: m.ID, Title: m.Title, Year: m.Year, Type: m.Type,
+			Genre: m.Genre, GenreList: splitGenreList(m.Genre),
+			Director: m.Director, CastList: m.CastList,
+			Description: m.Description, Tagline: m.Tagline,
+			TmdbRating: m.TmdbRating, ImdbRating: m.ImdbRating,
+			Runtime: m.Runtime, ThumbnailPath: m.ThumbnailPath,
+		})
+	}
+	return items
+}
+
+func splitGenreList(genre string) []string {
+	if genre == "" {
+		return nil
+	}
+	var genres []string
+	for _, g := range strings.Split(genre, ",") {
+		g = strings.TrimSpace(g)
+		if g != "" {
+			genres = append(genres, g)
+		}
+	}
+	return genres
 }

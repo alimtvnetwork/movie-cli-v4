@@ -44,24 +44,7 @@ func runMovieDuplicates(cmd *cobra.Command, args []string) {
 	}
 	defer database.Close()
 
-	var groups []db.DuplicateGroup
-	var label string
-
-	switch duplicatesByFlag {
-	case "tmdb":
-		label = "TMDb ID"
-		groups, err = database.FindDuplicatesByTmdbID()
-	case "filename":
-		label = "Filename"
-		groups, err = database.FindDuplicatesByFileName()
-	case "size":
-		label = "File Size"
-		groups, err = database.FindDuplicatesByFileSize()
-	default:
-		errlog.Error("Unknown detection method: %s (use tmdb, filename, or size)", duplicatesByFlag)
-		return
-	}
-
+	groups, label, err := findDuplicateGroups(database)
 	if err != nil {
 		errlog.Error("Error finding duplicates: %v", err)
 		return
@@ -72,6 +55,27 @@ func runMovieDuplicates(cmd *cobra.Command, args []string) {
 		return
 	}
 
+	printDuplicateGroups(groups, label)
+}
+
+func findDuplicateGroups(database *db.DB) ([]db.DuplicateGroup, string, error) {
+	switch duplicatesByFlag {
+	case "tmdb":
+		groups, err := database.FindDuplicatesByTmdbID()
+		return groups, "TMDb ID", err
+	case "filename":
+		groups, err := database.FindDuplicatesByFileName()
+		return groups, "Filename", err
+	case "size":
+		groups, err := database.FindDuplicatesByFileSize()
+		return groups, "File Size", err
+	default:
+		errlog.Error("Unknown detection method: %s (use tmdb, filename, or size)", duplicatesByFlag)
+		return nil, "", nil
+	}
+}
+
+func printDuplicateGroups(groups []db.DuplicateGroup, label string) {
 	totalDupes := 0
 	for _, g := range groups {
 		totalDupes += len(g.Items)
@@ -83,16 +87,20 @@ func runMovieDuplicates(cmd *cobra.Command, args []string) {
 	for i, g := range groups {
 		fmt.Printf("\n  Group %d — %s: %s (%d entries)\n", i+1, label, g.Key, len(g.Items))
 		for _, m := range g.Items {
-			path := m.CurrentFilePath
-			if path == "" {
-				path = m.OriginalFilePath
-			}
-			if path == "" {
-				path = "(no file path)"
-			}
+			path := resolveDuplicatePath(m)
 			fmt.Printf("    [ID %d] %s (%d) — %s\n", m.ID, m.Title, m.Year, path)
 		}
 	}
 
 	fmt.Printf("\n💡 To remove a duplicate, delete its DB entry or file manually.\n")
+}
+
+func resolveDuplicatePath(m db.Media) string {
+	if m.CurrentFilePath != "" {
+		return m.CurrentFilePath
+	}
+	if m.OriginalFilePath != "" {
+		return m.OriginalFilePath
+	}
+	return "(no file path)"
 }
