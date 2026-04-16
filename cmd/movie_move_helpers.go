@@ -47,7 +47,7 @@ func expandHome(path, home string) string {
 func listVideoFiles(dir string) ([]os.FileInfo, error) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
-		return nil, apperror.Wrap("cannot read directory %s", dir, err)
+		return nil, apperror.Wrapf(err, "cannot read directory %s", dir)
 	}
 
 	var files []os.FileInfo

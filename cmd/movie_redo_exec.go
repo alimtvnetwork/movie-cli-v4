@@ -18,12 +18,12 @@ func executeMoveRedo(database *db.DB, m *db.MoveRecord) error {
 		if os.IsNotExist(err) {
 			return apperror.New("file not found at %s — cannot redo", m.FromPath)
 		}
-		return apperror.Wrap("cannot access %s", m.FromPath, err)
+		return apperror.Wrapf(err, "cannot access %s", m.FromPath)
 	}
 
 	destDir := m.ToPath[:strings.LastIndex(m.ToPath, string(os.PathSeparator))]
 	if err := os.MkdirAll(destDir, 0755); err != nil {
-		return apperror.Wrap("cannot create directory %s", destDir, err)
+		return apperror.Wrapf(err, "cannot create directory %s", destDir)
 	}
 
 	if err := MoveFile(m.FromPath, m.ToPath); err != nil {
@@ -66,7 +66,7 @@ func redoScanAdd(database *db.DB, a *db.ActionRecord) error {
 	}
 	media, err := db.MediaFromJSON(a.MediaSnapshot)
 	if err != nil {
-		return apperror.Wrap("parse snapshot for redo action %d", a.ActionHistoryId, err)
+		return apperror.Wrapf(err, "parse snapshot for redo action %d", a.ActionHistoryId)
 	}
 	if _, insertErr := database.InsertMedia(media); insertErr != nil {
 		return apperror.Wrap("re-insert media for redo", insertErr)
@@ -79,7 +79,7 @@ func redoDelete(database *db.DB, a *db.ActionRecord) error {
 		media, _ := database.GetMediaByID(a.MediaId.Int64)
 		if media != nil {
 			if err := database.DeleteMediaByID(a.MediaId.Int64); err != nil {
-				return apperror.Wrap("redo delete media %d", a.MediaId.Int64, err)
+				return apperror.Wrapf(err, "redo delete media %d", a.MediaId.Int64)
 			}
 		}
 	}
@@ -92,7 +92,7 @@ func redoRestore(database *db.DB, a *db.ActionRecord) error {
 	}
 	media, err := db.MediaFromJSON(a.MediaSnapshot)
 	if err != nil {
-		return apperror.Wrap("parse snapshot for redo restore %d", a.ActionHistoryId, err)
+		return apperror.Wrapf(err, "parse snapshot for redo restore %d", a.ActionHistoryId)
 	}
 	if _, insertErr := database.InsertMedia(media); insertErr != nil {
 		return apperror.Wrap("redo restore insert", insertErr)

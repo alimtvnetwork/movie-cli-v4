@@ -16,7 +16,7 @@ func (d *DB) seedFileActions() error {
 	}
 	for _, name := range actions {
 		if _, err := d.Exec("INSERT OR IGNORE INTO FileAction (Name) VALUES (?)", name); err != nil {
-			return apperror.Wrap("seed FileAction %q", name, err)
+			return apperror.Wrapf(err, "seed FileAction %q", name)
 		}
 	}
 	return nil
@@ -33,7 +33,7 @@ func (d *DB) seedDefaultConfig() error {
 	}
 	for _, kv := range defaults {
 		if _, err := d.Exec("INSERT OR IGNORE INTO Config (ConfigKey, ConfigValue) VALUES (?, ?)", kv[0], kv[1]); err != nil {
-			return apperror.Wrap("seed config %q", kv[0], err)
+			return apperror.Wrapf(err, "seed config %q", kv[0])
 		}
 	}
 	return nil

@@ -75,7 +75,7 @@ func (d *DB) InsertAction(fileAction FileActionType, mediaId sql.NullInt64, snap
 		int(fileAction), mediaId, snapshot, detail, batchId,
 	)
 	if err != nil {
-		return 0, apperror.Wrap("insert action (%s)", fileAction, err)
+		return 0, apperror.Wrapf(err, "insert action (%s)", fileAction)
 	}
 	return res.LastInsertId()
 }
@@ -165,7 +165,7 @@ func (d *DB) ListActionsByBatch(batchId string) ([]ActionRecord, error) {
 func (d *DB) MarkActionReverted(id int64) error {
 	_, err := d.Exec("UPDATE ActionHistory SET IsReverted = 1 WHERE ActionHistoryId = ?", id)
 	if err != nil {
-		return apperror.Wrap("mark action reverted %d", id, err)
+		return apperror.Wrapf(err, "mark action reverted %d", id)
 	}
 	return nil
 }
@@ -174,7 +174,7 @@ func (d *DB) MarkActionReverted(id int64) error {
 func (d *DB) MarkActionRestored(id int64) error {
 	_, err := d.Exec("UPDATE ActionHistory SET IsReverted = 0 WHERE ActionHistoryId = ?", id)
 	if err != nil {
-		return apperror.Wrap("mark action restored %d", id, err)
+		return apperror.Wrapf(err, "mark action restored %d", id)
 	}
 	return nil
 }
@@ -183,7 +183,7 @@ func (d *DB) MarkActionRestored(id int64) error {
 func (d *DB) MarkBatchReverted(batchId string) error {
 	_, err := d.Exec("UPDATE ActionHistory SET IsReverted = 1 WHERE BatchId = ?", batchId)
 	if err != nil {
-		return apperror.Wrap("mark batch reverted %s", batchId, err)
+		return apperror.Wrapf(err, "mark batch reverted %s", batchId)
 	}
 	return nil
 }
@@ -192,7 +192,7 @@ func (d *DB) MarkBatchReverted(batchId string) error {
 func (d *DB) MarkBatchRestored(batchId string) error {
 	_, err := d.Exec("UPDATE ActionHistory SET IsReverted = 0 WHERE BatchId = ?", batchId)
 	if err != nil {
-		return apperror.Wrap("mark batch restored %s", batchId, err)
+		return apperror.Wrapf(err, "mark batch restored %s", batchId)
 	}
 	return nil
 }

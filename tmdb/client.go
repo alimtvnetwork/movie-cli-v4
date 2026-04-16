@@ -159,7 +159,7 @@ func (c *Client) DownloadPoster(posterPath, dst string) error {
 	resp, err := c.HTTPClient.Get(imgURL)
 	if err != nil {
 		if IsNetworkError(err) {
-			return apperror.Wrap("%w", ErrNetworkError, err)
+			return apperror.Wrapf(err, "%w", ErrNetworkError)
 		}
 		return err
 	}
@@ -241,7 +241,7 @@ func (c *Client) get(reqURL string, target interface{}) error {
 			return lastErr
 		}
 	}
-	return apperror.Wrap("TMDb request failed after %d retries", MaxRetries, lastErr)
+	return apperror.Wrapf(lastErr, "TMDb request failed after %d retries", MaxRetries)
 }
 
 func (c *Client) doGet(reqURL string, target interface{}, attempt int) error {
@@ -268,7 +268,7 @@ func classifyHTTPError(err error) error {
 		return apperror.New("%w: check your internet connection", ErrTimeout)
 	}
 	if IsNetworkError(err) {
-		return apperror.Wrap("%w", ErrNetworkError, err)
+		return apperror.Wrapf(err, "%w", ErrNetworkError)
 	}
 	return apperror.Wrap("HTTP request failed", err)
 }

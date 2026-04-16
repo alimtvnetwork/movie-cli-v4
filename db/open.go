@@ -65,7 +65,7 @@ func Open() (*DB, error) {
 	}
 	for _, d := range dirs {
 		if err := os.MkdirAll(d, 0755); err != nil {
-			return nil, apperror.Wrap("cannot create directory %s", d, err)
+			return nil, apperror.Wrapf(err, "cannot create directory %s", d)
 		}
 	}
 

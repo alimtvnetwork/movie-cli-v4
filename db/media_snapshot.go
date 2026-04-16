@@ -28,7 +28,7 @@ func MediaFromJSON(snapshot string) (*Media, error) {
 func (d *DB) DeleteMediaByID(id int64) error {
 	_, err := d.Exec("DELETE FROM Media WHERE MediaId = ?", id)
 	if err != nil {
-		return apperror.Wrap("delete media %d", id, err)
+		return apperror.Wrapf(err, "delete media %d", id)
 	}
 	return nil
 }

@@ -16,7 +16,7 @@ type TagCount struct {
 func (d *DB) AddTag(mediaID int, tag string) error {
 	_, err := d.Exec("INSERT OR IGNORE INTO Tag (Name) VALUES (?)", tag)
 	if err != nil {
-		return apperror.Wrap("insert tag %q", tag, err)
+		return apperror.Wrapf(err, "insert tag %q", tag)
 	}
 
 	_, err = d.Exec(`

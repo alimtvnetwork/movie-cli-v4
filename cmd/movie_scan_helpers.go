@@ -67,10 +67,10 @@ func createOutputDirs(outputDir string) error {
 		return apperror.Wrap("cannot create output directory", err)
 	}
 	if err := os.MkdirAll(filepath.Join(outputDir, "json", string(db.MediaTypeMovie)), 0755); err != nil {
-		return apperror.Wrap("cannot create json/%s dir", db.MediaTypeMovie, err)
+		return apperror.Wrapf(err, "cannot create json/%s dir", db.MediaTypeMovie)
 	}
 	if err := os.MkdirAll(filepath.Join(outputDir, "json", string(db.MediaTypeTV)), 0755); err != nil {
-		return apperror.Wrap("cannot create json/%s dir", db.MediaTypeTV, err)
+		return apperror.Wrapf(err, "cannot create json/%s dir", db.MediaTypeTV)
 	}
 	return nil
 }

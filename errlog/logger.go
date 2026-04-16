@@ -61,13 +61,13 @@ func Init(outputDir, command string) error {
 
 	logDir := filepath.Join(outputDir, "logs")
 	if err := os.MkdirAll(logDir, 0755); err != nil {
-		return apperror.Wrap("cannot create log dir %s", logDir, err)
+		return apperror.Wrapf(err, "cannot create log dir %s", logDir)
 	}
 
 	logPath := filepath.Join(logDir, "error.txt")
 	f, err := os.OpenFile(logPath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
 	if err != nil {
-		return apperror.Wrap("cannot open log file %s", logPath, err)
+		return apperror.Wrapf(err, "cannot open log file %s", logPath)
 	}
 
 	wd, _ := os.Getwd()

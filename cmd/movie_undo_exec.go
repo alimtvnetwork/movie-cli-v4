@@ -18,12 +18,12 @@ func executeMoveUndo(database *db.DB, m *db.MoveRecord) error {
 		if os.IsNotExist(err) {
 			return apperror.New("file not found at %s — may have been moved manually", m.ToPath)
 		}
-		return apperror.Wrap("cannot access %s", m.ToPath, err)
+		return apperror.Wrapf(err, "cannot access %s", m.ToPath)
 	}
 
 	destDir := m.FromPath[:strings.LastIndex(m.FromPath, string(os.PathSeparator))]
 	if err := os.MkdirAll(destDir, 0755); err != nil {
-		return apperror.Wrap("cannot create directory %s", destDir, err)
+		return apperror.Wrapf(err, "cannot create directory %s", destDir)
 	}
 
 	if err := MoveFile(m.ToPath, m.FromPath); err != nil {
@@ -63,7 +63,7 @@ func executeActionUndo(database *db.DB, a *db.ActionRecord) error {
 func undoScanAdd(database *db.DB, a *db.ActionRecord) error {
 	if a.MediaId.Valid {
 		if err := database.DeleteMediaByID(a.MediaId.Int64); err != nil {
-			return apperror.Wrap("undo scan_add (delete media %d)", a.MediaId.Int64, err)
+			return apperror.Wrapf(err, "undo scan_add (delete media %d)", a.MediaId.Int64)
 		}
 	}
 	return database.MarkActionReverted(a.ActionHistoryId)
@@ -75,7 +75,7 @@ func undoDelete(database *db.DB, a *db.ActionRecord) error {
 	}
 	media, err := db.MediaFromJSON(a.MediaSnapshot)
 	if err != nil {
-		return apperror.Wrap("parse snapshot for action %d", a.ActionHistoryId, err)
+		return apperror.Wrapf(err, "parse snapshot for action %d", a.ActionHistoryId)
 	}
 	newID, insertErr := database.InsertMedia(media)
 	if insertErr != nil {
@@ -92,11 +92,11 @@ func undoRescanUpdate(database *db.DB, a *db.ActionRecord) error {
 	}
 	media, err := db.MediaFromJSON(a.MediaSnapshot)
 	if err != nil {
-		return apperror.Wrap("parse snapshot for action %d", a.ActionHistoryId, err)
+		return apperror.Wrapf(err, "parse snapshot for action %d", a.ActionHistoryId)
 	}
 	if media.ID > 0 {
 		if updateErr := database.UpdateMediaByID(media); updateErr != nil {
-			return apperror.Wrap("restore metadata for media %d", media.ID, updateErr)
+			return apperror.Wrapf(updateErr, "restore metadata for media %d", media.ID)
 		}
 	}
 	return database.MarkActionReverted(a.ActionHistoryId)
@@ -105,7 +105,7 @@ func undoRescanUpdate(database *db.DB, a *db.ActionRecord) error {
 func undoRestore(database *db.DB, a *db.ActionRecord) error {
 	if a.MediaId.Valid {
 		if err := database.DeleteMediaByID(a.MediaId.Int64); err != nil {
-			return apperror.Wrap("undo restore (delete media %d)", a.MediaId.Int64, err)
+			return apperror.Wrapf(err, "undo restore (delete media %d)", a.MediaId.Int64)
 		}
 	}
 	return database.MarkActionReverted(a.ActionHistoryId)
