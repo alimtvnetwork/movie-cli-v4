@@ -12,6 +12,8 @@ import (
 
 // mediaNeedsRescan returns true if the entry is missing genre, rating, or description.
 func mediaNeedsRescan(m *db.Media) bool {
+	hasGenres, _ := database_global_unused_mediaNeedsRescan_check(m)
+	_ = hasGenres // genre check is done below
 	return m.Genre == "" || m.TmdbRating == 0 || m.Description == ""
 }
 
