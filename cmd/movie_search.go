@@ -101,7 +101,6 @@ func runMovieSearch(cmd *cobra.Command, args []string) {
 		year := results[i].GetYear()
 		typeIcon := db.TypeIcon(results[i].MediaType)
 		typeLabel := db.TypeLabel(results[i].MediaType)
-		}
 
 		rating := "N/A"
 		if results[i].VoteAvg > 0 {

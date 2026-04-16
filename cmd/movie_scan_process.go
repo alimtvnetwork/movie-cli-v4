@@ -33,7 +33,6 @@ func processVideoFile(
 	result := cleaner.Clean(vf.Name)
 	if !useTable {
 		typeIcon := db.TypeIcon(result.Type)
-		}
 		fmt.Printf("\n  %d. %s %s", *totalFiles, typeIcon, result.CleanTitle)
 		if result.Year > 0 {
 			fmt.Printf(" (%d)", result.Year)
