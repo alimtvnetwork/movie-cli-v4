@@ -15,17 +15,18 @@ var scanWatchInterval int
 
 // runWatchLoop polls the scan directory for new video files at a fixed interval.
 func runWatchLoop(cfg ScanServiceConfig) {
-	seen := seedWatchSeen(cfg.ScanDir)
-	interval := time.Duration(scanWatchInterval) * time.Second
-	client := tmdb.NewClientWithToken(cfg.Creds.APIKey, cfg.Creds.Token)
-	useTMDb := cfg.Creds.HasAuth()
+	ws := WatchState{
+		Client:  tmdb.NewClientWithToken(cfg.Creds.APIKey, cfg.Creds.Token),
+		HasTMDb: cfg.Creds.HasAuth(),
+		Seen:    seedWatchSeen(cfg.ScanDir),
+	}
 
 	fmt.Printf("\n  👁️  Watching for new files (every %ds) — press Ctrl+C to stop\n", scanWatchInterval)
 	fmt.Println("  ──────────────────────────────────────────")
 
 	for {
 		time.Sleep(interval)
-		processWatchCycle(cfg, client, useTMDb, seen)
+		processWatchCycle(cfg, ws)
 	}
 }
 
@@ -37,13 +38,13 @@ func seedWatchSeen(scanDir string) map[string]bool {
 	return seen
 }
 
-func processWatchCycle(cfg ScanServiceConfig, client *tmdb.Client, useTMDb bool, seen map[string]bool) {
+func processWatchCycle(cfg ScanServiceConfig, ws WatchState) {
 	current := collectVideoFiles(cfg.ScanDir, scanRecursive, scanDepth)
 	var newFiles []videoFile
 	for _, vf := range current {
-		if !seen[vf.FullPath] {
+		if !ws.Seen[vf.FullPath] {
 			newFiles = append(newFiles, vf)
-			seen[vf.FullPath] = true
+			ws.Seen[vf.FullPath] = true
 		}
 	}
 
@@ -55,8 +56,8 @@ func processWatchCycle(cfg ScanServiceConfig, client *tmdb.Client, useTMDb bool,
 		len(newFiles), time.Now().Format("15:04:05"))
 
 	watchCtx := &ScanContext{
-		Database: cfg.Database, Client: client,
-		HasTMDb: useTMDb, OutputDir: cfg.OutputDir,
+		Database: cfg.Database, Client: ws.Client,
+		HasTMDb: ws.HasTMDb, OutputDir: cfg.OutputDir,
 	}
 
 	for _, vf := range newFiles {
