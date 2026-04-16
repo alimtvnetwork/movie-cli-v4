@@ -17,7 +17,7 @@ import (
 )
 
 // repoURL is the canonical GitHub URL used when no local repo exists.
-const repoURL = "https://github.com/alimtvnetwork/movie-cli-v4.git"
+const repoURL = "https://github.com/alimtvnetwork/movie-cli-v3.git"
 
 // Run executes the update command: resolves repo, creates handoff copy, launches worker.
 func Run() error {
