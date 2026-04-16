@@ -15,20 +15,25 @@ import (
 	"github.com/alimtvnetwork/movie-cli-v3/tmdb"
 )
 
+// ScanContext holds shared state for a scan session.
+type ScanContext struct {
+	Database     *db.DB
+	Client       *tmdb.Client
+	HasTMDb      bool
+	OutputDir    string
+	TotalFiles   int
+	MovieCount   int
+	TVCount      int
+	Skipped      int
+	ScannedItems []db.Media
+	UseTable     bool
+	BatchID      string
+}
+
 // processVideoFile handles a single video file: clean, check DB, fetch TMDb, insert, write JSON.
 // Returns true if the file was processed (even if skipped), false on hard errors.
-func processVideoFile(
-	vf videoFile,
-	database *db.DB,
-	client *tmdb.Client,
-	hasTMDb bool,
-	outputDir string,
-	totalFiles, movieCount, tvCount, skipped *int,
-	scannedItems *[]db.Media,
-	useTable bool,
-	batchID string,
-) bool {
-	*totalFiles++
+func processVideoFile(vf videoFile, ctx *ScanContext) bool {
+	ctx.TotalFiles++
 
 	result := cleaner.Clean(vf.Name)
 	if !useTable {
