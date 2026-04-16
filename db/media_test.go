@@ -266,7 +266,7 @@ func TestMoveHistory(t *testing.T) {
 func TestWatchlist(t *testing.T) {
 	d := openTestDB(t)
 
-	if err := d.AddToWatchlist(550, "Fight Club", 1999, "movie", 0); err != nil {
+	if err := d.AddToWatchlist(WatchlistInput{TmdbID: 550, Title: "Fight Club", Year: 1999, MediaType: "movie"}); err != nil {
 		t.Fatalf("add: %v", err)
 	}
 
