@@ -15,8 +15,6 @@ import (
 func mediaNeedsRescan(m *db.Media) bool {
 	return m.Genre == "" || m.TmdbRating == 0 || m.Description == ""
 }
-	return m.Genre == "" || m.TmdbRating == 0 || m.Description == ""
-}
 
 // rescanMediaEntry re-fetches TMDb metadata for a single media entry.
 // Returns true if the entry was updated successfully.
