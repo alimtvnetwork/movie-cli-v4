@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## v2.12.0
+
+### Changed
+- **Split 3 oversized files to under 300 lines** — zero files now exceed the 300-line limit
+  - `tmdb/client.go` (323→212) + new `tmdb/http.go` (125) — HTTP retry/response logic extracted
+  - `db/schema.go` (314→48) + new `db/schema_tables.go` (263) + `db/schema_indexes.go` (40) — DDL split by table group
+  - `cmd/movie_suggest.go` (314→154) + new `cmd/movie_suggest_helpers.go` (169) — genre analysis, discovery, and printing extracted
+- Updated `Test-SourceFiles` in `run.ps1` with 4 new files (87 total)
+
 ## v2.11.0
 
 ### Fixed
