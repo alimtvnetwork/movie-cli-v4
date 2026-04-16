@@ -2,28 +2,27 @@
 package db
 
 import (
-	"fmt"
-
+	"github.com/alimtvnetwork/movie-cli-v3/apperror"
 	"github.com/alimtvnetwork/movie-cli-v3/version"
 )
 
 // migrateSchema creates all tables, indexes, views, and seed data.
 func (d *DB) migrateSchema() error {
 	if err := d.createTables(); err != nil {
-		return fmt.Errorf("create tables: %w", err)
+		return apperror.Wrap("create tables", err)
 	}
 	if err := d.seedFileActions(); err != nil {
-		return fmt.Errorf("seed FileAction: %w", err)
+		return apperror.Wrap("seed FileAction", err)
 	}
 	if err := d.seedDefaultConfig(); err != nil {
-		return fmt.Errorf("seed Config: %w", err)
+		return apperror.Wrap("seed Config", err)
 	}
 	if err := d.createViews(); err != nil {
-		return fmt.Errorf("create views: %w", err)
+		return apperror.Wrap("create views", err)
 	}
 	// Always stamp current app version
 	if err := d.SetConfig("AppVersion", version.Short()); err != nil {
-		return fmt.Errorf("stamp app version: %w", err)
+		return apperror.Wrap("stamp app version", err)
 	}
 	return nil
 }
