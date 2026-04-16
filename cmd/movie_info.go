@@ -59,21 +59,74 @@ func runMovieInfo(cmd *cobra.Command, args []string) {
 	// 1) Try local DB first (by ID or title)
 	m, resolveErr := resolveMediaByQuery(database, query)
 	if resolveErr == nil {
-		if infoFormat == string(db.OutputFormatJSON) {
-			printMediaDetailJSON(m, "local")
-		} else if infoFormat == string(db.OutputFormatTable) {
-			printMediaDetailTable(m)
-		} else {
-			fmt.Println("📚 Found in local library:")
-			fmt.Println()
-			printMediaDetail(m)
-		}
+		printInfoResult(m, "local")
 		return
 	}
 
-	// 3) Not in DB — fall back to TMDb API
+	// 2) Not in DB — fall back to TMDb API
+	m = infoFetchFromTMDb(database, query)
+	if m == nil {
+		return
+	}
+
+	infoSaveAndDisplay(database, m)
+}
+
+// printInfoResult outputs a media item in the requested format.
+func printInfoResult(m *db.Media, source string) {
+	switch db.OutputFormat(infoFormat) {
+	case db.OutputFormatJSON:
+		printMediaDetailJSON(m, source)
+	case db.OutputFormatTable:
+		printMediaDetailTable(m)
+	default:
+		if source == "local" {
+			fmt.Println("📚 Found in local library:")
+		} else {
+			fmt.Println("✅ Saved to your library!")
+		}
+		fmt.Println()
+		printMediaDetail(m)
+	}
+}
+
+// infoFetchFromTMDb searches TMDb, fetches details, and returns a populated Media.
+func infoFetchFromTMDb(database *db.DB, query string) *db.Media {
 	fmt.Printf("🔎 Not found locally. Searching TMDb for: %s\n\n", query)
 
+	client, clientErr := buildTMDbClient(database)
+	if clientErr != nil {
+		errlog.Error("%v", clientErr)
+		return nil
+	}
+
+	tmdbResults, searchErr := client.SearchMulti(query)
+	if searchErr != nil {
+		errlog.Error("TMDb search error: %v", searchErr)
+		return nil
+	}
+	if len(tmdbResults) == 0 {
+		fmt.Println("📭 No results found on TMDb either.")
+		return nil
+	}
+
+	selected := tmdbResults[0]
+
+	// Check if already in DB by TMDb ID
+	existing, existErr := database.GetMediaByTmdbID(selected.ID)
+	if existErr != nil && existErr.Error() != "sql: no rows in result set" {
+		errlog.Warn("DB lookup error: %v", existErr)
+	}
+	if existing != nil {
+		printInfoResult(existing, "local")
+		return nil
+	}
+
+	return buildMediaFromTMDb(client, database, &selected)
+}
+
+// buildTMDbClient creates a TMDb client from config or env.
+func buildTMDbClient(database *db.DB) (*tmdb.Client, error) {
 	apiKey, cfgErr := database.GetConfig("TmdbApiKey")
 	if cfgErr != nil && cfgErr.Error() != "sql: no rows in result set" {
 		errlog.Warn("Config read error: %v", cfgErr)
@@ -82,23 +135,13 @@ func runMovieInfo(cmd *cobra.Command, args []string) {
 		apiKey = os.Getenv("TMDB_API_KEY")
 	}
 	if apiKey == "" {
-		errlog.Error("No TMDb API key configured. Set it with: movie config set tmdb_api_key YOUR_KEY")
-		return
+		return nil, fmt.Errorf("No TMDb API key configured. Set it with: movie config set tmdb_api_key YOUR_KEY")
 	}
+	return tmdb.NewClient(apiKey), nil
+}
 
-	client := tmdb.NewClient(apiKey)
-	tmdbResults, searchErr := client.SearchMulti(query)
-	if searchErr != nil {
-		errlog.Error("TMDb search error: %v", searchErr)
-		return
-	}
-	if len(tmdbResults) == 0 {
-		fmt.Println("📭 No results found on TMDb either.")
-		return
-	}
-
-	// Pick the first (most relevant) result
-	selected := tmdbResults[0]
+// buildMediaFromTMDb creates a Media from a TMDb search result with full details.
+func buildMediaFromTMDb(client *tmdb.Client, database *db.DB, selected *tmdb.SearchResult) *db.Media {
 	title := selected.GetDisplayTitle()
 	year := selected.GetYear()
 	yearInt := 0
@@ -108,26 +151,7 @@ func runMovieInfo(cmd *cobra.Command, args []string) {
 
 	fmt.Printf("⏳ Fetching details for: %s (%s)...\n", title, year)
 
-	// Check if this TMDb ID already exists in DB (avoid duplicates)
-	existing, existErr := database.GetMediaByTmdbID(selected.ID)
-	if existErr != nil && existErr.Error() != "sql: no rows in result set" {
-		errlog.Warn("DB lookup error: %v", existErr)
-	}
-	if existing != nil {
-		if infoFormat == string(db.OutputFormatJSON) {
-			printMediaDetailJSON(existing, "local")
-		} else if infoFormat == string(db.OutputFormatTable) {
-			printMediaDetailTable(existing)
-		} else {
-			fmt.Println("📚 Already in your library:")
-			fmt.Println()
-			printMediaDetail(existing)
-		}
-		return
-	}
-
-	// Build media record with full details
-	m = &db.Media{
+	m := &db.Media{
 		Title:       title,
 		CleanTitle:  title,
 		Year:        yearInt,
@@ -146,25 +170,34 @@ func runMovieInfo(cmd *cobra.Command, args []string) {
 		fetchTVDetails(client, selected.ID, m)
 	}
 
-	// Download thumbnail
-	if selected.PosterPath != "" {
-		slug := cleaner.ToSlug(m.CleanTitle)
-		if m.Year > 0 {
-			slug += "-" + strconv.Itoa(m.Year)
-		}
-		thumbDir := filepath.Join(database.BasePath, "thumbnails", slug)
-		if mkdirErr := os.MkdirAll(thumbDir, 0755); mkdirErr != nil {
-			errlog.Warn("Cannot create thumbnail dir: %v", mkdirErr)
-		}
-		thumbPath := filepath.Join(thumbDir, slug+".jpg")
-		if dlErr := client.DownloadPoster(selected.PosterPath, thumbPath); dlErr != nil {
-			errlog.Warn("Thumbnail download failed: %v", dlErr)
-		} else {
-			m.ThumbnailPath = thumbPath
-		}
+	downloadInfoThumbnail(client, database, selected, m)
+	return m
+}
+
+// downloadInfoThumbnail downloads poster for info command context.
+func downloadInfoThumbnail(client *tmdb.Client, database *db.DB, selected *tmdb.SearchResult, m *db.Media) {
+	if selected.PosterPath == "" {
+		return
 	}
 
-	// Save to DB and link genres
+	slug := cleaner.ToSlug(m.CleanTitle)
+	if m.Year > 0 {
+		slug += "-" + strconv.Itoa(m.Year)
+	}
+	thumbDir := filepath.Join(database.BasePath, "thumbnails", slug)
+	if mkdirErr := os.MkdirAll(thumbDir, 0755); mkdirErr != nil {
+		errlog.Warn("Cannot create thumbnail dir: %v", mkdirErr)
+	}
+	thumbPath := filepath.Join(thumbDir, slug+".jpg")
+	if dlErr := client.DownloadPoster(selected.PosterPath, thumbPath); dlErr != nil {
+		errlog.Warn("Thumbnail download failed: %v", dlErr)
+		return
+	}
+	m.ThumbnailPath = thumbPath
+}
+
+// infoSaveAndDisplay persists a media record and displays it.
+func infoSaveAndDisplay(database *db.DB, m *db.Media) {
 	mediaID, insertErr := database.InsertMedia(m)
 	if insertErr != nil {
 		if m.TmdbID > 0 {
@@ -184,14 +217,5 @@ func runMovieInfo(cmd *cobra.Command, args []string) {
 		database.LinkMediaGenres(mediaID, m.Genre)
 	}
 
-	if infoFormat == string(db.OutputFormatJSON) {
-		printMediaDetailJSON(m, "tmdb")
-	} else if infoFormat == string(db.OutputFormatTable) {
-		printMediaDetailTable(m)
-	} else {
-		fmt.Println()
-		fmt.Println("✅ Saved to your library!")
-		fmt.Println()
-		printMediaDetail(m)
-	}
+	printInfoResult(m, "tmdb")
 }

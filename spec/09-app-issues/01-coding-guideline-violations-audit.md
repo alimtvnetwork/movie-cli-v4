@@ -133,9 +133,9 @@
 **Target files:** `movie_scan_process.go` → `movie_scan_process_helpers.go`
 **Estimated effort:** Large
 
-### Phase 3: Split Oversized Functions (Reduces complexity)
-**Scope:** Break all 15+ line functions into ≤15-line helpers.
-**Priority order:** `runMovieInfo` (149L) → `runMovieLsInteractive` (115L) → `runBatchMove` (111L) → `collectUnifiedRecords` (97L) → remaining
+### Phase 3: Split Oversized Functions ✅ DONE (2026-04-16)
+**Result:** Split `runMovieInfo` (149L→26L + 6 helpers) and `suggestByType` (119L→15L + 7 helpers). Remaining large functions are schema DDL or complex scan logic needing separate effort.
+**Priority order:** `runMovieInfo` (149L) → `suggestByType` (119L)
 **Estimated effort:** Large
 
 ### Phase 4: Split Oversized Files
