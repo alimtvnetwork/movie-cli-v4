@@ -1,0 +1,16 @@
+{
+  "version": "2.11.0",
+  "branch": "release/v2.11.0",
+  "sourceBranch": "main",
+  "commit": "6bb461d6bfa036f1703a2cb28cd634ed54a35e53",
+  "tag": "v2.11.0",
+  "assets": [],
+  "changelog": [
+    "**Self-update now targets the exact original executable path** — the worker passes both deploy directory and binary filename into `run.ps1`, so rebuild/redeploy lands on the same binary that launched `movie update`",
+    "**`run.ps1` deploy override completed** — added `-BinaryNameOverride` alongside `-DeployPath` so update mode no longer depends on `powershell.json` filename defaults"
+  ],
+  "draft": false,
+  "preRelease": false,
+  "createdAt": "2026-04-16T08:34:29Z",
+  "isLatest": false
+}
