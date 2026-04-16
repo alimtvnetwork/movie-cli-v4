@@ -101,9 +101,10 @@ func runMovieScan(cmd *cobra.Command, args []string) {
 	useTable := scanFormat == string(db.OutputFormatTable)
 	useTMDb := creds.HasAuth()
 
+	tmdbClient := tmdb.NewClientWithToken(creds.APIKey, creds.AccessToken)
 	ctx := &ScanContext{
 		Database:  database,
-		Client:    client,
+		Client:    tmdbClient,
 		HasTMDb:   useTMDb,
 		OutputDir: outputDir,
 		UseTable:  useTable || useJSON,
