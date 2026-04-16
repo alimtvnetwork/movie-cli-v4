@@ -47,12 +47,12 @@ type scanSummaryItem struct {
 }
 
 // writeScanSummary writes .movie-output/summary.json with the full scan report.
-func writeScanSummary(outputDir, scanDir string, items []db.Media, total, movies, tv, skipped int) error {
+func writeScanSummary(stats ScanStats) error {
 	// Build categories (genre → titles)
 	categories := make(map[string][]string)
-	summaryItems := make([]scanSummaryItem, 0, len(items))
+	summaryItems := make([]scanSummaryItem, 0, len(stats.Items))
 
-	for _, m := range items {
+	for _, m := range stats.Items {
 		item := scanSummaryItem{
 			Title:       m.Title,
 			Year:        m.Year,
@@ -88,12 +88,12 @@ func writeScanSummary(outputDir, scanDir string, items []db.Media, total, movies
 	}
 
 	summary := scanSummary{
-		ScannedFolder: scanDir,
+		ScannedFolder: stats.ScanDir,
 		ScannedAt:     time.Now().Format(time.RFC3339),
-		TotalFiles:    total,
-		Movies:        movies,
-		TVShows:       tv,
-		Skipped:       skipped,
+		TotalFiles:    stats.Total,
+		Movies:        stats.Movies,
+		TVShows:       stats.TV,
+		Skipped:       stats.Skipped,
 		Categories:    categories,
 		Items:         summaryItems,
 	}
@@ -103,7 +103,7 @@ func writeScanSummary(outputDir, scanDir string, items []db.Media, total, movies
 		return apperror.Wrap("json encode", err)
 	}
 
-	outPath := filepath.Join(outputDir, "summary.json")
+	outPath := filepath.Join(stats.OutputDir, "summary.json")
 	if err := os.WriteFile(outPath, data, 0644); err != nil {
 		return apperror.Wrap("write file", err)
 	}
