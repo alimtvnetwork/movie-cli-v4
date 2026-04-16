@@ -119,13 +119,21 @@ func runMovieScan(cmd *cobra.Command, args []string) {
 		printScanHeader(scanDir, outputDir)
 	}
 
-	var totalFiles, movieCount, tvCount, skipped, removed int
-	var scannedItems []db.Media
+	var removed int
 	var jsonItems []scanJSONItem
 
 	videoFiles := collectVideoFiles(scanDir, scanRecursive, scanDepth)
 	useTable := scanFormat == string(db.OutputFormatTable)
 	useTMDb := creds.HasAuth()
+
+	ctx := &ScanContext{
+		Database: database,
+		Client:   client,
+		HasTMDb:  useTMDb,
+		OutputDir: outputDir,
+		UseTable: useTable || useJSON,
+		BatchID:  generateBatchID(),
+	}
 
 	// Generate batch ID for action_history tracking
 	scanBatchID := generateBatchID()
