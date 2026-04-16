@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/alimtvnetwork/movie-cli-v4/apperror"
-	"github.com/alimtvnetwork/movie-cli-v4/db"
 )
 
 // scanSummary is the top-level structure written to summary.json.

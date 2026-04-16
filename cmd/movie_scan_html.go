@@ -2,14 +2,13 @@
 package cmd
 
 import (
-	"github.com/alimtvnetwork/movie-cli-v4/apperror"
 	"html/template"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
-	"github.com/alimtvnetwork/movie-cli-v4/db"
+	"github.com/alimtvnetwork/movie-cli-v4/apperror"
 	"github.com/alimtvnetwork/movie-cli-v4/templates"
 )
 
