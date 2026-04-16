@@ -4,8 +4,6 @@ package cmd
 import (
 	"errors"
 	"fmt"
-	"os"
-	"path/filepath"
 	"regexp"
 	"strconv"
 
