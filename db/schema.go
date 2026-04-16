@@ -245,6 +245,9 @@ func (d *DB) createTables() error {
 	CREATE INDEX IF NOT EXISTS IdxMedia_LanguageId         ON Media(LanguageId);
 	CREATE INDEX IF NOT EXISTS IdxMedia_CollectionId       ON Media(CollectionId);
 	CREATE INDEX IF NOT EXISTS IdxMedia_ScanHistoryId      ON Media(ScanHistoryId);
+	CREATE INDEX IF NOT EXISTS IdxDirector_TmdbPersonId    ON Director(TmdbPersonId);
+	CREATE INDEX IF NOT EXISTS IdxMediaDirector_MediaId    ON MediaDirector(MediaId);
+	CREATE INDEX IF NOT EXISTS IdxMediaDirector_DirectorId ON MediaDirector(DirectorId);
 	CREATE INDEX IF NOT EXISTS IdxMediaGenre_MediaId       ON MediaGenre(MediaId);
 	CREATE INDEX IF NOT EXISTS IdxMediaGenre_GenreId        ON MediaGenre(GenreId);
 	CREATE INDEX IF NOT EXISTS IdxMediaCast_MediaId        ON MediaCast(MediaId);
