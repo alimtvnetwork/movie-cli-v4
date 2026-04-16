@@ -147,8 +147,6 @@ func runInteractiveMove(mc MoveContext) {
 		return
 	}
 	selectedPath := filepath.Join(mc.SourceDir, selectedFile.Name())
-		return
-	}
 	result := cleaner.Clean(selectedFile.Name())
 
 	fmt.Printf("\n  Selected: %s\n", result.CleanTitle)
@@ -291,10 +289,6 @@ func findOrCreateMoveMedia(input FindMoveMediaInput) int64 {
 	var insertErr error
 	mediaID, insertErr = input.Database.InsertMedia(m)
 	if insertErr != nil {
-		errlog.Error("DB insert error: %v", insertErr)
-	}
-	return mediaID
-}
 		errlog.Error("DB insert error: %v", insertErr)
 	}
 	return mediaID

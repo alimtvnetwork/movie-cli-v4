@@ -90,7 +90,7 @@ func runWatchExport(cmd *cobra.Command, args []string) {
 	}
 
 	outPath := resolveWatchExportPath()
-	if writeErr := writeExportFile(outPath, data); writeErr != nil {
+	if writeErr := writeWatchExportFile(outPath, data); writeErr != nil {
 		errlog.Error("%v", writeErr)
 		return
 	}
@@ -123,7 +123,7 @@ func resolveWatchExportPath() string {
 	return filepath.Join(".", "data", "json", "export", "watchlist.json")
 }
 
-func writeExportFile(outPath string, data []byte) error {
+func writeWatchExportFile(outPath string, data []byte) error {
 	if err := os.MkdirAll(filepath.Dir(outPath), 0755); err != nil {
 		return apperror.Wrapf(err, "cannot create directory %s", filepath.Dir(outPath))
 	}

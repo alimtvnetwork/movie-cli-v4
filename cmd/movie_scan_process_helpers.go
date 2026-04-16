@@ -98,7 +98,6 @@ func trackScanAction(ctx *ScanContext, result TrackScanResult) {
 		Detail: detail, BatchID: ctx.BatchID,
 	})
 }
-}
 
 // downloadThumbnail downloads poster from TMDb and saves to output + data dirs.
 func downloadThumbnail(input ThumbnailInput) {

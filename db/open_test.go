@@ -52,7 +52,10 @@ func TestScanHistory(t *testing.T) {
 	if err != nil {
 		t.Fatalf("upsert scan folder: %v", err)
 	}
-	err = d.InsertScanHistory(int(folderId), 50, 30, 20, 10, 0, 0, 0, 500)
+	err = d.InsertScanHistory(ScanHistoryInput{
+		ScanFolderID: int(folderId), TotalFiles: 50, Movies: 30, TV: 20,
+		NewFiles: 10, Removed: 0, Updated: 0, Errors: 0, DurationMs: 500,
+	})
 	if err != nil {
 		t.Fatalf("insert scan history: %v", err)
 	}
