@@ -30,6 +30,6 @@ Current version: v2.23.0. Spec resequenced: foundation 01-06, app at 08, issues 
 - [Timestamp bug](mem://issues/01-timestamp-bug) — ✅ Fixed: hardcoded "now" → RFC3339
 - [Duplicate TMDb fetch](mem://issues/02-duplicate-tmdb-fetch) — ✅ Fixed: shared helpers
 - [Large files](mem://issues/03-large-files) — ✅ Fixed: split to <200 lines
-- [CI log commit loop](mem://issues/04-ci-log-commit-loop) — Constraint: CI must never commit/push back
+
 - [Updater async console](mem://issues/05-updater-async-console) — ✅ Fixed: sync handoff, exit code propagation
 - [Guideline violations](mem://issues/06-guideline-violations-refactoring) — ✅ Phase 1-2 done, phases 3-7 pending
