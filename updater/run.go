@@ -1,8 +1,9 @@
 package updater
 
 import (
-	"fmt"
 	"os"
+
+	"github.com/alimtvnetwork/movie-cli-v3/apperror"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -24,7 +25,7 @@ type Result struct {
 
 func Run() (*Result, error) {
 	if _, err := exec.LookPath("git"); err != nil {
-		return nil, fmt.Errorf("git is not installed or not in PATH")
+		return nil, apperror.New("git is not installed or not in PATH")
 	}
 
 	repoPath, bootstrapped, err := findRepoPath()
@@ -35,7 +36,7 @@ func Run() (*Result, error) {
 	if bootstrapped {
 		afterCommit, err := gitOutput(repoPath, "rev-parse", "--short", "HEAD")
 		if err != nil {
-			return nil, fmt.Errorf("cannot read bootstrapped commit: %w", err)
+			return nil, apperror.Wrap("cannot read bootstrapped commit", err)
 		}
 		return &Result{
 			Bootstrapped: true,
@@ -47,25 +48,25 @@ func Run() (*Result, error) {
 
 	dirty, err := gitOutput(repoPath, "status", "--porcelain")
 	if err != nil {
-		return nil, fmt.Errorf("cannot check git status: %w", err)
+		return nil, apperror.Wrap("cannot check git status", err)
 	}
 	if strings.TrimSpace(dirty) != "" {
-		return nil, fmt.Errorf("repository has local changes; commit or stash them before self-update")
+		return nil, apperror.New("repository has local changes; commit or stash them before self-update")
 	}
 
 	beforeCommit, err := gitOutput(repoPath, "rev-parse", "--short", "HEAD")
 	if err != nil {
-		return nil, fmt.Errorf("cannot read current commit: %w", err)
+		return nil, apperror.Wrap("cannot read current commit", err)
 	}
 
 	pullOutput, err := gitOutput(repoPath, "pull", "--ff-only")
 	if err != nil {
-		return nil, fmt.Errorf("git pull failed: %w", err)
+		return nil, apperror.Wrap("git pull failed", err)
 	}
 
 	afterCommit, err := gitOutput(repoPath, "rev-parse", "--short", "HEAD")
 	if err != nil {
-		return nil, fmt.Errorf("cannot read updated commit: %w", err)
+		return nil, apperror.Wrap("cannot read updated commit", err)
 	}
 
 	updated := beforeCommit != afterCommit
@@ -90,7 +91,7 @@ func gitOutput(dir string, args ...string) (string, error) {
 		if text == "" {
 			return "", err
 		}
-		return "", fmt.Errorf("%s", text)
+		return "", apperror.Newf("%s", text)
 	}
 
 	return text, nil
@@ -133,10 +134,10 @@ func findRepoPath() (string, bool, error) {
 		cloneDir := filepath.Join(exeDir, "movie-cli-v3")
 		fmt.Printf("📥 No local repo found. Cloning to: %s\n", cloneDir)
 		if _, cloneErr := gitOutput(exeDir, "clone", "--depth", "1", repoURL); cloneErr != nil {
-			return "", false, fmt.Errorf("cannot clone repository: %w", cloneErr)
+			return "", false, apperror.Wrap("cannot clone repository", cloneErr)
 		}
 		return cloneDir, true, nil
 	}
 
-	return "", false, fmt.Errorf("cannot locate the movie-cli-v3 repository. Run from the repo directory or ensure the binary is deployed alongside the repo")
+	return "", false, apperror.New("cannot locate the movie-cli-v3 repository. Run from the repo directory or ensure the binary is deployed alongside the repo")
 }

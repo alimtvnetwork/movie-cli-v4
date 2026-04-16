@@ -3,8 +3,9 @@ package tmdb
 
 import (
 	"errors"
-	"fmt"
 	"io"
+
+	"github.com/alimtvnetwork/movie-cli-v3/apperror"
 	"net/http"
 	"net/url"
 	"os"
@@ -226,7 +227,7 @@ func (c *Client) GetTVVideos(tmdbID int) ([]VideoResult, error) {
 // DownloadPoster downloads a poster image and saves it to dst.
 func (c *Client) DownloadPoster(posterPath, dst string) error {
 	if posterPath == "" {
-		return fmt.Errorf("no poster available")
+		return apperror.New("no poster available")
 	}
 
 	imgURL := imageBaseURL + posterPath
