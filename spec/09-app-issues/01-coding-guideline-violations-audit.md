@@ -133,14 +133,14 @@
 **Target files:** `movie_scan_process.go` → `movie_scan_process_helpers.go`
 **Estimated effort:** Large
 
-### Phase 3: Split Oversized Functions ✅ DONE (2026-04-16)
-**Result:** Split `runMovieInfo` (149L→26L + 6 helpers) and `suggestByType` (119L→15L + 7 helpers). Remaining large functions are schema DDL or complex scan logic needing separate effort.
-**Priority order:** `runMovieInfo` (149L) → `suggestByType` (119L)
+### Phase 3: Split Oversized Functions (Reduces complexity)
+**Scope:** Break all 15+ line functions into ≤15-line helpers.
+**Priority order:** `runMovieInfo` (149L) → `runMovieLsInteractive` (115L) → `runBatchMove` (111L) → `collectUnifiedRecords` (97L) → remaining
 **Estimated effort:** Large
 
-### Phase 4: Split Oversized Files ✅ DONE (2026-04-16)
-**Result:** Split 3 files: `tmdb/client.go` (491→299 + helpers.go 202), `movie_undo.go` (479→147 + helpers 343), `movie_redo.go` (471→142 + helpers 340). Helper files are at boundary but contain many small focused functions.
-**Order:** `tmdb/client.go` → `movie_undo.go` → `movie_redo.go`
+### Phase 4: Split Oversized Files
+**Scope:** Split 6 files exceeding 300 lines.
+**Order:** `movie_undo.go` → `movie_redo.go` → `movie_popout.go` → `db/media.go` → `movie_rest.go`
 **Estimated effort:** Medium
 
 ### Phase 5: Remove `else` After `return` ✅ DONE (2026-04-16)
@@ -151,10 +151,10 @@
 **Result:** Created `ScanContext` struct, refactored `processVideoFile` from 10 params to 2 (vf + ctx). Updated all callers.
 **Estimated effort:** Medium
 
-### Phase 7: Error Handling — `apperror` Migration ✅ DONE (2026-04-16)
-**Result:** Created `apperror` package (Wrap, Wrapf, New, Newf). Migrated 98 of 104 `fmt.Errorf` calls across 21 files. 6 intentional exceptions: 4 sentinel error wraps in `tmdb/` (need `%w` for `errors.Is()`) and 2 in `errlog/` (foundational package, circular dep risk).
-**Prerequisite:** ✅ `apperror` package created.
-**Estimated effort:** Large
+### Phase 7: Error Handling — `apperror` Migration
+**Scope:** Replace 93 `fmt.Errorf`/`errors.New` calls with `apperror.Wrap()`/`apperror.New()`.
+**Prerequisite:** Must have `apperror` package in project.
+**Estimated effort:** Large (deferred — requires `apperror` package first)
 
 ---
 

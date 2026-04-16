@@ -1,7 +1,7 @@
 // duplicates.go — duplicate detection queries for the Media table.
 package db
 
-import "github.com/alimtvnetwork/movie-cli-v3/apperror"
+import "fmt"
 
 // DuplicateGroup represents a set of media records that share a duplicate key.
 type DuplicateGroup struct {
@@ -26,7 +26,7 @@ func (d *DB) FindDuplicatesByTmdbID() ([]DuplicateGroup, error) {
 	for rows.Next() {
 		var id int
 		if err := rows.Scan(&id); err != nil {
-			return nil, apperror.Wrap("scanning TmdbId", err)
+			return nil, fmt.Errorf("scanning TmdbId: %w", err)
 		}
 		ids = append(ids, id)
 	}
@@ -62,7 +62,7 @@ func (d *DB) FindDuplicatesByFileName() ([]DuplicateGroup, error) {
 	for rows.Next() {
 		var name string
 		if err := rows.Scan(&name); err != nil {
-			return nil, apperror.Wrap("scanning OriginalFileName", err)
+			return nil, fmt.Errorf("scanning OriginalFileName: %w", err)
 		}
 		names = append(names, name)
 	}
@@ -98,7 +98,7 @@ func (d *DB) FindDuplicatesByFileSize() ([]DuplicateGroup, error) {
 	for rows.Next() {
 		var size float64
 		if err := rows.Scan(&size); err != nil {
-			return nil, apperror.Wrap("scanning FileSizeMb", err)
+			return nil, fmt.Errorf("scanning FileSizeMb: %w", err)
 		}
 		sizes = append(sizes, size)
 	}

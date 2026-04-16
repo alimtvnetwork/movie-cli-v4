@@ -93,7 +93,6 @@ func runMovieLsTable(database *db.DB) {
 }
 
 // truncate shortens a string to maxLen, adding "…" if needed.
-// SHARED: used by ls, history_table, info_table, scan_table, search_table
 func truncate(s string, maxLen int) string {
 	if len(s) <= maxLen {
 		return s

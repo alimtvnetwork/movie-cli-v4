@@ -1,143 +1,71 @@
+// Package updater implements the copy-and-handoff self-update mechanism.
+//
+// Architecture (from spec/13-self-update-app-update/):
+//
+//	movie update → copies self → launches copy with "update-runner" → worker runs run.ps1 → deploys new binary
+//
+// This bypasses the Windows file-lock problem where a running binary cannot overwrite itself.
 package updater
 
 import (
+	"fmt"
+	"io"
 	"os"
-
-	"github.com/alimtvnetwork/movie-cli-v3/apperror"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 )
 
-// repoURL is the canonical GitHub URL used when the binary is not inside the repo.
+// repoURL is the canonical GitHub URL used when no local repo exists.
 const repoURL = "https://github.com/alimtvnetwork/movie-cli-v3.git"
 
-// Result holds the outcome of a self-update attempt.
-type Result struct {
-	PreviousVersion string
-	UpdatedTo       string
-	AfterCommit     string
-	RepoPath        string
-	Output          string
-	AlreadyLatest   bool
-	Bootstrapped    bool
-}
-
-func Run() (*Result, error) {
+// Run executes the update command: resolves repo, creates handoff copy, launches worker.
+func Run() error {
 	if _, err := exec.LookPath("git"); err != nil {
-		return nil, apperror.New("git is not installed or not in PATH")
+		return fmt.Errorf("git is not installed or not in PATH")
 	}
 
 	repoPath, bootstrapped, err := findRepoPath()
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	if bootstrapped {
-		afterCommit, err := gitOutput(repoPath, "rev-parse", "--short", "HEAD")
-		if err != nil {
-			return nil, apperror.Wrap("cannot read bootstrapped commit", err)
-		}
-		return &Result{
-			Bootstrapped: true,
-			UpdatedTo:    afterCommit,
-			AfterCommit:  afterCommit,
-			RepoPath:     repoPath,
-		}, nil
+		commit, _ := gitOutput(repoPath, "rev-parse", "--short", "HEAD")
+		fmt.Printf("\n✨ Bootstrapped local source repo in %s\n", repoPath)
+		fmt.Printf("🔁 Commit: %s\n", commit)
+		fmt.Println("\n💡 Run 'movie update' again to build and deploy")
+		return nil
 	}
 
+	// Check for local changes
 	dirty, err := gitOutput(repoPath, "status", "--porcelain")
 	if err != nil {
-		return nil, apperror.Wrap("cannot check git status", err)
+		return fmt.Errorf("cannot check git status: %w", err)
 	}
 	if strings.TrimSpace(dirty) != "" {
-		return nil, apperror.New("repository has local changes; commit or stash them before self-update")
+		return fmt.Errorf("repository has local changes; commit or stash them before update")
 	}
 
-	beforeCommit, err := gitOutput(repoPath, "rev-parse", "--short", "HEAD")
+	selfPath, err := os.Executable()
 	if err != nil {
-		return nil, apperror.Wrap("cannot read current commit", err)
+		return fmt.Errorf("cannot determine executable path: %w", err)
 	}
 
-	pullOutput, err := gitOutput(repoPath, "pull", "--ff-only")
-	if err != nil {
-		return nil, apperror.Wrap("git pull failed", err)
-	}
+	copyPath := createHandoffCopy(selfPath)
+	fmt.Printf("🔄 Starting update from %s\n", repoPath)
 
-	afterCommit, err := gitOutput(repoPath, "rev-parse", "--short", "HEAD")
-	if err != nil {
-		return nil, apperror.Wrap("cannot read updated commit", err)
-	}
-
-	updated := beforeCommit != afterCommit
-
-	return &Result{
-		AlreadyLatest:   !updated,
-		PreviousVersion: beforeCommit,
-		UpdatedTo:       afterCommit,
-		AfterCommit:     afterCommit,
-		RepoPath:        repoPath,
-		Output:          pullOutput,
-	}, nil
+	return launchHandoff(copyPath, repoPath)
 }
 
-func gitOutput(dir string, args ...string) (string, error) {
-	cmd := exec.Command("git", args...)
-	cmd.Dir = dir
+// RunWorker is the hidden update-runner entry point called from the handoff copy.
+func RunWorker(repoPath string) error {
+	fmt.Println("🔧 Update worker started")
+	fmt.Printf("📂 Repo: %s\n", repoPath)
 
-	out, err := cmd.CombinedOutput()
-	text := strings.TrimSpace(string(out))
-	if err != nil {
-		if text == "" {
-			return "", err
-		}
-		return "", apperror.Newf("%s", text)
+	if runtime.GOOS == "windows" {
+		return executeUpdateWindows(repoPath)
 	}
-
-	return text, nil
-}
-
-// findRepoPath locates the git repository root by checking (in order):
-//  1. The directory containing the running binary
-//  2. The current working directory
-//  3. A default clone location next to the binary
-//
-// If none have a .git directory, it clones the repo fresh next to the binary.
-func findRepoPath() (string, bool, error) {
-	// 1. Try the binary's own directory
-	exe, exeErr := os.Executable()
-	if exeErr == nil {
-		exe, _ = filepath.EvalSymlinks(exe) // resolve symlinks
-		exeDir := filepath.Dir(exe)
-		if p, gitErr := gitOutput(exeDir, "rev-parse", "--show-toplevel"); gitErr == nil {
-			return p, false, nil
-		}
-
-		// Check for a clone next to the binary: <exeDir>/movie-cli-v3/
-		cloneDir := filepath.Join(exeDir, "movie-cli-v3")
-		if p, gitErr := gitOutput(cloneDir, "rev-parse", "--show-toplevel"); gitErr == nil {
-			return p, false, nil
-		}
-	}
-
-	// 2. Try CWD
-	cwd, cwdErr := os.Getwd()
-	if cwdErr == nil {
-		if p, gitErr := gitOutput(cwd, "rev-parse", "--show-toplevel"); gitErr == nil {
-			return p, false, nil
-		}
-	}
-
-	// 3. No repo found — clone next to the binary
-	if exeErr == nil {
-		exeDir := filepath.Dir(exe)
-		cloneDir := filepath.Join(exeDir, "movie-cli-v3")
-		fmt.Printf("📥 No local repo found. Cloning to: %s\n", cloneDir)
-		if _, cloneErr := gitOutput(exeDir, "clone", "--depth", "1", repoURL); cloneErr != nil {
-			return "", false, apperror.Wrap("cannot clone repository", cloneErr)
-		}
-		return cloneDir, true, nil
-	}
-
-	return "", false, apperror.New("cannot locate the movie-cli-v3 repository. Run from the repo directory or ensure the binary is deployed alongside the repo")
+	return executeUpdateUnix(repoPath)
 }

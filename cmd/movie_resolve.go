@@ -14,25 +14,24 @@
 package cmd
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 
-	"github.com/alimtvnetwork/movie-cli-v3/apperror"
 	"github.com/alimtvnetwork/movie-cli-v3/db"
 )
 
 // resolveMediaByQuery resolves a media item by numeric ID or fuzzy title query.
-// SHARED: used by info, search, ls, play, tag, watch
 func resolveMediaByQuery(database *db.DB, query string) (*db.Media, error) {
 	query = strings.TrimSpace(query)
 	if query == "" {
-		return nil, apperror.New("empty media identifier")
+		return nil, fmt.Errorf("empty media identifier")
 	}
 
 	if id, parseErr := strconv.ParseInt(query, 10, 64); parseErr == nil {
 		m, getErr := database.GetMediaByID(id)
 		if getErr != nil {
-			return nil, apperror.Newf("media not found for ID %d", id)
+			return nil, fmt.Errorf("media not found for ID %d", id)
 		}
 		return m, nil
 	}
@@ -42,7 +41,7 @@ func resolveMediaByQuery(database *db.DB, query string) (*db.Media, error) {
 		return nil, searchErr
 	}
 	if len(results) == 0 {
-		return nil, apperror.Newf("media not found for %q", query)
+		return nil, fmt.Errorf("media not found for %q", query)
 	}
 
 	for i := range results {

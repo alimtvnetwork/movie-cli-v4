@@ -42,7 +42,7 @@ Discovery:
 
 System:
   movie version                             Show version info
-  movie self-update                         Update via git pull
+  movie update                              Update to latest version
 
 Documentation: https://github.com/alimtvnetwork/movie-cli-v3`, version.Short()),
 	Version: version.Short(),
@@ -59,7 +59,9 @@ func init() {
 	rootCmd.AddCommand(
 		helloCmd,
 		versionCmd,
-		selfUpdateCmd,
+		updateCmd,
+		updateRunnerCmd,
+		updateCleanupCmd,
 		movieScanCmd,
 		movieLsCmd,
 		movieSearchCmd,

@@ -29,13 +29,11 @@ import (
 	"time"
 
 	"github.com/alimtvnetwork/movie-cli-v3/cleaner"
-	"github.com/alimtvnetwork/movie-cli-v3/apperror"
 	"github.com/alimtvnetwork/movie-cli-v3/db"
 	"github.com/alimtvnetwork/movie-cli-v3/errlog"
 )
 
 // expandHome replaces ~ with actual home directory.
-// SHARED: used by move, popout
 func expandHome(path, home string) string {
 	if strings.HasPrefix(path, "~") {
 		return filepath.Join(home, path[1:])
@@ -48,7 +46,7 @@ func expandHome(path, home string) string {
 func listVideoFiles(dir string) ([]os.FileInfo, error) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
-		return nil, apperror.Wrapf(err, "cannot read directory %s", dir)
+		return nil, fmt.Errorf("cannot read directory %s: %w", dir, err)
 	}
 
 	var files []os.FileInfo
@@ -71,13 +69,11 @@ func listVideoFiles(dir string) ([]os.FileInfo, error) {
 
 // humanSize formats bytes into human-readable form.
 // Delegates to db.HumanSize to avoid duplication.
-// SHARED: used by move, popout
 func humanSize(bytes int64) string {
 	return db.HumanSize(bytes)
 }
 
 // promptSourceDirectory asks the user to pick a directory.
-// SHARED: used by move, popout
 func promptSourceDirectory(scanner interface {
 	Scan() bool
 	Text() string
@@ -203,7 +199,6 @@ func promptDestination(scanner interface {
 }
 
 // MoveFile moves a file from src to dst using os.Rename with cross-device fallback.
-// SHARED: used by move, popout, redo, rename, undo
 func MoveFile(src, dst string) error {
 	err := os.Rename(src, dst)
 	if err != nil && isCrossDeviceError(err) {
@@ -232,30 +227,30 @@ func isCrossDeviceError(err error) bool {
 func crossDeviceMove(src, dst string) error {
 	srcFile, err := os.Open(src)
 	if err != nil {
-		return apperror.Wrap("open source", err)
+		return fmt.Errorf("open source: %w", err)
 	}
 	defer srcFile.Close()
 
 	srcInfo, err := srcFile.Stat()
 	if err != nil {
-		return apperror.Wrap("stat source", err)
+		return fmt.Errorf("stat source: %w", err)
 	}
 
 	dstFile, err := os.OpenFile(dst, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, srcInfo.Mode())
 	if err != nil {
-		return apperror.Wrap("create destination", err)
+		return fmt.Errorf("create destination: %w", err)
 	}
 
 	if _, err := io.Copy(dstFile, srcFile); err != nil {
 		dstFile.Close()
 		os.Remove(dst)
-		return apperror.Wrap("copy data", err)
+		return fmt.Errorf("copy data: %w", err)
 	}
 
 	if err := dstFile.Sync(); err != nil {
 		dstFile.Close()
 		os.Remove(dst)
-		return apperror.Wrap("sync destination", err)
+		return fmt.Errorf("sync destination: %w", err)
 	}
 	dstFile.Close()
 
@@ -264,7 +259,6 @@ func crossDeviceMove(src, dst string) error {
 
 // saveHistoryLog writes a JSON move record to the history log.
 // All errors are logged via errlog — never swallowed.
-// SHARED: used by move, popout
 func saveHistoryLog(basePath, title string, year int, fromPath, toPath string) {
 	historyDir := filepath.Join(basePath, "json", "history")
 	if err := os.MkdirAll(historyDir, 0755); err != nil {

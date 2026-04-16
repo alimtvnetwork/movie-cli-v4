@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/alimtvnetwork/movie-cli-v3/apperror"
 	"github.com/alimtvnetwork/movie-cli-v3/db"
 )
 
@@ -48,7 +47,6 @@ type scanSummaryItem struct {
 }
 
 // writeScanSummary writes .movie-output/summary.json with the full scan report.
-// SHARED: used by rescan, scan_helpers
 func writeScanSummary(outputDir, scanDir string, items []db.Media, total, movies, tv, skipped int) error {
 	// Build categories (genre → titles)
 	categories := make(map[string][]string)
@@ -102,12 +100,12 @@ func writeScanSummary(outputDir, scanDir string, items []db.Media, total, movies
 
 	data, err := json.MarshalIndent(summary, "", "  ")
 	if err != nil {
-		return apperror.Wrap("json encode", err)
+		return fmt.Errorf("json encode: %w", err)
 	}
 
 	outPath := filepath.Join(outputDir, "summary.json")
 	if err := os.WriteFile(outPath, data, 0644); err != nil {
-		return apperror.Wrap("write file", err)
+		return fmt.Errorf("write file: %w", err)
 	}
 	return nil
 }

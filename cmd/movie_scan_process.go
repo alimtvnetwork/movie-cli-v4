@@ -31,7 +31,6 @@ type ScanContext struct {
 
 // processVideoFile handles a single video file: clean, check DB, fetch TMDb, insert, write JSON.
 // Returns true if the file was processed (even if skipped), false on hard errors.
-// SHARED: used by scan, scan_watch
 func processVideoFile(vf videoFile, ctx *ScanContext) bool {
 	ctx.TotalFiles++
 

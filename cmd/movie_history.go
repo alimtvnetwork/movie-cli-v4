@@ -290,7 +290,6 @@ func printUnifiedTable(records []unifiedRecord) {
 // Helpers
 // ---------------------------------------------------------------------------
 
-// SHARED: used by ls, ls_detail, move, scan, scan_process, search, search_save
 func typeIcon(t string) string {
 	switch t {
 	case "move":

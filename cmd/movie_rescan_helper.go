@@ -18,7 +18,6 @@ func mediaNeedsRescan(m *db.Media) bool {
 
 // rescanMediaEntry re-fetches TMDb metadata for a single media entry.
 // Returns true if the entry was updated successfully.
-// SHARED: used by rescan, scan
 func rescanMediaEntry(database *db.DB, client *tmdb.Client, m *db.Media) bool {
 	searchTitle := m.CleanTitle
 	if m.Year > 0 {

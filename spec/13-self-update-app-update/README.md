@@ -1,12 +1,21 @@
-# Self-Update & App Update Specification
+# Self-Update Specification
 
 ## Purpose
 
-This folder defines the **self-update architecture** for the mahin CLI tool. It covers the full lifecycle: detecting where the binary is installed, building a new version, deploying it without file-lock errors, and cleaning up afterward.
+This folder defines the **update command architecture** for the movie CLI tool.
+The `movie update` command pulls the latest source, rebuilds the binary via
+`run.ps1`, and deploys it — all without the user leaving the terminal.
 
-Any AI or engineer reading these documents should be able to implement a complete self-update system from scratch without ambiguity.
+The design follows the **copy-and-handoff** pattern from
+[gitmap-v2](https://github.com/alimtvnetwork/gitmap-v2/blob/main/spec/03-general/03-self-update-mechanism.md)
+to solve the Windows file-lock problem where a running binary cannot overwrite
+itself.
 
-> **Reference implementation**: gitmap-v2 ([generic-update spec](https://github.com/alimtvnetwork/gitmap-v2/tree/main/spec/generic-update), [generic-release spec](https://github.com/alimtvnetwork/gitmap-v2/tree/main/spec/generic-release))
+> **Reference implementation**: gitmap-v2
+> ([self-update mechanism](https://github.com/alimtvnetwork/gitmap-v2/blob/main/spec/03-general/03-self-update-mechanism.md),
+> [update.go](https://github.com/alimtvnetwork/gitmap-v2/blob/main/gitmap/cmd/update.go),
+> [updatescript.go](https://github.com/alimtvnetwork/gitmap-v2/blob/main/gitmap/cmd/updatescript.go),
+> [updatecleanup.go](https://github.com/alimtvnetwork/gitmap-v2/blob/main/gitmap/cmd/updatecleanup.go))
 
 ---
 
@@ -14,46 +23,66 @@ Any AI or engineer reading these documents should be able to implement a complet
 
 | File | Topic |
 |------|-------|
-| [01-self-update-overview.md](./01-self-update-overview.md) | The problem, approach, and platform differences |
-| [02-deploy-path-resolution.md](./02-deploy-path-resolution.md) | 3-tier strategy for finding the installed binary |
-| [03-rename-first-deploy.md](./03-rename-first-deploy.md) | Rename-first strategy to bypass file locks |
-| [04-build-scripts.md](./04-build-scripts.md) | `run.ps1` and `build.ps1` patterns for build + deploy |
-| [05-release-distribution.md](./05-release-distribution.md) | Cross-compilation, install scripts, checksums |
-| [06-cleanup.md](./06-cleanup.md) | Post-update artifact removal |
+| [01-update-overview.md](./01-update-overview.md) | Architecture, flow diagram, platform behavior |
+| [02-repo-path-resolution.md](./02-repo-path-resolution.md) | How the binary finds its source repo |
+| [03-copy-and-handoff.md](./03-copy-and-handoff.md) | The handoff mechanism that bypasses file locks |
+| [04-update-script-generation.md](./04-update-script-generation.md) | Generated PowerShell/Bash scripts that run `run.ps1` |
+| [05-version-comparison.md](./05-version-comparison.md) | Before/after version check and skip-if-current |
+| [06-cleanup.md](./06-cleanup.md) | `update-cleanup` subcommand for temp artifacts |
+| [07-acceptance-criteria.md](./07-acceptance-criteria.md) | GIVEN/WHEN/THEN test cases |
 
 ---
 
 ## Core Principle
 
-A running binary **cannot overwrite itself** on Windows. The entire update architecture exists to work around this constraint while maintaining a seamless user experience.
+A running binary **cannot overwrite itself** on Windows. The entire update
+architecture exists to work around this constraint while maintaining a
+seamless user experience.
 
-## Current Implementation
+## Command Surface
 
-The mahin CLI uses **Strategy 1 (Source-Based Update)** with explicit
-**repo bootstrap** handling:
-- `mahin self-update` resolves the repo from the binary directory, the current working directory, or a sibling `movie-cli-v3/` clone
-- If no local repo exists, it clones a fresh copy next to the binary and treats that as a **bootstrap success**
-- A fresh clone must **not** be reported as "already up to date"
-- If an existing repo is found, it runs `git pull --ff-only`, then the user rebuilds via `run.ps1` or `build.ps1`
-- See `updater/updater.go` and `cmd/update.go`
+| Command | Description |
+|---------|-------------|
+| `movie update` | Pull latest code, rebuild, and deploy the binary |
+| `movie update-cleanup` | Remove leftover temp binaries and `.old` backups |
+| `movie update-runner` | **Hidden** — the worker command run by the handoff copy |
 
-## Future Enhancement
+## Flow Summary
 
-**Strategy 2 (Binary-Based Update)** via GitHub Releases:
-- Download pre-built binary from GitHub Releases
-- Verify SHA256 checksum
-- Replace installed binary using rename-first deploy
-- No Go toolchain required on end-user machines
+```
+User runs: movie update
+  │
+  ├─ Resolves repo path (binary dir → CWD → sibling clone → prompt)
+  ├─ Copies self → movie-update-<pid>.exe (same dir, fallback %TEMP%)
+  ├─ Launches copy with: movie update-runner --repo-path <path> (foreground/blocking)
+  ├─ Parent waits for worker to complete (terminal stays attached)
+  │
+  └─ Worker (update-runner) starts
+      ├─ Captures current deployed version: movie version
+      ├─ On Windows: writes temp .ps1 script → runs run.ps1 -NoPull first, then handles pull
+      ├─ On Unix: runs run.sh --update (or run.ps1 via pwsh)
+      │   ├─ git pull --ff-only
+      │   ├─ go mod tidy
+      │   ├─ go build with ldflags
+      │   ├─ Deploy with rename-first (backup .old → copy new → rollback on failure)
+      │   └─ Verify deployed binary
+      ├─ Compares old vs new version
+      │   ├─ Same version → warn (version constant not bumped?)
+      │   └─ Different → print "Updated: v1.60.0 → v1.61.0"
+      ├─ Runs: movie changelog --latest (show what changed)
+      ├─ Runs: movie update-cleanup (auto)
+      └─ Cleans up temp script
+```
 
 ## Placeholders
 
-| Placeholder | Meaning | Mahin Value |
-|-------------|---------|-------------|
+| Placeholder | Meaning | Movie CLI Value |
+|-------------|---------|-----------------|
 | `<binary>` | CLI binary name | `movie` (or `movie.exe`) |
-| `<deploy-dir>` | Install directory | `$env:LOCALAPPDATA\movie` (Win) / `~/.local/bin` (Unix) |
-| `<repo-root>` | Source repository root | Repository root containing `go.mod` |
+| `<deploy-dir>` | Install directory | From `powershell.json` `deployPath` |
+| `<repo-root>` | Source repository root | Directory containing `go.mod` |
 | `<module>` | Go module path | `github.com/alimtvnetwork/movie-cli-v3` |
 
 ---
 
-*Self-update specs — updated: 2026-04-13*
+*Self-update spec — updated: 2026-04-16*

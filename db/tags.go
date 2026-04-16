@@ -1,7 +1,7 @@
 // tags.go — Tag lookup + MediaTag join table helpers.
 package db
 
-import "github.com/alimtvnetwork/movie-cli-v3/apperror"
+import "fmt"
 
 // TagCount holds a tag name and its usage count.
 type TagCount struct {
@@ -14,7 +14,7 @@ type TagCount struct {
 func (d *DB) AddTag(mediaID int, tag string) error {
 	_, err := d.Exec("INSERT OR IGNORE INTO Tag (Name) VALUES (?)", tag)
 	if err != nil {
-		return apperror.Wrapf(err, "insert tag %q", tag)
+		return fmt.Errorf("insert tag %q: %w", tag, err)
 	}
 
 	_, err = d.Exec(`
@@ -49,7 +49,7 @@ func (d *DB) GetTagsByMediaID(mediaID int) ([]string, error) {
 		WHERE mt.MediaId = ?
 		ORDER BY t.Name`, mediaID)
 	if err != nil {
-		return nil, apperror.Wrap("query tags", err)
+		return nil, fmt.Errorf("query tags: %w", err)
 	}
 	defer rows.Close()
 
@@ -57,7 +57,7 @@ func (d *DB) GetTagsByMediaID(mediaID int) ([]string, error) {
 	for rows.Next() {
 		var tag string
 		if err := rows.Scan(&tag); err != nil {
-			return nil, apperror.Wrap("scan tag", err)
+			return nil, fmt.Errorf("scan tag: %w", err)
 		}
 		tags = append(tags, tag)
 	}
@@ -73,7 +73,7 @@ func (d *DB) GetAllTagCounts() ([]TagCount, error) {
 		GROUP BY t.Name
 		ORDER BY cnt DESC, t.Name ASC`)
 	if err != nil {
-		return nil, apperror.Wrap("query tag counts", err)
+		return nil, fmt.Errorf("query tag counts: %w", err)
 	}
 	defer rows.Close()
 
@@ -81,7 +81,7 @@ func (d *DB) GetAllTagCounts() ([]TagCount, error) {
 	for rows.Next() {
 		var tc TagCount
 		if err := rows.Scan(&tc.Tag, &tc.Count); err != nil {
-			return nil, apperror.Wrap("scan tag count", err)
+			return nil, fmt.Errorf("scan tag count: %w", err)
 		}
 		counts = append(counts, tc)
 	}

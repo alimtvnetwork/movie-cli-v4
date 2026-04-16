@@ -3,10 +3,10 @@ package db
 
 import (
 	"database/sql"
+	"fmt"
 	"os"
 	"path/filepath"
 
-	"github.com/alimtvnetwork/movie-cli-v3/apperror"
 	_ "modernc.org/sqlite"
 )
 
@@ -25,11 +25,11 @@ type DB struct {
 func exeDir() (string, error) {
 	exe, err := os.Executable()
 	if err != nil {
-		return "", apperror.Wrap("cannot locate executable", err)
+		return "", fmt.Errorf("cannot locate executable: %w", err)
 	}
 	exe, err = filepath.EvalSymlinks(exe)
 	if err != nil {
-		return "", apperror.Wrap("cannot resolve symlinks for executable", err)
+		return "", fmt.Errorf("cannot resolve symlinks for executable: %w", err)
 	}
 	return filepath.Dir(exe), nil
 }
@@ -65,7 +65,7 @@ func Open() (*DB, error) {
 	}
 	for _, d := range dirs {
 		if err := os.MkdirAll(d, 0755); err != nil {
-			return nil, apperror.Wrapf(err, "cannot create directory %s", d)
+			return nil, fmt.Errorf("cannot create directory %s: %w", d, err)
 		}
 	}
 
@@ -75,31 +75,31 @@ func Open() (*DB, error) {
 	dbPath := filepath.Join(base, dbFile)
 	conn, err := sql.Open("sqlite", dbPath)
 	if err != nil {
-		return nil, apperror.Wrap("cannot open database", err)
+		return nil, fmt.Errorf("cannot open database: %w", err)
 	}
 
 	// Enable WAL mode for better concurrency
 	if _, err := conn.Exec("PRAGMA journal_mode=WAL"); err != nil {
 		conn.Close()
-		return nil, apperror.Wrap("cannot set WAL mode", err)
+		return nil, fmt.Errorf("cannot set WAL mode: %w", err)
 	}
 
 	// Set busy timeout — wait up to 5s for locked DB
 	if _, err := conn.Exec("PRAGMA busy_timeout = 5000"); err != nil {
 		conn.Close()
-		return nil, apperror.Wrap("cannot set busy_timeout", err)
+		return nil, fmt.Errorf("cannot set busy_timeout: %w", err)
 	}
 
 	// Enable foreign keys
 	if _, err := conn.Exec("PRAGMA foreign_keys = ON"); err != nil {
 		conn.Close()
-		return nil, apperror.Wrap("cannot enable foreign keys", err)
+		return nil, fmt.Errorf("cannot enable foreign keys: %w", err)
 	}
 
 	d := &DB{DB: conn, BasePath: base}
 	if err := d.migrateSchema(); err != nil {
 		conn.Close()
-		return nil, apperror.Wrap("migration failed", err)
+		return nil, fmt.Errorf("migration failed: %w", err)
 	}
 
 	return d, nil
