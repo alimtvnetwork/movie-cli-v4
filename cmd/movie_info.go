@@ -164,11 +164,11 @@ func enrichInfoMedia(client *tmdb.Client, m *db.Media, selected tmdb.SearchResul
 	fetchMovieDetails(client, selected.ID, m)
 }
 
-func downloadInfoThumbnail(client *tmdb.Client, database *db.DB, m *db.Media, posterPath string) {
-	if posterPath == "" {
+func downloadInfoThumbnail(input ThumbnailInput) {
+	if input.PosterPath == "" {
 		return
 	}
-	downloadThumbnailForMedia(client, database, m, posterPath)
+	downloadThumbnailForMedia(input.Client, input.Database, input.Media, input.PosterPath)
 }
 
 func saveInfoMedia(database *db.DB, m *db.Media) {
