@@ -36,9 +36,9 @@ func processVideoFile(vf videoFile, ctx *ScanContext) bool {
 	ctx.TotalFiles++
 
 	result := cleaner.Clean(vf.Name)
-	if !useTable {
+	if !ctx.UseTable {
 		typeIcon := db.TypeIcon(result.Type)
-		fmt.Printf("\n  %d. %s %s", *totalFiles, typeIcon, result.CleanTitle)
+		fmt.Printf("\n  %d. %s %s", ctx.TotalFiles, typeIcon, result.CleanTitle)
 		if result.Year > 0 {
 			fmt.Printf(" (%d)", result.Year)
 		}
@@ -47,15 +47,15 @@ func processVideoFile(vf videoFile, ctx *ScanContext) bool {
 	}
 
 	// Check if already in DB by path
-	existing, searchErr := database.SearchMedia(result.CleanTitle)
+	existing, searchErr := ctx.Database.SearchMedia(result.CleanTitle)
 	if searchErr != nil {
 		// Per spec §2: DB errors get actionable messages
 		errlog.Warn("DB search error for '%s': %v", result.CleanTitle, searchErr)
 	}
 	for i := range existing {
 		if existing[i].OriginalFilePath == vf.FullPath {
-			if useTable {
-				printScanTableRow(buildMediaTableRow(*totalFiles, &db.Media{
+			if ctx.UseTable {
+				printScanTableRow(buildMediaTableRow(ctx.TotalFiles, &db.Media{
 					OriginalFileName: vf.Name,
 					CleanTitle:       result.CleanTitle,
 					Year:             result.Year,
@@ -64,11 +64,11 @@ func processVideoFile(vf videoFile, ctx *ScanContext) bool {
 			} else {
 				fmt.Println("     ⏩ Already in database, skipping")
 			}
-			*skipped++
+			ctx.Skipped++
 			if result.Type == string(db.MediaTypeMovie) {
-				*movieCount++
+				ctx.MovieCount++
 			} else {
-				*tvCount++
+				ctx.TVCount++
 			}
 			return true
 		}
@@ -103,21 +103,21 @@ func processVideoFile(vf videoFile, ctx *ScanContext) bool {
 	}
 
 	// Fetch metadata from TMDb
-	if hasTMDb {
-		enrichFromTMDb(client, database, m, result, outputDir)
+	if ctx.HasTMDb {
+		enrichFromTMDb(ctx.Client, ctx.Database, m, result, ctx.OutputDir)
 	}
 
 	// Insert into database
-	mediaID, insertErr := database.InsertMedia(m)
+	mediaID, insertErr := ctx.Database.InsertMedia(m)
 	if insertErr != nil {
 		if m.TmdbID > 0 {
-			if updateErr := database.UpdateMediaByTmdbID(m); updateErr != nil {
+			if updateErr := ctx.Database.UpdateMediaByTmdbID(m); updateErr != nil {
 				errlog.Error("DB update error for '%s': %v", m.Title, updateErr)
 			} else if m.Genre != "" {
 				// On update, replace genre links
-				existing, _ := database.GetMediaByTmdbID(m.TmdbID)
+				existing, _ := ctx.Database.GetMediaByTmdbID(m.TmdbID)
 				if existing != nil {
-					database.ReplaceMediaGenres(existing.ID, m.Genre)
+					ctx.Database.ReplaceMediaGenres(existing.ID, m.Genre)
 				}
 			}
 		} else {
@@ -125,33 +125,33 @@ func processVideoFile(vf videoFile, ctx *ScanContext) bool {
 		}
 	} else if mediaID > 0 && m.Genre != "" {
 		// On insert, link genres via M:N tables
-		if linkErr := database.LinkMediaGenres(mediaID, m.Genre); linkErr != nil {
+		if linkErr := ctx.Database.LinkMediaGenres(mediaID, m.Genre); linkErr != nil {
 			errlog.Warn("Genre link error for '%s': %v", m.Title, linkErr)
 		}
 	}
 
 	// Track scan_add in action_history for undo support
-	if insertErr == nil && mediaID > 0 && batchID != "" {
+	if insertErr == nil && mediaID > 0 && ctx.BatchID != "" {
 		detail := fmt.Sprintf("Scan added: %s (%s)", m.CleanTitle, vf.FullPath)
-		database.InsertActionSimple(db.FileActionScanAdd, mediaID, "", detail, batchID)
+		ctx.Database.InsertActionSimple(db.FileActionScanAdd, mediaID, "", detail, ctx.BatchID)
 	}
 
-	if jsonErr := writeMediaJSON(outputDir, m); jsonErr != nil {
+	if jsonErr := writeMediaJSON(ctx.OutputDir, m); jsonErr != nil {
 		errlog.Warn("JSON write error for '%s': %v", m.Title, jsonErr)
 	}
 
-	*scannedItems = append(*scannedItems, *m)
+	ctx.ScannedItems = append(ctx.ScannedItems, *m)
 
-	if useTable {
-		printScanTableRow(buildMediaTableRow(*totalFiles, m, "new"))
+	if ctx.UseTable {
+		printScanTableRow(buildMediaTableRow(ctx.TotalFiles, m, "new"))
 	}
 
 	if m.Type == string(db.MediaTypeMovie) {
-		*movieCount++
+		ctx.MovieCount++
 	} else {
-		*tvCount++
+		ctx.TVCount++
 	}
-	if !useTable {
+	if !ctx.UseTable {
 		fmt.Println()
 	}
 	return true
