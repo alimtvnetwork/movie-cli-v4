@@ -163,7 +163,12 @@ func printStatsDefault(database *db.DB, totalMovies, totalTV, total int) {
 	} else if totalSize > 0 {
 		fmt.Println("  💾 Storage:")
 		fmt.Printf("     Total Size:    %s\n", db.HumanSize(totalSize))
-		fmt.Printf("     Largest File:  %s\n", db.HumanSize(largestSize))
+		largestTitle, _, lgErr := database.LargestMediaBySize()
+		if lgErr == nil && largestTitle != "" {
+			fmt.Printf("     Largest File:  %s (%s)\n", db.HumanSize(largestSize), largestTitle)
+		} else {
+			fmt.Printf("     Largest File:  %s\n", db.HumanSize(largestSize))
+		}
 		fmt.Printf("     Smallest File: %s\n", db.HumanSize(smallestSize))
 		if total > 0 {
 			fmt.Printf("     Average Size:  %s\n", db.HumanSize(totalSize/float64(total)))
