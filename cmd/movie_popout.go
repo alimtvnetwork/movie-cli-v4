@@ -85,24 +85,12 @@ func runMoviePopout(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	rootDir := ""
-	if len(args) > 0 {
-		rootDir = expandHome(args[0], home)
-	}
-	if rootDir == "" {
-		rootDir = promptSourceDirectory(scanner, database, home)
-	}
+	rootDir := resolvePopoutDir(args, scanner, database, home)
 	if rootDir == "" {
 		return
 	}
 
-	info, statErr := os.Stat(rootDir)
-	if statErr != nil {
-		errlog.Error("Cannot access directory: %v", statErr)
-		return
-	}
-	if !info.IsDir() {
-		errlog.Error("Path is not a directory: %s", rootDir)
+	if !validateDirectory(rootDir) {
 		return
 	}
 
@@ -119,6 +107,30 @@ func runMoviePopout(cmd *cobra.Command, args []string) {
 		return
 	}
 
+	executeAndCleanupPopout(scanner, database, items, rootDir)
+}
+
+func resolvePopoutDir(args []string, scanner *bufio.Scanner, database *db.DB, home string) string {
+	if len(args) > 0 {
+		return expandHome(args[0], home)
+	}
+	return promptSourceDirectory(scanner, database, home)
+}
+
+func validateDirectory(path string) bool {
+	info, statErr := os.Stat(path)
+	if statErr != nil {
+		errlog.Error("Cannot access directory: %v", statErr)
+		return false
+	}
+	if !info.IsDir() {
+		errlog.Error("Path is not a directory: %s", path)
+		return false
+	}
+	return true
+}
+
+func executeAndCleanupPopout(scanner *bufio.Scanner, database *db.DB, items []popoutItem, rootDir string) {
 	if !confirmPopout(scanner, len(items)) {
 		return
 	}

@@ -88,8 +88,20 @@ func promptSourceDirectory(scanner interface {
 	fmt.Println("📂 Where are your video files?")
 	fmt.Println()
 
-	options := []string{}
-	labels := []string{}
+	options, labels := buildDirOptions(scanDir, home)
+
+	for i, label := range labels {
+		fmt.Printf("  %d. %s\n", i+1, label)
+	}
+	fmt.Printf("  %d. Enter custom path\n", len(labels)+1)
+	fmt.Println()
+	fmt.Print("  Choose: ")
+
+	return readDirChoice(scanner, options, home)
+}
+
+func buildDirOptions(scanDir, home string) ([]string, []string) {
+	var options, labels []string
 
 	if scanDir != "" {
 		options = append(options, scanDir)
@@ -107,14 +119,13 @@ func promptSourceDirectory(scanner interface {
 		options = append(options, desktop)
 		labels = append(labels, fmt.Sprintf("Desktop (%s)", desktop))
 	}
+	return options, labels
+}
 
-	for i, label := range labels {
-		fmt.Printf("  %d. %s\n", i+1, label)
-	}
-	fmt.Printf("  %d. Enter custom path\n", len(labels)+1)
-	fmt.Println()
-	fmt.Print("  Choose: ")
-
+func readDirChoice(scanner interface {
+	Scan() bool
+	Text() string
+}, options []string, home string) string {
 	if !scanner.Scan() {
 		return ""
 	}
@@ -123,7 +134,6 @@ func promptSourceDirectory(scanner interface {
 		errlog.Error("Invalid choice")
 		return ""
 	}
-
 	if choice <= len(options) {
 		return options[choice-1]
 	}
