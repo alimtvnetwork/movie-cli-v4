@@ -99,7 +99,7 @@ func runMovieScan(cmd *cobra.Command, args []string) {
 	finalizeScan(cmd, ctx, scanDir, outputDir, database, creds, removed, jsonItems, useJSON)
 }
 
-func createScanContext(database *db.DB, creds tmdb.Credentials, outputDir string) *ScanContext {
+func createScanContext(database *db.DB, creds tmdbCredentials, outputDir string) *ScanContext {
 	tmdbClient := tmdb.NewClientWithToken(creds.APIKey, creds.Token)
 	return &ScanContext{
 		Database:  database,
@@ -141,7 +141,7 @@ func executeScan(ctx *ScanContext, scanDir string, useJSON bool) (int, []scanJSO
 }
 
 func finalizeScan(cmd *cobra.Command, ctx *ScanContext, scanDir, outputDir string,
-	database *db.DB, creds tmdb.Credentials, removed int, jsonItems []scanJSONItem, useJSON bool) {
+	database *db.DB, creds tmdbCredentials, removed int, jsonItems []scanJSONItem, useJSON bool) {
 	registerScanHistory(database, scanDir, ctx)
 
 	if useJSON {
