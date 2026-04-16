@@ -1,11 +1,11 @@
 %% 01-db-schema-diagram.mmd — Complete Database Schema (all tables + relationships)
-%% Version: 2.1.0 | Updated: 2026-04-15
-%% Follows: PascalCase naming, {TableName}Id PKs
-%% Single database: mahin.db — all tables in one file
+%% Version: 2.2.0 | Updated: 2026-04-16
+%% Follows: PascalCase naming, {TableName}Id PKs, Is/Has Boolean prefix
+%% Single database: mahin.db
 
 erDiagram
 
-    %% ─── Lookup Tables ───
+    %% --- Lookup Tables ---
 
     Genre {
         INTEGER GenreId PK "AUTOINCREMENT"
@@ -20,16 +20,16 @@ erDiagram
 
     Language {
         INTEGER LanguageId PK "AUTOINCREMENT"
-        TEXT Code "NOT NULL, UNIQUE (e.g. en, ms)"
+        TEXT Code "NOT NULL, UNIQUE"
         TEXT Name "NOT NULL"
     }
 
     FileAction {
         INTEGER FileActionId PK "AUTOINCREMENT"
-        TEXT Name "NOT NULL, UNIQUE — 14 types: Move, Rename, Delete, Popout, Restore, ScanAdd, ScanRemove, RescanUpdate, TagAdd, TagRemove, WatchlistAdd, WatchlistRemove, WatchlistStatusChange, ConfigChange"
+        TEXT Name "NOT NULL, UNIQUE"
     }
 
-    %% ─── Core Entities ───
+    %% --- Core Entities ---
 
     Collection {
         INTEGER CollectionId PK "AUTOINCREMENT"
@@ -46,7 +46,7 @@ erDiagram
         TEXT Title "NOT NULL"
         TEXT CleanTitle "NOT NULL"
         SMALLINT Year "NULLABLE"
-        TEXT Type "NOT NULL, CHECK(movie | tv)"
+        TEXT Type "NOT NULL, CHECK(movie or tv)"
         INTEGER TmdbId "UNIQUE, NULLABLE"
         TEXT ImdbId "NULLABLE"
         TEXT Description "NULLABLE"
@@ -61,7 +61,7 @@ erDiagram
         TEXT OriginalFilePath "NULLABLE"
         TEXT CurrentFilePath "NULLABLE"
         TEXT FileExtension "NULLABLE"
-        REAL FileSizeMb "NULLABLE, stored in megabytes"
+        REAL FileSizeMb "NULLABLE, megabytes"
         INTEGER Runtime "DEFAULT 0, minutes"
         INTEGER Budget "DEFAULT 0"
         INTEGER Revenue "DEFAULT 0"
@@ -72,7 +72,7 @@ erDiagram
         TEXT UpdatedAt "DEFAULT CURRENT_TIMESTAMP"
     }
 
-    %% ─── Join Tables ───
+    %% --- Join Tables (Many-to-Many) ---
 
     MediaGenre {
         INTEGER MediaGenreId PK "AUTOINCREMENT"
@@ -88,7 +88,7 @@ erDiagram
         INTEGER CastOrder "NULLABLE"
     }
 
-    %% ─── Tags (Lookup + Join) ───
+    %% --- Tags (Many-to-Many) ---
 
     Tag {
         INTEGER TagId PK "AUTOINCREMENT"
@@ -103,7 +103,7 @@ erDiagram
         TEXT CreatedAt "DEFAULT CURRENT_TIMESTAMP"
     }
 
-    %% ─── Scan Domain ───
+    %% --- Scan Domain ---
 
     ScanFolder {
         INTEGER ScanFolderId PK "AUTOINCREMENT"
@@ -127,7 +127,7 @@ erDiagram
         TEXT ScannedAt "DEFAULT CURRENT_TIMESTAMP"
     }
 
-    %% ─── History / Operations ───
+    %% --- History and Operations ---
 
     MoveHistory {
         INTEGER MoveHistoryId PK "AUTOINCREMENT"
@@ -152,7 +152,7 @@ erDiagram
         TEXT CreatedAt "DEFAULT CURRENT_TIMESTAMP"
     }
 
-    %% ─── Watchlist ───
+    %% --- Watchlist ---
 
     Watchlist {
         INTEGER WatchlistId PK "AUTOINCREMENT"
@@ -160,25 +160,25 @@ erDiagram
         INTEGER TmdbId "NOT NULL, UNIQUE"
         TEXT Title "NOT NULL"
         SMALLINT Year "NULLABLE"
-        TEXT Type "CHECK(movie | tv)"
-        TEXT Status "CHECK(to-watch | watched)"
+        TEXT Type "CHECK(movie or tv)"
+        TEXT Status "CHECK(to-watch or watched)"
         TEXT AddedAt "DEFAULT CURRENT_TIMESTAMP"
         TEXT WatchedAt "NULLABLE"
     }
 
-    %% ─── Config ───
+    %% --- Config ---
 
     Config {
         TEXT ConfigKey PK "NOT NULL"
         TEXT ConfigValue "NOT NULL"
     }
 
-    %% ─── Error Log ───
+    %% --- Error Log ---
 
     ErrorLog {
         INTEGER ErrorLogId PK "AUTOINCREMENT"
         TEXT Timestamp "NOT NULL"
-        TEXT Level "NOT NULL, CHECK(ERROR | WARN | INFO)"
+        TEXT Level "NOT NULL, CHECK(ERROR or WARN or INFO)"
         TEXT Source "NOT NULL"
         TEXT Function "NULLABLE"
         TEXT Command "NULLABLE"
@@ -188,43 +188,26 @@ erDiagram
         TEXT CreatedAt "DEFAULT CURRENT_TIMESTAMP"
     }
 
-    %% ─── Relationships ───
+    %% --- Relationships ---
 
-    %% Language 1-N Media
     Language ||--o{ Media : "LanguageId"
-
-    %% Collection 1-N Media
     Collection ||--o{ Media : "CollectionId"
-
-    %% ScanFolder 1-N ScanHistory
     ScanFolder ||--o{ ScanHistory : "has scans"
-
-    %% ScanHistory 1-N Media
     ScanHistory ||--o{ Media : "discovered in"
 
-    %% Media 1-N MediaGenre, Genre 1-N MediaGenre (M-N via join)
     Media ||--o{ MediaGenre : "has genres"
     Genre ||--o{ MediaGenre : "used by"
 
-    %% Media N-M Cast via MediaCast
     Media ||--o{ MediaCast : "has cast"
     Cast ||--o{ MediaCast : "appears in"
 
-    %% Media N-M Tag via MediaTag
     Media ||--o{ MediaTag : "has tags"
     Tag ||--o{ MediaTag : "used by"
 
-    %% Media 1-N MoveHistory
     Media ||--o{ MoveHistory : "has moves"
-
-    %% FileAction 1-N MoveHistory
     FileAction ||--o{ MoveHistory : "action type"
 
-    %% FileAction 1-N ActionHistory
     FileAction ||--o{ ActionHistory : "action type"
-
-    %% Media 1-N ActionHistory
     Media ||--o{ ActionHistory : "has actions"
 
-    %% Watchlist optional link to Media (FK, nullable)
     Media ||--o| Watchlist : "tracked in"
