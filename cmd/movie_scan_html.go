@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/alimtvnetwork/movie-cli-v3/db"
-	"github.com/alimtvnetwork/movie-cli-v3/templates"
+	"github.com/alimtvnetwork/movie-cli-v4/db"
+	"github.com/alimtvnetwork/movie-cli-v4/templates"
 )
 
 const defaultRESTPort = 8086

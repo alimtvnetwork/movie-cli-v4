@@ -7,7 +7,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/alimtvnetwork/movie-cli-v3/version"
+	"github.com/alimtvnetwork/movie-cli-v4/version"
 )
 
 var versionCmd = &cobra.Command{
