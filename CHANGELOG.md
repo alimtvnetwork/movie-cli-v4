@@ -2,6 +2,31 @@
 
 All notable changes to this project will be documented in this file.
 
+## v2.6.0
+
+### Changed
+- **P4: Option structs for >3 params** — introduced 6 new input structs (`ErrorLogEntry`, `MoveInput`, `ScanHistoryInput`, `ActionInput`, `WatchlistInput`, `ScanStats`) to replace functions with 4–9 positional parameters; reduced violations from 58 → 47 across 18 files
+
+## v2.5.0
+
+### Changed
+- **P3: Replaced all `fmt.Errorf` with `apperror.Wrap()`** — eliminated all 106 `fmt.Errorf` calls across the codebase; all errors now use `apperror.Wrap`, `Wrapf`, or `New` for consistent structured error handling
+
+## v2.4.0
+
+### Changed
+- **P2: Eliminated nested ifs** — refactored top 10 worst files using early returns and guard clauses; flattened deeply nested conditionals across scan, move, rename, popout, suggest, rest, and undo commands
+
+## v2.3.0
+
+### Changed
+- **Schema fix** — `db/schema.go` multi-value `d.Exec()` error fixed (single-value context)
+
+## v2.2.0
+
+### Changed
+- **File splits** — extracted `movie_popout_discover.go`, `movie_popout_cleanup.go`, `movie_scan_loop.go` to keep files under 200 lines; removed duplicate function declarations
+
 ## v1.31.0
 
 ### Added
