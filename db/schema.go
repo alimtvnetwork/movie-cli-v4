@@ -216,6 +216,40 @@ func (d *DB) createTables() error {
 		FOREIGN KEY (MediaId) REFERENCES Media(MediaId) ON DELETE SET NULL
 	);
 
+	-- TV Tracking
+	CREATE TABLE IF NOT EXISTS Season (
+		SeasonId     INTEGER PRIMARY KEY AUTOINCREMENT,
+		MediaId      INTEGER NOT NULL,
+		SeasonNumber INTEGER NOT NULL,
+		TmdbSeasonId INTEGER,
+		Name         TEXT,
+		Overview     TEXT,
+		PosterPath   TEXT,
+		AirDate      TEXT,
+		EpisodeCount INTEGER NOT NULL DEFAULT 0,
+		CreatedAt    TEXT NOT NULL DEFAULT (datetime('now')),
+		UNIQUE (MediaId, SeasonNumber),
+		FOREIGN KEY (MediaId) REFERENCES Media(MediaId) ON DELETE CASCADE
+	);
+
+	CREATE TABLE IF NOT EXISTS Episode (
+		EpisodeId      INTEGER PRIMARY KEY AUTOINCREMENT,
+		SeasonId       INTEGER NOT NULL,
+		EpisodeNumber  INTEGER NOT NULL,
+		TmdbEpisodeId  INTEGER,
+		Name           TEXT,
+		Overview       TEXT,
+		AirDate        TEXT,
+		Runtime        INTEGER NOT NULL DEFAULT 0,
+		StillPath      TEXT,
+		VoteAvg        REAL NOT NULL DEFAULT 0,
+		IsWatched      BOOLEAN NOT NULL DEFAULT 0,
+		WatchedAt      TEXT,
+		CreatedAt      TEXT NOT NULL DEFAULT (datetime('now')),
+		UNIQUE (SeasonId, EpisodeNumber),
+		FOREIGN KEY (SeasonId) REFERENCES Season(SeasonId) ON DELETE CASCADE
+	);
+
 	-- Config
 	CREATE TABLE IF NOT EXISTS Config (
 		ConfigKey   TEXT PRIMARY KEY NOT NULL,
