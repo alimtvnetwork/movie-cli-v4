@@ -159,9 +159,12 @@ func runExport(cmd *cobra.Command, args []string) {
 		if len(items) > 0 {
 			st.AverageMb = totalSize / float64(len(items))
 		}
-		lgTitle, _, lgErr := database.LargestMediaBySize()
-		if lgErr == nil {
-			st.LargestTitle = lgTitle
+		// Find title of largest file by scanning media list
+		for _, m := range items {
+			if m.FileSizeMb == largest {
+				st.LargestTitle = m.CleanTitle
+				break
+			}
 		}
 		envelope.Storage = st
 	}

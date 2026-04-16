@@ -70,7 +70,7 @@ func listVideoFiles(dir string) ([]os.FileInfo, error) {
 // humanSize formats bytes into human-readable form.
 // Delegates to db.HumanSize to avoid duplication.
 func humanSize(bytes int64) string {
-	return db.HumanSize(bytes)
+	return db.HumanSize(float64(bytes) / (1024 * 1024))
 }
 
 // promptSourceDirectory asks the user to pick a directory.
