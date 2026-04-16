@@ -39,6 +39,17 @@ func executeMoveRedo(database *db.DB, m *db.MoveRecord) error {
 	return nil
 }
 
+func checkFileExists(path string) error {
+	_, err := os.Stat(path)
+	if err == nil {
+		return nil
+	}
+	if os.IsNotExist(err) {
+		return apperror.New("file not found at %s — cannot redo", path)
+	}
+	return apperror.Wrapf(err, "cannot access %s", path)
+}
+
 // executeActionRedo re-applies a previously reverted action_history entry.
 func executeActionRedo(database *db.DB, a *db.ActionRecord) error {
 	switch a.FileActionId {
