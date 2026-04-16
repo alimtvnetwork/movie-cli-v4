@@ -40,6 +40,14 @@ func Run() error {
 		return nil
 	}
 
+	// Read gitmap for release branch info
+	gm, gmErr := readGitMapLatest(repoPath)
+	branch := ""
+	if gmErr == nil && gm.Branch != "" {
+		branch = gm.Branch
+		fmt.Printf("📋 Gitmap: %s (branch: %s)\n", gm.Version, branch)
+	}
+
 	// Check for local changes
 	dirty, err := gitOutput(repoPath, "status", "--porcelain")
 	if err != nil {
@@ -47,6 +55,17 @@ func Run() error {
 	}
 	if strings.TrimSpace(dirty) != "" {
 		return apperror.New("repository has local changes; commit or stash them before update")
+	}
+
+	// Checkout the correct branch from gitmap before handoff
+	if branch != "" {
+		currentBranch, _ := gitOutput(repoPath, "rev-parse", "--abbrev-ref", "HEAD")
+		if currentBranch != branch {
+			fmt.Printf("🔀 Switching from %s to %s\n", currentBranch, branch)
+			if _, checkoutErr := gitOutput(repoPath, "checkout", branch); checkoutErr != nil {
+				return apperror.Wrap("cannot checkout branch from gitmap", checkoutErr)
+			}
+		}
 	}
 
 	selfPath, err := os.Executable()
