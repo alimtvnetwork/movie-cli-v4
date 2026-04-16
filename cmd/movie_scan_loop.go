@@ -97,10 +97,11 @@ func processExistingMedia(ctx *ScanContext, em *db.Media, vf videoFile,
 	client *tmdb.Client, database *db.DB, opts ScanOutputOpts, batchID string, hasTMDb bool) {
 	ctx.TotalFiles++
 
-	if hasTMDb && mediaNeedsRescan(em) {
+	needsRescan := hasTMDb && mediaNeedsRescan(em)
+	if needsRescan {
 		handleRescan(ctx, em, client, database, opts, batchID)
 	}
-	if !(hasTMDb && mediaNeedsRescan(em)) {
+	if !needsRescan {
 		handleSkippedMedia(ctx, em, opts)
 	}
 
