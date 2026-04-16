@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## v2.8.0
+
+### Added
+- **Pre-build source file validation** — `Test-SourceFiles` function in `run.ps1` validates 83 critical source files exist before compilation, catching missing files early (ported from gitmap-v2 pattern)
+
 ## v2.7.0
 
 ### Fixed
