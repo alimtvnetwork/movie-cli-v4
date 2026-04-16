@@ -124,7 +124,7 @@ func resolveWatchExportPath() string {
 
 func writeExportFile(outPath string, data []byte) error {
 	if err := os.MkdirAll(filepath.Dir(outPath), 0755); err != nil {
-		return fmt.Errorf("Cannot create directory: %v", err)
+		return apperror.Wrapf(err, "cannot create directory %s", filepath.Dir(outPath))
 	}
 	return os.WriteFile(outPath, data, 0644)
 }
