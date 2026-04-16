@@ -45,7 +45,12 @@ func Run() error {
 		return err
 	}
 
-	copyPath := createHandoffCopy(selfPath)
+	copyPath, err := createHandoffCopy(selfPath)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("🎯 Active binary: %s\n", selfPath)
 	fmt.Printf("🔄 Starting update from %s\n", repoPath)
 
 	return launchHandoff(copyPath, repoPath, selfPath)

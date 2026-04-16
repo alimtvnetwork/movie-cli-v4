@@ -12,23 +12,22 @@ import (
 )
 
 // createHandoffCopy creates a temporary copy of the binary for the handoff worker.
-func createHandoffCopy(selfPath string) string {
+func createHandoffCopy(selfPath string) (string, error) {
 	name := handoffName()
 	copyPath := filepath.Join(filepath.Dir(selfPath), name)
 
 	if copyFile(selfPath, copyPath) == nil {
 		makeExecutable(copyPath)
-		return copyPath
+		return copyPath, nil
 	}
 
 	// Fallback to temp directory
 	copyPath = filepath.Join(os.TempDir(), name)
 	if err := copyFile(selfPath, copyPath); err != nil {
-		fmt.Fprintf(os.Stderr, "❌ Cannot create handoff copy: %v\n", err)
-		os.Exit(1)
+		return "", apperror.Wrap("cannot create handoff copy", err)
 	}
 	makeExecutable(copyPath)
-	return copyPath
+	return copyPath, nil
 }
 
 // launchHandoff starts the handoff binary in foreground (blocking) so
@@ -43,11 +42,7 @@ func launchHandoff(copyPath, repoPath, targetBinary string) error {
 	fmt.Printf("🚀 Update handed off to %s\n", copyPath)
 
 	cmd := exec.Command(copyPath, args...)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	cmd.Stdin = os.Stdin
-
-	if err := cmd.Run(); err != nil {
+	if err := runAttached(cmd); err != nil {
 		return apperror.Wrap("update worker failed", err)
 	}
 	return nil
