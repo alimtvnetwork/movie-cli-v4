@@ -131,6 +131,44 @@ func runMoviePopout(cmd *cobra.Command, args []string) {
 	}
 }
 
+func printPopoutPreview(items []popoutItem) {
+	fmt.Printf("\n🎬 Movie Popout — %d files found in subfolders\n\n", len(items))
+	fmt.Println("  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+	for i, item := range items {
+		yearStr := formatYearSuffix(item.result.Year)
+		fmt.Printf("\n  %d. %s%s  [%s]\n", i+1, item.result.CleanTitle, yearStr, humanSize(item.size))
+		fmt.Printf("     From: %s\n", item.srcPath)
+		fmt.Printf("     To:   %s\n", item.destPath)
+	}
+	fmt.Println("\n  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+}
+
+func formatYearSuffix(year int) string {
+	if year <= 0 {
+		return ""
+	}
+	return fmt.Sprintf(" (%d)", year)
+}
+
+func confirmPopout(scanner *bufio.Scanner, count int) bool {
+	fmt.Printf("\n  Pop out all %d files? [y/N]: ", count)
+	if !scanner.Scan() {
+		return false
+	}
+	confirm := strings.ToLower(strings.TrimSpace(scanner.Text()))
+	return confirm == "y" || confirm == "yes"
+}
+
+func printPopoutResult(success, failed int, batchID string) {
+	fmt.Println()
+	if failed == 0 {
+		fmt.Printf("  ✅ All %d files popped out successfully!\n", success)
+	} else {
+		fmt.Printf("  ⚠️  %d moved, %d failed\n", success, failed)
+	}
+	fmt.Printf("  📋 Batch: %s\n", batchID[:8])
+}
+
 // generateBatchID creates a simple random hex ID for grouping related actions.
 func generateBatchID() string {
 	b := make([]byte, 16)
