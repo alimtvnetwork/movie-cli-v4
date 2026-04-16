@@ -383,10 +383,121 @@ function Resolve-Dependencies {
     }
 }
 
+# -- Pre-build validation --------------------------------------
+
+function Test-SourceFiles {
+    Write-Info "Validating source files..."
+
+    $requiredFiles = @(
+        "main.go",
+        "go.mod",
+        "cmd/root.go",
+        "cmd/update.go",
+        "cmd/version.go",
+        "cmd/movie_scan.go",
+        "cmd/movie_scan_process.go",
+        "cmd/movie_scan_helpers.go",
+        "cmd/movie_scan_loop.go",
+        "cmd/movie_scan_collect.go",
+        "cmd/movie_scan_html.go",
+        "cmd/movie_scan_json.go",
+        "cmd/movie_scan_summary.go",
+        "cmd/movie_scan_table.go",
+        "cmd/movie_scan_watch.go",
+        "cmd/movie_ls.go",
+        "cmd/movie_ls_detail.go",
+        "cmd/movie_ls_table.go",
+        "cmd/movie_move.go",
+        "cmd/movie_move_helpers.go",
+        "cmd/movie_move_batch.go",
+        "cmd/movie_info.go",
+        "cmd/movie_info_helpers.go",
+        "cmd/movie_info_table.go",
+        "cmd/movie_search.go",
+        "cmd/movie_search_save.go",
+        "cmd/movie_search_table.go",
+        "cmd/movie_suggest.go",
+        "cmd/movie_undo.go",
+        "cmd/movie_undo_exec.go",
+        "cmd/movie_undo_handlers.go",
+        "cmd/movie_redo.go",
+        "cmd/movie_redo_exec.go",
+        "cmd/movie_redo_handlers.go",
+        "cmd/movie_history.go",
+        "cmd/movie_history_table.go",
+        "cmd/movie_popout.go",
+        "cmd/movie_rescan.go",
+        "cmd/movie_rescan_helper.go",
+        "cmd/movie_rest.go",
+        "cmd/movie_rest_handlers.go",
+        "cmd/movie_stats.go",
+        "cmd/movie_stats_table.go",
+        "cmd/movie_config.go",
+        "cmd/movie_cleanup.go",
+        "cmd/movie_duplicates.go",
+        "cmd/movie_export.go",
+        "cmd/movie_rename.go",
+        "cmd/movie_tag.go",
+        "cmd/movie_watch.go",
+        "cmd/movie_play.go",
+        "cmd/movie_db.go",
+        "cmd/movie_cd.go",
+        "cmd/movie_logs.go",
+        "cmd/movie_tmdb.go",
+        "cmd/movie_discover.go",
+        "cmd/movie_resolve.go",
+        "db/open.go",
+        "db/schema.go",
+        "db/media.go",
+        "db/media_query.go",
+        "db/history.go",
+        "db/action_history.go",
+        "db/config.go",
+        "db/tags.go",
+        "db/watchlist.go",
+        "db/errorlog.go",
+        "db/helpers.go",
+        "db/constants.go",
+        "tmdb/client.go",
+        "tmdb/types.go",
+        "tmdb/helpers.go",
+        "cleaner/parse.go",
+        "apperror/apperror.go",
+        "errlog/logger.go",
+        "updater/run.go",
+        "updater/repo.go",
+        "updater/handoff.go",
+        "updater/script.go",
+        "updater/cleanup.go",
+        "version/info.go",
+        "templates/embed.go"
+    )
+
+    $missing = @()
+    foreach ($file in $requiredFiles) {
+        $fullPath = Join-Path $RepoRoot $file
+        if (-not (Test-Path $fullPath)) {
+            $missing += $file
+        }
+    }
+
+    if ($missing.Count -gt 0) {
+        Write-Fail "Missing source files ($($missing.Count)):"
+        foreach ($f in $missing) {
+            Write-Host "    - $f" -ForegroundColor Red
+        }
+        exit 1
+    }
+
+    Write-Success "All $($requiredFiles.Count) source files present"
+}
+
 # -- Build binary ----------------------------------------------
 
 function Build-Binary {
     Write-Step "3/4" "Building binary"
+
+    Test-SourceFiles
 
     Push-Location $RepoRoot
     try {
