@@ -16,7 +16,6 @@ import (
 	"crypto/rand"
 	"fmt"
 	"os"
-	"strings"
 
 	"github.com/spf13/cobra"
 
