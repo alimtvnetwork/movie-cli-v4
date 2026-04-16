@@ -34,10 +34,11 @@ func collectRecursive(scanDir string, maxDepth int) []videoFile {
 			fmt.Fprintf(os.Stderr, "  ⚠️  Cannot access %s: %v\n", path, err)
 			return nil
 		}
+		opts := RecursiveWalkOpts{BaseParts: baseParts, MaxDepth: maxDepth}
 		if d.IsDir() {
-			return handleRecursiveDir(d, path, baseParts, maxDepth)
+			return handleRecursiveDir(d, path, opts)
 		}
-		return handleRecursiveFile(d, path, scanDir, baseParts, maxDepth, &files)
+		return handleRecursiveFile(d, path, scanDir, opts, &files)
 	})
 	return files
 }

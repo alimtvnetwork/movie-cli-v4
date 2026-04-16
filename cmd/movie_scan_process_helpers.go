@@ -108,21 +108,21 @@ func downloadThumbnail(input ThumbnailInput) {
 	}
 	thumbFileName := slug + "-" + strconv.Itoa(input.Media.TmdbID) + ".jpg"
 
-	thumbDir := filepath.Join(outputDir, "thumbnails")
+	thumbDir := filepath.Join(input.OutputDir, "thumbnails")
 	if mkdirErr := os.MkdirAll(thumbDir, 0755); mkdirErr != nil {
 		logMkdirError(thumbDir, mkdirErr)
 		return
 	}
 
 	thumbPath := filepath.Join(thumbDir, thumbFileName)
-	if dlErr := client.DownloadPoster(posterPath, thumbPath); dlErr != nil {
-		logPosterDownloadError(m.CleanTitle, dlErr)
+	if dlErr := input.Client.DownloadPoster(input.PosterPath, thumbPath); dlErr != nil {
+		logPosterDownloadError(input.Media.CleanTitle, dlErr)
 		return
 	}
 
-	m.ThumbnailPath = "thumbnails/" + thumbFileName
+	input.Media.ThumbnailPath = "thumbnails/" + thumbFileName
 	fmt.Println("     🖼️  Thumbnail saved")
-	copyThumbnailToDataDir(database.BasePath, thumbPath, thumbFileName)
+	copyThumbnailToDataDir(input.Database.BasePath, thumbPath, thumbFileName)
 }
 
 // logMkdirError logs directory creation failure with appropriate message.
