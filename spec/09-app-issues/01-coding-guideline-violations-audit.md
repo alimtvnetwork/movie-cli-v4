@@ -124,9 +124,8 @@
 
 ## Phased Fix Plan
 
-### Phase 1: Constants & Enums (Low risk, high impact)
-**Scope:** Define `MediaType`, `OutputFormat`, `WatchStatus` constants. Replace all magic strings.
-**Files:** New `db/constants.go` + touch 15+ files.
+### Phase 1: Constants & Enums ✅ DONE (2026-04-16)
+**Scope:** Created `db/constants.go` with `MediaType`, `OutputFormat`, `WatchStatus` typed constants + helpers (`TypeIcon`, `TypeLabel`, `TypeLabelPlural`, `JSONSubDir`). Replaced 100+ magic strings across 20 files.
 **Estimated effort:** Medium
 
 ### Phase 2: Flatten Nested `if` (High priority)
