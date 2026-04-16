@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/alimtvnetwork/movie-cli-v3/apperror"
 	"github.com/alimtvnetwork/movie-cli-v3/db"
 )
 
@@ -100,12 +101,12 @@ func writeScanSummary(outputDir, scanDir string, items []db.Media, total, movies
 
 	data, err := json.MarshalIndent(summary, "", "  ")
 	if err != nil {
-		return fmt.Errorf("json encode: %w", err)
+		return apperror.Wrap("json encode", err)
 	}
 
 	outPath := filepath.Join(outputDir, "summary.json")
 	if err := os.WriteFile(outPath, data, 0644); err != nil {
-		return fmt.Errorf("write file: %w", err)
+		return apperror.Wrap("write file", err)
 	}
 	return nil
 }

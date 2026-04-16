@@ -18,6 +18,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/alimtvnetwork/movie-cli-v3/cleaner"
+	"github.com/alimtvnetwork/movie-cli-v3/apperror"
 	"github.com/alimtvnetwork/movie-cli-v3/db"
 	"github.com/alimtvnetwork/movie-cli-v3/errlog"
 	"github.com/alimtvnetwork/movie-cli-v3/tmdb"
@@ -135,7 +136,7 @@ func buildTMDbClient(database *db.DB) (*tmdb.Client, error) {
 		apiKey = os.Getenv("TMDB_API_KEY")
 	}
 	if apiKey == "" {
-		return nil, fmt.Errorf("No TMDb API key configured. Set it with: movie config set tmdb_api_key YOUR_KEY")
+		return nil, apperror.New("No TMDb API key configured. Set it with: movie config set tmdb_api_key YOUR_KEY")
 	}
 	return tmdb.NewClient(apiKey), nil
 }
