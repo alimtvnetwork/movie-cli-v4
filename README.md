@@ -368,6 +368,8 @@ movie history                     # view full operation history
 | `movie watch undo <id>` | Revert a title back to to-watch |
 | `movie watch rm <id>` | Remove a title from your watchlist |
 | `movie watch ls` | List your watchlist |
+| `movie watch export` | Export watchlist as JSON for backup |
+| `movie watch import <file>` | Import watchlist from JSON |
 | `movie stats` | Counts, storage, genre chart, avg ratings |
 | `movie duplicates` | Detect duplicate media entries |
 
@@ -476,7 +478,7 @@ movie
 ├── duplicates                    # Detect duplicate media entries
 ├── cleanup [--remove]            # Find/remove stale entries
 ├── tag [add|remove|list]         # Manage user-defined tags
-├── watch [add|done|undo|rm|ls]   # Manage watchlist
+├── watch [add|done|undo|rm|ls|export|import]  # Manage watchlist + sync
 ├── cd [folder-name]              # Print scanned folder path
 ├── export [-o path]              # Dump media table as JSON
 ├── db                            # Show database path and status
