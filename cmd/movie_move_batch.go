@@ -27,7 +27,9 @@ type moveItem struct {
 // runBatchMove moves all video files at once, auto-routing by type.
 func runBatchMove(mc MoveContext) {
 	moviesDir, tvDir := resolveMoveTargetDirs(mc.Database, mc.Home)
-	moves := previewBatchMoves(mc.Files, mc.SourceDir, moviesDir, tvDir)
+	moves := previewBatchMoves(BatchMovePreview{
+		Files: mc.Files, SourceDir: mc.SourceDir, MoviesDir: moviesDir, TVDir: tvDir,
+	})
 
 	fmt.Println("  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 	fmt.Printf("\n  Move all %d files? [y/N]: ", len(moves))
@@ -65,23 +67,23 @@ func resolveMoveTargetDirs(database *db.DB, home string) (string, string) {
 	return moviesDir, tvDir
 }
 
-func previewBatchMoves(files []os.FileInfo, sourceDir string, moviesDir, tvDir string) []moveItem {
+func previewBatchMoves(input BatchMovePreview) []moveItem {
 	var moves []moveItem
 
-	fmt.Printf("\n🎬 Batch move — %d video files in: %s\n\n", len(files), sourceDir)
+	fmt.Printf("\n🎬 Batch move — %d video files in: %s\n\n", len(input.Files), input.SourceDir)
 	fmt.Println("  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 
-	for _, f := range files {
+	for _, f := range input.Files {
 		result := cleaner.Clean(f.Name())
 		cleanName := cleaner.ToCleanFileName(result.CleanTitle, result.Year, result.Extension)
 
-		destDir := moviesDir
+		destDir := input.MoviesDir
 		typeIcon := db.TypeIcon(result.Type)
 		if result.Type == string(db.MediaTypeTV) {
-			destDir = tvDir
+			destDir = input.TVDir
 		}
 
-		srcPath := filepath.Join(sourceDir, f.Name())
+		srcPath := filepath.Join(input.SourceDir, f.Name())
 		destPath := filepath.Join(destDir, cleanName)
 
 		yearStr := ""
@@ -121,7 +123,10 @@ func executeBatchMoves(database *db.DB, moves []moveItem) {
 			continue
 		}
 
-		trackMove(database, moves[i].result, moves[i].fileInfo, moves[i].srcPath, moves[i].destPath, moves[i].cleanName)
+		trackMove(TrackMoveInput{
+			Database: database, Result: moves[i].result, FileInfo: moves[i].fileInfo,
+			SrcPath: moves[i].srcPath, DestPath: moves[i].destPath, CleanName: moves[i].cleanName,
+		})
 		success++
 	}
 
@@ -171,7 +176,10 @@ func runInteractiveMove(mc MoveContext) {
 		return
 	}
 
-	trackMove(mc.Database, result, selectedFile, selectedPath, destPath, cleanName)
+	trackMove(TrackMoveInput{
+		Database: mc.Database, Result: result, FileInfo: selectedFile,
+		SrcPath: selectedPath, DestPath: destPath, CleanName: cleanName,
+	})
 
 	fmt.Println()
 	fmt.Println("  ✅ Moved successfully!")
@@ -192,7 +200,7 @@ func printFileList(files []os.FileInfo, sourceDir string) {
 	}
 }
 
-func selectFile(scanner *bufio.Scanner, files []os.FileInfo, sourceDir string) (os.FileInfo, string) {
+func selectFile(scanner *bufio.Scanner, files []os.FileInfo) (os.FileInfo, string) {
 	fmt.Println()
 	fmt.Print("  Select file [number]: ")
 	if !scanner.Scan() {
@@ -204,7 +212,7 @@ func selectFile(scanner *bufio.Scanner, files []os.FileInfo, sourceDir string) (
 		return nil, ""
 	}
 	selected := files[choice-1]
-	return selected, filepath.Join(sourceDir, selected.Name())
+	return selected, ""
 }
 
 func confirmInteractiveMove(scanner *bufio.Scanner, srcPath, destPath string) bool {
