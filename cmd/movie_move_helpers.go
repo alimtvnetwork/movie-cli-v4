@@ -9,7 +9,7 @@
 //	promptDestination(scanner, db, home)       — interactive destination picker
 //	MoveFile(src, dst) error                   — move with cross-device fallback
 //	crossDeviceMove(src, dst) error            — copy+delete for cross-filesystem moves
-//	saveHistoryLog(basePath, title, year, from, to) — write move-log.json
+//	saveHistoryLog(input HistoryLogInput)               — write move-log.json
 //
 // Consumers: movie_move.go, movie_rename.go, movie_undo.go, movie_stats.go
 //
