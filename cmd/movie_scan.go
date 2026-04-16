@@ -118,7 +118,8 @@ func runMovieScan(cmd *cobra.Command, args []string) {
 	if scanDryRun {
 		runDryRunScan(videoFiles, useJSON, useTable,
 			&jsonItems, &ctx.TotalFiles, &ctx.MovieCount, &ctx.TVCount)
-	} else {
+	}
+	if !scanDryRun {
 		removed = runMainScanLoop(ctx, videoFiles, tmdbClient, scanDir, ctx.BatchID, useJSON, useTable, useTMDb, &jsonItems)
 	}
 
@@ -132,7 +133,8 @@ func runMovieScan(cmd *cobra.Command, args []string) {
 		printScanJSON(scanDir, jsonItems, ScanStats{
 			Total: ctx.TotalFiles, Movies: ctx.MovieCount, TV: ctx.TVCount, Skipped: ctx.Skipped,
 		})
-	} else {
+	}
+	if !useJSON {
 		printScanFooter(ScanStats{
 			ScanDir: scanDir, OutputDir: outputDir, Items: ctx.ScannedItems,
 			Total: ctx.TotalFiles, Movies: ctx.MovieCount, TV: ctx.TVCount,

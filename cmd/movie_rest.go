@@ -82,17 +82,17 @@ func runMovieRest(cmd *cobra.Command, args []string) {
 func initRestLogger(database *db.DB) {
 	if initErr := errlog.Init(database.BasePath, "rest"); initErr != nil {
 		errlog.Warn("Could not init error logger: %v", initErr)
-	} else {
-		errlog.SetDBWriter(func(e errlog.Entry) {
-			if dbErr := database.InsertErrorLog(db.ErrorLogEntry{
-				Timestamp: e.Timestamp, Level: string(e.Level), Source: e.Source,
-				Function: e.Function, Command: e.Command, WorkDir: e.WorkDir,
-				Message: e.Message, StackTrace: e.StackTrace,
-			}); dbErr != nil {
-				errlog.Warn("Could not write error to DB: %v", dbErr)
-			}
-		})
+		return
 	}
+	errlog.SetDBWriter(func(e errlog.Entry) {
+		if dbErr := database.InsertErrorLog(db.ErrorLogEntry{
+			Timestamp: e.Timestamp, Level: string(e.Level), Source: e.Source,
+			Function: e.Function, Command: e.Command, WorkDir: e.WorkDir,
+			Message: e.Message, StackTrace: e.StackTrace,
+		}); dbErr != nil {
+			errlog.Warn("Could not write error to DB: %v", dbErr)
+		}
+	})
 }
 
 func buildRESTMux(database *db.DB) *http.ServeMux {

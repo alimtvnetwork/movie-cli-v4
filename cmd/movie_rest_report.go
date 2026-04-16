@@ -111,7 +111,8 @@ func buildReportData(items []db.Media, port int) htmlReportData {
 	for _, m := range items {
 		if m.Type == string(db.MediaTypeMovie) {
 			movies++
-		} else {
+		}
+		if m.Type != string(db.MediaTypeMovie) {
 			tv++
 		}
 		reportItems = append(reportItems, buildHTMLReportItem(m))

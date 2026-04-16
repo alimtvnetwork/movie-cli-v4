@@ -68,9 +68,9 @@ func countByType(items []db.Media) (int, int) {
 	for _, m := range items {
 		if m.Type == string(db.MediaTypeMovie) {
 			movieCount++
-		} else {
-			tvCount++
+			continue
 		}
+		tvCount++
 	}
 	return movieCount, tvCount
 }
@@ -124,7 +124,8 @@ func runMovieRescan(cmd *cobra.Command, args []string) {
 	var entries []db.Media
 	if rescanAll {
 		entries, err = database.ListAllMedia()
-	} else {
+	}
+	if !rescanAll {
 		entries, err = database.GetMediaWithMissingData()
 	}
 	if err != nil {
@@ -155,10 +156,10 @@ func runMovieRescan(cmd *cobra.Command, args []string) {
 		if rescanMediaEntry(database, client, &m) {
 			fmt.Printf("  ✅ ⭐%.1f %s\n", m.TmdbRating, m.Genre)
 			updated++
-		} else {
-			fmt.Printf("  ❌ failed\n")
-			failed++
+			continue
 		}
+		fmt.Printf("  ❌ failed\n")
+		failed++
 	}
 
 	fmt.Printf("\n📊 Rescan Complete!\n")
