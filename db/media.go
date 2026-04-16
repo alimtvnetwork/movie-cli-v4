@@ -259,7 +259,12 @@ func (d *DB) GetMediaWithMissingData() ([]Media, error) {
 		return nil, err
 	}
 	defer rows.Close()
-	return scanMediaRows(rows)
+	items, err := scanMediaRows(rows)
+	if err != nil {
+		return nil, err
+	}
+	d.populateGenres(items)
+	return items, nil
 }
 
 // GetMediaByScanDir returns media whose OriginalFilePath starts with the given directory.
@@ -275,7 +280,12 @@ func (d *DB) GetMediaByScanDir(scanDir string) ([]Media, error) {
 		return nil, err
 	}
 	defer rows.Close()
-	return scanMediaRows(rows)
+	items, err := scanMediaRows(rows)
+	if err != nil {
+		return nil, err
+	}
+	d.populateGenres(items)
+	return items, nil
 }
 
 // DeleteMediaByIDs deletes multiple media records by their IDs.
