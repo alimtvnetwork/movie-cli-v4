@@ -1,0 +1,160 @@
+// movie_popout_cleanup.go — folder cleanup phase for popout command.
+package cmd
+
+import (
+	"bufio"
+	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
+
+	"github.com/alimtvnetwork/movie-cli-v4/db"
+	"github.com/alimtvnetwork/movie-cli-v4/errlog"
+)
+
+// offerFolderCleanup lists source subfolders and offers removal options.
+func offerFolderCleanup(scanner *bufio.Scanner, database *db.DB, rootDir string, items []popoutItem, batchID string) {
+	folders := collectPopoutFolders(rootDir, items)
+	if len(folders) == 0 {
+		return
+	}
+
+	printFolderSummary(folders)
+	promptFolderAction(scanner, database, folders, batchID)
+}
+
+func collectPopoutFolders(rootDir string, items []popoutItem) []popoutFolderInfo {
+	subDirs := make(map[string]bool)
+	for _, item := range items {
+		subDirs[item.subDir] = true
+	}
+
+	var folders []popoutFolderInfo
+	for dir := range subDirs {
+		dirPath := filepath.Join(rootDir, dir)
+		info, statErr := os.Stat(dirPath)
+		if statErr != nil || !info.IsDir() {
+			continue
+		}
+		folders = append(folders, scanFolderContents(dir, dirPath))
+	}
+	return folders
+}
+
+func scanFolderContents(name, dirPath string) popoutFolderInfo {
+	var files []string
+	var totalSize int64
+	_ = filepath.Walk(dirPath, func(p string, fi os.FileInfo, err error) error {
+		if err != nil || fi.IsDir() {
+			return nil
+		}
+		rel, _ := filepath.Rel(dirPath, p)
+		files = append(files, fmt.Sprintf("%s (%s)", rel, humanSize(fi.Size())))
+		totalSize += fi.Size()
+		return nil
+	})
+	return popoutFolderInfo{name: name, path: dirPath, files: files, totalSize: totalSize}
+}
+
+func printFolderSummary(folders []popoutFolderInfo) {
+	fmt.Println("  📁 Source folders after popout:")
+	fmt.Println()
+	for i, f := range folders {
+		if len(f.files) == 0 {
+			fmt.Printf("  %d. %s/\n     └── (empty)\n", i+1, f.name)
+		} else {
+			fmt.Printf("  %d. %s/\n     └── %d files remaining (%s)\n",
+				i+1, f.name, len(f.files), humanSize(f.totalSize))
+		}
+	}
+}
+
+func promptFolderAction(scanner *bufio.Scanner, database *db.DB, folders []popoutFolderInfo, batchID string) {
+	fmt.Println()
+	fmt.Println("  Options:")
+	fmt.Println("    [a] Remove all listed folders")
+	fmt.Println("    [s] Select folders to remove one by one")
+	fmt.Println("    [n] Keep all folders")
+	fmt.Println("    [l] List files in each folder before deciding")
+	fmt.Print("\n  Choose [a/s/n/l]: ")
+
+	if !scanner.Scan() {
+		return
+	}
+	choice := strings.ToLower(strings.TrimSpace(scanner.Text()))
+
+	switch choice {
+	case "a":
+		for _, f := range folders {
+			removeFolder(database, f.path, f.name, batchID)
+		}
+	case "s":
+		selectiveFolderRemoval(scanner, database, folders, batchID)
+	case "l":
+		listThenDecide(scanner, database, folders, batchID)
+	case "n":
+		fmt.Println("  📁 All folders kept.")
+	default:
+		fmt.Println("  📁 No folders removed.")
+	}
+}
+
+func selectiveFolderRemoval(scanner *bufio.Scanner, database *db.DB, folders []popoutFolderInfo, batchID string) {
+	for _, f := range folders {
+		status := "empty"
+		if len(f.files) > 0 {
+			status = fmt.Sprintf("%d files (%s)", len(f.files), humanSize(f.totalSize))
+		}
+		fmt.Printf("\n  %s/ — %s\n", f.name, status)
+		if len(f.files) > 0 {
+			fmt.Println("    Files:")
+			for _, file := range f.files {
+				fmt.Printf("      - %s\n", file)
+			}
+		}
+		fmt.Print("    Remove? [y/N]: ")
+		if !scanner.Scan() {
+			return
+		}
+		answer := strings.ToLower(strings.TrimSpace(scanner.Text()))
+		if answer == "y" || answer == "yes" {
+			removeFolder(database, f.path, f.name, batchID)
+		} else {
+			fmt.Println("    Kept.")
+		}
+	}
+}
+
+func listThenDecide(scanner *bufio.Scanner, database *db.DB, folders []popoutFolderInfo, batchID string) {
+	for _, f := range folders {
+		fmt.Printf("\n  📁 %s/\n", f.name)
+		if len(f.files) == 0 {
+			fmt.Println("    (empty)")
+		} else {
+			for _, file := range f.files {
+				fmt.Printf("    - %s\n", file)
+			}
+		}
+		fmt.Print("    Remove? [y/N]: ")
+		if !scanner.Scan() {
+			return
+		}
+		answer := strings.ToLower(strings.TrimSpace(scanner.Text()))
+		if answer == "y" || answer == "yes" {
+			removeFolder(database, f.path, f.name, batchID)
+		} else {
+			fmt.Println("    Kept.")
+		}
+	}
+}
+
+func removeFolder(database *db.DB, dirPath, dirName, batchID string) {
+	if err := os.RemoveAll(dirPath); err != nil {
+		errlog.Error("Failed to remove %s: %v", dirPath, err)
+		return
+	}
+	fmt.Printf("    🗑  Removed: %s/\n", dirName)
+	detail := fmt.Sprintf("Removed folder: %s/", dirName)
+	snapshot := fmt.Sprintf(`{"folder_path":"%s"}`, dirPath)
+	database.InsertActionSimple(db.FileActionDelete, 0, snapshot, detail, batchID)
+}
