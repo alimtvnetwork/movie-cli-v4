@@ -220,11 +220,15 @@ func (d *DB) ListAllMedia() ([]Media, error) {
 	return scanMediaRows(rows)
 }
 
-// GetMediaWithMissingData returns entries with empty genre/rating/description.
+// GetMediaWithMissingData returns entries with no genres, no rating, or no description.
 func (d *DB) GetMediaWithMissingData() ([]Media, error) {
 	rows, err := d.Query(`SELECT `+mediaColumns+`
 		FROM Media WHERE OriginalFilePath != ''
-		AND (COALESCE(TmdbRating, 0) = 0 OR COALESCE(Description, '') = '')
+		AND (
+			COALESCE(TmdbRating, 0) = 0
+			OR COALESCE(Description, '') = ''
+			OR MediaId NOT IN (SELECT DISTINCT MediaId FROM MediaGenre)
+		)
 		ORDER BY CleanTitle ASC`)
 	if err != nil {
 		return nil, err
@@ -330,6 +334,24 @@ func scanMediaRow(row *sql.Row) (*Media, error) {
 		return nil, err
 	}
 	return m, nil
+}
+
+// populateGenre loads the Genre compat field from the MediaGenre join table.
+func (d *DB) populateGenre(m *Media) {
+	if m == nil || m.ID == 0 {
+		return
+	}
+	g, err := d.GetMediaGenres(m.ID)
+	if err == nil {
+		m.Genre = g
+	}
+}
+
+// populateGenres loads Genre compat fields for a list of media.
+func (d *DB) populateGenres(items []Media) {
+	for i := range items {
+		d.populateGenre(&items[i])
+	}
 }
 
 // scanMediaRows scans multiple media rows from a query result.
