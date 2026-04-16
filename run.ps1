@@ -745,6 +745,10 @@ if ($Test) {
     exit 0
 }
 
+if ($Update) {
+    Write-Info "Update mode enabled (-Update)"
+}
+
 if (-not $NoPull) {
     Invoke-GitPull
 } else {
@@ -756,6 +760,7 @@ Resolve-Dependencies
 $builtBinary = Build-Binary
 
 $deployedBinary = $null
+if ($Deploy) { $NoDeploy = $false }
 if (-not $NoDeploy) {
     $deployedBinary = Deploy-Binary -SourceBinary $builtBinary
 } else {
@@ -763,12 +768,66 @@ if (-not $NoDeploy) {
     $deployedBinary = $builtBinary
 }
 
+# PATH sync — if deployed binary differs from PATH binary, sync it (like gitmap-v2)
+$activeCmd = Get-Command movie -ErrorAction SilentlyContinue
+if ($activeCmd -and $activeCmd.Source -and (Test-Path $activeCmd.Source) -and $deployedBinary -and (Test-Path $deployedBinary)) {
+    $activePath = (Resolve-Path $activeCmd.Source).Path
+    $deployedPath = (Resolve-Path $deployedBinary).Path
+    if ($activePath -ne $deployedPath) {
+        $maxSyncAttempts = 5
+        $syncSuccess = $false
+
+        if ($Update) {
+            # Rename-first strategy: Windows allows renaming a running binary
+            $activeBackup = "$($activeCmd.Source).old"
+            try {
+                if (Test-Path $activeBackup) {
+                    Remove-Item $activeBackup -Force -ErrorAction SilentlyContinue
+                }
+                Rename-Item $activeCmd.Source $activeBackup -Force -ErrorAction Stop
+                Copy-Item $deployedBinary $activeCmd.Source -Force -ErrorAction Stop
+                $syncedVersion = & $activeCmd.Source version 2>&1
+                Write-Success "Synced active PATH binary via rename-first -> $syncedVersion"
+                $syncSuccess = $true
+            } catch {
+                if ((Test-Path $activeBackup) -and (-not (Test-Path $activeCmd.Source))) {
+                    try { Copy-Item $activeBackup $activeCmd.Source -Force -ErrorAction Stop } catch {}
+                }
+                Write-Warn "Rename-first sync failed; retrying with copy loop"
+            }
+        }
+
+        if (-not $syncSuccess) {
+            for ($syncAttempt = 1; $syncAttempt -le $maxSyncAttempts; $syncAttempt++) {
+                try {
+                    Copy-Item $deployedBinary $activeCmd.Source -Force -ErrorAction Stop
+                    $syncedVersion = & $activeCmd.Source version 2>&1
+                    Write-Success "Synced active PATH binary -> $syncedVersion"
+                    $syncSuccess = $true
+                    break
+                } catch {
+                    if ($syncAttempt -lt $maxSyncAttempts) {
+                        Write-Warn "Active PATH binary is in use; retrying ($syncAttempt/$maxSyncAttempts)..."
+                        Start-Sleep -Milliseconds 500
+                    }
+                }
+            }
+        }
+
+        if (-not $syncSuccess) {
+            Write-Warn "Could not sync active PATH binary after retries."
+            Write-Info "Close terminals using movie and run:"
+            Write-Info ('Copy-Item "' + $deployedBinary + '" "' + $activeCmd.Source + '" -Force')
+        }
+    }
+}
+
 # Show the version from the binary that was just built/deployed
 $activeBinary = $deployedBinary
 if (-not $activeBinary -or -not (Test-Path $activeBinary)) {
-    $activeCmd = Get-Command movie -ErrorAction SilentlyContinue
-    if ($activeCmd -and $activeCmd.Source -and (Test-Path $activeCmd.Source)) {
-        $activeBinary = $activeCmd.Source
+    $activeCmd2 = Get-Command movie -ErrorAction SilentlyContinue
+    if ($activeCmd2 -and $activeCmd2.Source -and (Test-Path $activeCmd2.Source)) {
+        $activeBinary = $activeCmd2.Source
     }
 }
 
