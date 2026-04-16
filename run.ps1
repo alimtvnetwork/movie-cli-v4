@@ -30,6 +30,7 @@ param(
     [switch]$NoDeploy,
     [switch]$ForcePull,
     [string]$DeployPath = "",
+    [string]$BinaryNameOverride = "",
     [Alias("d")]
     [switch]$Deploy,
     [switch]$Update,
@@ -630,7 +631,13 @@ function Deploy-Binary {
         }
     }
 
-    $binaryName = $config.binaryName
+    $binaryName = $BinaryNameOverride
+    if ($BinaryNameOverride) {
+        Write-Info "Using binary name override: $binaryName"
+    }
+    if (-not $binaryName) {
+        $binaryName = $config.binaryName
+    }
     if (-not $binaryName) { $binaryName = "movie.exe" }
 
     # Create deploy directory if needed

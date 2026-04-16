@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## v2.11.0
+
+### Fixed
+- **Self-update now targets the exact original executable path** — the worker passes both deploy directory and binary filename into `run.ps1`, so rebuild/redeploy lands on the same binary that launched `movie update`
+- **`run.ps1` deploy override completed** — added `-BinaryNameOverride` alongside `-DeployPath` so update mode no longer depends on `powershell.json` filename defaults
+
 ## v2.10.0
 
 ### Fixed

@@ -172,10 +172,14 @@ if (-not (Test-Path $runScript)) {
 $deployArgs = @("-NoPull", "-Update")
 if ($targetBinary) {
     $deployDir = Split-Path -Parent $targetBinary
+    $targetName = Split-Path -Leaf $targetBinary
     if ($deployDir) {
         $deployArgs += @("-DeployPath", $deployDir)
-        Write-Host "  Deploy target: $targetBinary" -ForegroundColor Gray
     }
+    if ($targetName) {
+        $deployArgs += @("-BinaryNameOverride", $targetName)
+    }
+    Write-Host "  Deploy target: $targetBinary" -ForegroundColor Gray
 }
 & $runScript @deployArgs
 
