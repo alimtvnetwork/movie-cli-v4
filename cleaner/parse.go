@@ -20,18 +20,23 @@ var videoExtensions = map[string]bool{
 var junkPatterns = []*regexp.Regexp{
 	regexp.MustCompile(`(?i)\b(1080p|720p|480p|2160p|4k)\b`),
 	regexp.MustCompile(`(?i)\b(bluray|bdrip|brrip|webrip|web-dl|web\.dl|hdrip|dvdrip|dvdscr|hdtv|hdcam|cam|ts|tc)\b`),
-	regexp.MustCompile(`(?i)\b(x264|x265|h\.?264|h\.?265|hevc|aac|ac3|dts|mp3|flac|atmos)\b`),
-	regexp.MustCompile(`(?i)\b(rarbg|yts|yify|eztv|ettv|sparks|geckos|fgt|evo|ion10|cmrg|ntb|megusta)\b`),
+	regexp.MustCompile(`(?i)\b(x264|x265|h\.?264|h\.?265|hevc|aac|ac3|dts|mp3|flac|atmos|ddp?|dd[px]?\s*[257]\s*[01]|eac3|truehd|lpcm|opus)\b`),
+	regexp.MustCompile(`(?i)\b(rarbg|yts|yify|eztv|ettv|sparks|geckos|fgt|evo|ion10|cmrg|ntb|megusta|immortal|msubs?|pahe|mkvcinemas?|tamilrockers|yts\.mx)\b`),
 	regexp.MustCompile(`(?i)\b(extended|unrated|directors\.?cut|remastered|proper|rerip|internal)\b`),
-	regexp.MustCompile(`(?i)\b(multi|dual|eng|english|hindi|spanish|french|german|ita|sub|subs|subtitle|subtitles)\b`),
+	regexp.MustCompile(`(?i)\b(multi|dual|eng|english|hindi|spanish|french|german|ita|tamil|telugu|malayalam|korean|japanese|chinese|arabic|bengali|kannada|marathi|punjabi|urdu)\b`),
+	regexp.MustCompile(`(?i)\b(sub|subs|subtitle|subtitles|esub|esubs|e-sub|e-subs|softcoded|hardcoded)\b`),
+	regexp.MustCompile(`(?i)\b(10bit|8bit|12bit|hdr|hdr10|hdr10plus|dv|dolby\.?vision|sdr)\b`),
+	regexp.MustCompile(`(?i)\b(amzn|nf|netflix|dsnp|disney|hmax|hulu|atvp|apple|pcok|peacock|pmtp|paramount|stan|crav|criterion|mubi)\b`),
+	regexp.MustCompile(`(?i)\b([57]\s*1|[27]\s*0)\b`),
 	regexp.MustCompile(`\[.*?\]`),
-	regexp.MustCompile(`\(.*?\)`),
-	regexp.MustCompile(`\{.*?\}`),
+	regexp.MustCompile(`\((?!\d{4}\))[^)]*\)`),
 }
 
+var yearInParens = regexp.MustCompile(`\((\d{4})\)`)
 var yearPattern = regexp.MustCompile(`\b((?:19|20)\d{2})\b`)
 var tvPattern = regexp.MustCompile(`(?i)S\d{1,2}E\d{1,2}|Season\s*\d+|Episode\s*\d+`)
 var multiSpace = regexp.MustCompile(`\s{2,}`)
+var trailingJunk = regexp.MustCompile(`\s*[-–—]+\s*$`)
 
 // Result holds the cleaned information extracted from a filename.
 type Result struct {
@@ -58,15 +63,23 @@ func Clean(filename string) Result {
 		mediaType = "tv"
 	}
 
-	// Extract year
+	// Extract year (prefer parenthesized year, fall back to bare year)
 	year := 0
-	if matches := yearPattern.FindStringSubmatch(name); len(matches) > 1 {
+	if matches := yearInParens.FindStringSubmatch(name); len(matches) > 1 {
 		year, _ = strconv.Atoi(matches[1])
+	}
+	if year == 0 {
+		if matches := yearPattern.FindStringSubmatch(name); len(matches) > 1 {
+			year, _ = strconv.Atoi(matches[1])
+		}
 	}
 
 	// Replace dots and underscores with spaces
 	cleaned := strings.ReplaceAll(name, ".", " ")
 	cleaned = strings.ReplaceAll(cleaned, "_", " ")
+
+	// Replace year in parens with bare year before junk removal
+	cleaned = yearInParens.ReplaceAllString(cleaned, "$1")
 
 	// Remove junk patterns
 	for _, p := range junkPatterns {
@@ -81,9 +94,13 @@ func Clean(filename string) Result {
 	if year > 0 {
 		yearStr := strconv.Itoa(year)
 		if idx := strings.Index(cleaned, yearStr); idx > 0 {
-			cleaned = strings.TrimSpace(cleaned[:idx+len(yearStr)])
+			cleaned = strings.TrimSpace(cleaned[:idx])
 		}
 	}
+
+	// Remove trailing dashes/hyphens left over
+	cleaned = trailingJunk.ReplaceAllString(cleaned, "")
+	cleaned = strings.TrimSpace(cleaned)
 
 	return Result{
 		CleanTitle: cleaned,
