@@ -317,6 +317,15 @@ func (d *DB) FileSizeStats() (total float64, largest float64, smallest float64, 
 	return
 }
 
+// LargestMediaBySize returns the title and size of the largest file.
+func (d *DB) LargestMediaBySize() (title string, sizeMb float64, err error) {
+	err = d.QueryRow(`
+		SELECT COALESCE(CleanTitle, Title), COALESCE(FileSizeMb, 0)
+		FROM Media WHERE FileSizeMb > 0
+		ORDER BY FileSizeMb DESC LIMIT 1`).Scan(&title, &sizeMb)
+	return
+}
+
 // MediaByType returns media filtered by type with genres populated.
 func (d *DB) MediaByType(mediaType string, limit int) ([]Media, error) {
 	rows, err := d.Query(`SELECT `+mediaColumns+`
