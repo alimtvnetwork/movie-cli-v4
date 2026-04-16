@@ -47,44 +47,13 @@ func processVideoFile(vf videoFile, ctx *ScanContext) bool {
 	}
 
 	// Check if already in DB by path
-	existing, searchErr := ctx.Database.SearchMedia(result.CleanTitle)
-	if searchErr != nil {
-		// Per spec §2: DB errors get actionable messages
-		errlog.Warn("DB search error for '%s': %v", result.CleanTitle, searchErr)
-	}
-	for i := range existing {
-		if existing[i].OriginalFilePath == vf.FullPath {
-			if ctx.UseTable {
-				printScanTableRow(buildMediaTableRow(ctx.TotalFiles, &db.Media{
-					OriginalFileName: vf.Name,
-					CleanTitle:       result.CleanTitle,
-					Year:             result.Year,
-					Type:             result.Type,
-				}, "skipped"))
-			} else {
-				fmt.Println("     ⏩ Already in database, skipping")
-			}
-			ctx.Skipped++
-			if result.Type == string(db.MediaTypeMovie) {
-				ctx.MovieCount++
-			} else {
-				ctx.TVCount++
-			}
-			return true
-		}
+	if isAlreadyScanned(ctx, vf, result) {
+		return true
 	}
 
 	fi, fiErr := os.Stat(vf.FullPath)
 	if fiErr != nil {
-		if os.IsNotExist(fiErr) {
-			// Per spec §3.1: File not found
-			errlog.Error("❌ File not found: %s", vf.FullPath)
-		} else if os.IsPermission(fiErr) {
-			// Per spec §3.2: Permission denied
-			errlog.Error("❌ Permission denied: %s", vf.FullPath)
-		} else {
-			errlog.Error("cannot stat file %s: %v", vf.FullPath, fiErr)
-		}
+		logStatError(vf.FullPath, fiErr)
 		return false
 	}
 
@@ -110,31 +79,14 @@ func processVideoFile(vf videoFile, ctx *ScanContext) bool {
 	// Insert into database
 	mediaID, insertErr := ctx.Database.InsertMedia(m)
 	if insertErr != nil {
-		if m.TmdbID > 0 {
-			if updateErr := ctx.Database.UpdateMediaByTmdbID(m); updateErr != nil {
-				errlog.Error("DB update error for '%s': %v", m.Title, updateErr)
-			} else if m.Genre != "" {
-				// On update, replace genre links
-				existing, _ := ctx.Database.GetMediaByTmdbID(m.TmdbID)
-				if existing != nil {
-					ctx.Database.ReplaceMediaGenres(existing.ID, m.Genre)
-				}
-			}
-		} else {
-			errlog.Error("DB insert error for '%s': %v", m.Title, insertErr)
-		}
+		handleInsertError(ctx, m, insertErr)
 	} else if mediaID > 0 && m.Genre != "" {
-		// On insert, link genres via M:N tables
 		if linkErr := ctx.Database.LinkMediaGenres(mediaID, m.Genre); linkErr != nil {
 			errlog.Warn("Genre link error for '%s': %v", m.Title, linkErr)
 		}
 	}
 
-	// Track scan_add in action_history for undo support
-	if insertErr == nil && mediaID > 0 && ctx.BatchID != "" {
-		detail := fmt.Sprintf("Scan added: %s (%s)", m.CleanTitle, vf.FullPath)
-		ctx.Database.InsertActionSimple(db.FileActionScanAdd, mediaID, "", detail, ctx.BatchID)
-	}
+	trackScanAction(ctx, m, vf.FullPath, mediaID, insertErr)
 
 	if jsonErr := writeMediaJSON(ctx.OutputDir, m); jsonErr != nil {
 		errlog.Warn("JSON write error for '%s': %v", m.Title, jsonErr)
