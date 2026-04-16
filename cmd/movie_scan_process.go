@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
 	"regexp"
 	"strconv"
 
@@ -47,44 +46,13 @@ func processVideoFile(vf videoFile, ctx *ScanContext) bool {
 	}
 
 	// Check if already in DB by path
-	existing, searchErr := ctx.Database.SearchMedia(result.CleanTitle)
-	if searchErr != nil {
-		// Per spec §2: DB errors get actionable messages
-		errlog.Warn("DB search error for '%s': %v", result.CleanTitle, searchErr)
-	}
-	for i := range existing {
-		if existing[i].OriginalFilePath == vf.FullPath {
-			if ctx.UseTable {
-				printScanTableRow(buildMediaTableRow(ctx.TotalFiles, &db.Media{
-					OriginalFileName: vf.Name,
-					CleanTitle:       result.CleanTitle,
-					Year:             result.Year,
-					Type:             result.Type,
-				}, "skipped"))
-			} else {
-				fmt.Println("     ⏩ Already in database, skipping")
-			}
-			ctx.Skipped++
-			if result.Type == string(db.MediaTypeMovie) {
-				ctx.MovieCount++
-			} else {
-				ctx.TVCount++
-			}
-			return true
-		}
+	if isAlreadyScanned(ctx, vf, result) {
+		return true
 	}
 
 	fi, fiErr := os.Stat(vf.FullPath)
 	if fiErr != nil {
-		if os.IsNotExist(fiErr) {
-			// Per spec §3.1: File not found
-			errlog.Error("❌ File not found: %s", vf.FullPath)
-		} else if os.IsPermission(fiErr) {
-			// Per spec §3.2: Permission denied
-			errlog.Error("❌ Permission denied: %s", vf.FullPath)
-		} else {
-			errlog.Error("cannot stat file %s: %v", vf.FullPath, fiErr)
-		}
+		logStatError(vf.FullPath, fiErr)
 		return false
 	}
 
@@ -110,31 +78,14 @@ func processVideoFile(vf videoFile, ctx *ScanContext) bool {
 	// Insert into database
 	mediaID, insertErr := ctx.Database.InsertMedia(m)
 	if insertErr != nil {
-		if m.TmdbID > 0 {
-			if updateErr := ctx.Database.UpdateMediaByTmdbID(m); updateErr != nil {
-				errlog.Error("DB update error for '%s': %v", m.Title, updateErr)
-			} else if m.Genre != "" {
-				// On update, replace genre links
-				existing, _ := ctx.Database.GetMediaByTmdbID(m.TmdbID)
-				if existing != nil {
-					ctx.Database.ReplaceMediaGenres(existing.ID, m.Genre)
-				}
-			}
-		} else {
-			errlog.Error("DB insert error for '%s': %v", m.Title, insertErr)
-		}
+		handleInsertError(ctx, m, insertErr)
 	} else if mediaID > 0 && m.Genre != "" {
-		// On insert, link genres via M:N tables
 		if linkErr := ctx.Database.LinkMediaGenres(mediaID, m.Genre); linkErr != nil {
 			errlog.Warn("Genre link error for '%s': %v", m.Title, linkErr)
 		}
 	}
 
-	// Track scan_add in action_history for undo support
-	if insertErr == nil && mediaID > 0 && ctx.BatchID != "" {
-		detail := fmt.Sprintf("Scan added: %s (%s)", m.CleanTitle, vf.FullPath)
-		ctx.Database.InsertActionSimple(db.FileActionScanAdd, mediaID, "", detail, ctx.BatchID)
-	}
+	trackScanAction(ctx, m, vf.FullPath, mediaID, insertErr)
 
 	if jsonErr := writeMediaJSON(ctx.OutputDir, m); jsonErr != nil {
 		errlog.Warn("JSON write error for '%s': %v", m.Title, jsonErr)
@@ -146,11 +97,7 @@ func processVideoFile(vf videoFile, ctx *ScanContext) bool {
 		printScanTableRow(buildMediaTableRow(ctx.TotalFiles, m, "new"))
 	}
 
-	if m.Type == string(db.MediaTypeMovie) {
-		ctx.MovieCount++
-	} else {
-		ctx.TVCount++
-	}
+	incrementTypeCount(ctx, m.Type)
 	if !ctx.UseTable {
 		fmt.Println()
 	}
@@ -216,49 +163,7 @@ func enrichFromTMDb(client *tmdb.Client, database *db.DB, m *db.Media, result cl
 		fetchTVDetails(client, best.ID, m)
 	}
 
-	// Download thumbnail — saved to outputDir/thumbnails/{slug}-{tmdbID}.jpg
-	// Also saved to database.BasePath/thumbnails/ for REST server access
-	if best.PosterPath != "" {
-		slug := cleaner.ToSlug(m.CleanTitle)
-		if m.Year > 0 {
-			slug += "-" + strconv.Itoa(m.Year)
-		}
-		thumbFileName := slug + "-" + strconv.Itoa(m.TmdbID) + ".jpg"
-
-		// Primary: .movie-output/thumbnails/
-		thumbDir := filepath.Join(outputDir, "thumbnails")
-		if mkdirErr := os.MkdirAll(thumbDir, 0755); mkdirErr != nil {
-			if os.IsPermission(mkdirErr) {
-				errlog.Warn("⚠️ Cannot create thumbnail dir — skipping poster download")
-			} else {
-				errlog.Error("cannot create thumbnail dir %s: %v", thumbDir, mkdirErr)
-			}
-			return
-		}
-		thumbPath := filepath.Join(thumbDir, thumbFileName)
-		if dlErr := client.DownloadPoster(best.PosterPath, thumbPath); dlErr != nil {
-			// Per spec §1.4: Poster timeout → skip poster, continue with metadata
-			if errors.Is(dlErr, tmdb.ErrTimeout) || errors.Is(dlErr, tmdb.ErrNetworkError) {
-				errlog.Warn("⚠️ Poster download timed out — skipping for '%s'", m.CleanTitle)
-			} else {
-				errlog.Warn("thumbnail download failed for '%s': %v", m.CleanTitle, dlErr)
-			}
-		} else {
-			m.ThumbnailPath = "thumbnails/" + thumbFileName
-			fmt.Println("     🖼️  Thumbnail saved")
-
-			// Also copy to database data dir for REST server
-			dbThumbDir := filepath.Join(database.BasePath, "thumbnails")
-			if mkErr := os.MkdirAll(dbThumbDir, 0755); mkErr == nil {
-				dbThumbPath := filepath.Join(dbThumbDir, thumbFileName)
-				if src, rErr := os.ReadFile(thumbPath); rErr == nil {
-					if wErr := os.WriteFile(dbThumbPath, src, 0644); wErr != nil {
-						errlog.Warn("could not copy thumbnail to data dir: %v", wErr)
-					}
-				}
-			}
-		}
-	}
+	downloadThumbnail(client, database, m, best.PosterPath, outputDir)
 
 	fmt.Printf("     ⭐ %.1f  %s\n", m.TmdbRating, m.Title)
 }
