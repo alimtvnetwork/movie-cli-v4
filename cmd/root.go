@@ -44,7 +44,7 @@ System:
   movie version                             Show version info
   movie update                              Pull, rebuild, and deploy latest version
 
-Documentation: https://github.com/alimtvnetwork/movie-cli-v4`, version.Short()),
+Documentation: https://github.com/alimtvnetwork/movie-cli-v3`, version.Short()),
 	Version: version.Short(),
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Printf("movie-cli %s\n\n", version.Short())

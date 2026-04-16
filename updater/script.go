@@ -140,7 +140,7 @@ Start-Sleep -Seconds 1.2
 # Build and deploy (skip pull — already done)
 $runScript = Join-Path $repoPath "run.ps1"
 if (Test-Path $runScript) {
-    & $runScript -NoPull
+    & $runScript -NoPull -Update
 } else {
     Write-Host "  run.ps1 not found at $runScript" -ForegroundColor Red
     exit 1

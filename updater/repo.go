@@ -25,10 +25,12 @@ func findRepoPath() (string, bool, error) {
 			return repoRoot(exeDir), false, nil
 		}
 
-		// 2. Sibling clone
-		sibling := filepath.Join(exeDir, "movie-cli-v4")
-		if isValidRepo(sibling) {
-			return repoRoot(sibling), false, nil
+		// 2. Sibling clone (check both v3 dir name and v4)
+		for _, name := range []string{"movie-cli-v3", "movie-cli-v4"} {
+			sibling := filepath.Join(exeDir, name)
+			if isValidRepo(sibling) {
+				return repoRoot(sibling), false, nil
+			}
 		}
 	}
 
@@ -41,7 +43,7 @@ func findRepoPath() (string, bool, error) {
 	// 4. Bootstrap clone
 	if exeErr == nil {
 		exeDir := filepath.Dir(exe)
-		cloneDir := filepath.Join(exeDir, "movie-cli-v4")
+		cloneDir := filepath.Join(exeDir, "movie-cli-v3")
 		fmt.Printf("📥 No local repo found. Cloning to: %s\n", cloneDir)
 		if _, cloneErr := gitOutput(exeDir, "clone", "--depth", "1", repoURL); cloneErr != nil {
 			return "", false, apperror.Wrap("cannot clone repository", cloneErr)
@@ -49,7 +51,7 @@ func findRepoPath() (string, bool, error) {
 		return cloneDir, true, nil
 	}
 
-	return "", false, apperror.New("cannot locate the movie-cli-v4 repository")
+	return "", false, apperror.New("cannot locate the movie-cli repository")
 }
 
 // isValidRepo checks if a directory is a valid movie-cli-v4 repo
