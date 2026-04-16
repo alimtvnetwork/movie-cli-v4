@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"regexp"
 	"strconv"
 
 	"github.com/alimtvnetwork/movie-cli-v4/cleaner"
@@ -144,16 +143,10 @@ func enrichFromTMDb(ctx *ScanContext, m *db.Media, result cleaner.Result) {
 }
 
 func buildTMDbSearchQuery(result cleaner.Result) string {
-	searchTitle := result.CleanTitle
 	if result.Year > 0 {
-		yearStr := strconv.Itoa(result.Year)
-		re := regexp.MustCompile(`\s+` + regexp.QuoteMeta(yearStr) + `$`)
-		searchTitle = re.ReplaceAllString(searchTitle, "")
+		return result.CleanTitle + " " + strconv.Itoa(result.Year)
 	}
-	if result.Year > 0 {
-		return searchTitle + " " + strconv.Itoa(result.Year)
-	}
-	return searchTitle
+	return result.CleanTitle
 }
 
 func logTMDbSearchError(query string, tmdbErr error) {
