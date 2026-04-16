@@ -414,13 +414,15 @@ movie export -o ~/library.json    # export full library as JSON
 | `movie config` | Show all configuration |
 | `movie config set <key> <val>` | Set a config value |
 | `movie version` | Version, commit, build date, Go, OS/arch |
-| `movie self-update` | Update via `git pull --ff-only` |
+| `movie update` | Pull latest, rebuild, and deploy (copy-and-handoff) |
+| `movie update-cleanup` | Remove leftover temp binaries and `.bak` backups |
 | `movie changelog [--latest]` | Show release notes |
 
 ```bash
 movie config set movies_dir ~/Movies
 movie config set tmdb_api_key YOUR_KEY
-movie self-update
+movie update                          # full self-update: pull → build → deploy
+movie update-cleanup                  # remove temp update artifacts
 movie changelog --latest
 ```
 
@@ -448,7 +450,8 @@ movie
 ├── hello                         # Greeting with version
 ├── version                       # Version, commit, build date, Go, OS/arch
 ├── changelog [--latest]          # Show changelog (full or latest version)
-├── self-update                   # git pull --ff-only
+├── update                        # Pull → rebuild → deploy (copy-and-handoff)
+├── update-cleanup                # Remove temp update artifacts
 ├── config [get|set] [key]        # View/set configuration
 ├── scan [folder]                 # Scan folder → DB + TMDb metadata
 ├── rescan                        # Re-fetch missing TMDb metadata
@@ -599,15 +602,18 @@ movie-cli-v3/
 │   └── history.go                 # Move + scan history
 ├── errlog/                        # Centralized error/warning logging
 │   └── errlog.go                  # File + DB logging with stack traces
-├── updater/updater.go             # Git-based self-update
+├── updater/                       # Copy-and-handoff self-update
+│   ├── run.go                     # Entry points: Run() + RunWorker()
+│   ├── repo.go                    # Repo path resolution
+│   ├── handoff.go                 # Binary copy + foreground launch
+│   ├── script.go                  # PowerShell script generation
+│   └── cleanup.go                 # Temp artifact removal
 ├── version/version.go             # Build-time version variables
 ├── .github/
-│   ├── workflows/
-│   │   ├── ci.yml                 # Lint + test + vulncheck + failure log
-│   │   ├── release.yml            # Cross-compile + GitHub Release
-│   │   └── vulncheck.yml          # Weekly vulnerability scan
-│   └── logs/
-│       └── cicd.log               # AI-readable failure report (auto-generated)
+│   └── workflows/
+│       ├── ci.yml                 # Lint + test + vulncheck + cross-build
+│       ├── release.yml            # Cross-compile + GitHub Release
+│       └── vulncheck.yml          # Weekly vulnerability scan
 ├── run.ps1                        # PowerShell build + deploy pipeline
 ├── install.ps1                    # Bootstrap installer
 ├── CHANGELOG.md                   # Release notes
