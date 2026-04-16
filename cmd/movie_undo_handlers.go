@@ -261,11 +261,7 @@ func printUndoableActionsList(actions []db.ActionRecord) {
 		if a.IsReverted {
 			continue
 		}
-		detail := a.Detail
-		if detail == "" {
-			detail = a.FileActionId.String()
-		}
-		fmt.Printf("   • %s: %s\n", a.FileActionId, detail)
+		fmt.Printf("   • %s: %s\n", a.FileActionId, actionDetail(a))
 	}
 }
 

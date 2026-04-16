@@ -92,10 +92,7 @@ func collectActionRecords(database *db.DB, records []unifiedRecord) []unifiedRec
 	}
 
 	for _, a := range actions {
-		detail := a.Detail
-		if detail == "" {
-			detail = a.FileActionId.String()
-		}
+		detail := actionDetail(a)
 		records = append(records, unifiedRecord{
 			Source:     "action",
 			ID:         a.ActionHistoryId,
@@ -169,10 +166,6 @@ func printBatchAction(a db.ActionRecord) {
 	if a.IsReverted {
 		status = "↩️ "
 	}
-	detail := a.Detail
-	if detail == "" {
-		detail = a.FileActionId.String()
-	}
-	fmt.Printf("  %s [%s] %s\n", status, a.FileActionId, detail)
+	fmt.Printf("  %s [%s] %s\n", status, a.FileActionId, actionDetail(a))
 	fmt.Printf("     ID: %d  Created: %s\n\n", a.ActionHistoryId, a.CreatedAt)
 }
