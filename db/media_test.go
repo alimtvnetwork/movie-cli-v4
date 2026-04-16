@@ -234,7 +234,11 @@ func TestMoveHistory(t *testing.T) {
 	d := openTestDB(t)
 	id := seedMedia(t, d, "Moved Movie", 200)
 
-	err := d.InsertMoveHistory(id, int(FileActionMove), "/old/path.mkv", "/new/path.mkv", "old.mkv", "new.mkv")
+	err := d.InsertMoveHistory(MoveInput{
+		MediaID: id, FileActionID: int(FileActionMove),
+		FromPath: "/old/path.mkv", ToPath: "/new/path.mkv",
+		OrigName: "old.mkv", NewName: "new.mkv",
+	})
 	if err != nil {
 		t.Fatalf("insert history: %v", err)
 	}

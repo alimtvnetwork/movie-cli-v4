@@ -159,7 +159,7 @@ func (c *Client) DownloadPoster(posterPath, dst string) error {
 	resp, err := c.HTTPClient.Get(imgURL)
 	if err != nil {
 		if IsNetworkError(err) {
-			return apperror.Wrapf(err, "%w", ErrNetworkError)
+			return ErrNetworkError
 		}
 		return err
 	}

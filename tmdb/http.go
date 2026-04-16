@@ -69,7 +69,7 @@ func classifyHTTPError(err error) error {
 		return apperror.New("%w: check your internet connection", ErrTimeout)
 	}
 	if IsNetworkError(err) {
-		return apperror.Wrapf(err, "%w", ErrNetworkError)
+		return ErrNetworkError
 	}
 	return apperror.Wrap("HTTP request failed", err)
 }
