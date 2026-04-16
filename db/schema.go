@@ -268,8 +268,11 @@ func (d *DB) createTables() error {
 		StackTrace TEXT,
 		CreatedAt  TEXT NOT NULL DEFAULT (datetime('now'))
 	);
-	`) + d.createIndexes()
-	return err
+	`)
+	if err != nil {
+		return err
+	}
+	return d.createIndexes()
 }
 
 func (d *DB) createIndexes() error {
