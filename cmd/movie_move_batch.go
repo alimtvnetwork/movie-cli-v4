@@ -27,7 +27,7 @@ type moveItem struct {
 // runBatchMove moves all video files at once, auto-routing by type.
 func runBatchMove(mc MoveContext) {
 	moviesDir, tvDir := resolveMoveTargetDirs(mc.Database, mc.Home)
-	moves := previewBatchMoves(files, sourceDir, moviesDir, tvDir)
+	moves := previewBatchMoves(mc.Files, mc.SourceDir, moviesDir, tvDir)
 
 	fmt.Println("  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 	fmt.Printf("\n  Move all %d files? [y/N]: ", len(moves))
