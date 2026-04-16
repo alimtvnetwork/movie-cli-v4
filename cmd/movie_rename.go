@@ -23,6 +23,15 @@ Example: Scream.2022.1080p.WEBRip.x264-RARBG.mkv → Scream (2022).mkv`,
 	Run: runMovieRename,
 }
 
+// renameItem groups data for a single rename operation.
+type renameItem struct {
+	oldPath string
+	newPath string
+	oldName string
+	newName string
+	media   db.Media
+}
+
 func runMovieRename(cmd *cobra.Command, args []string) {
 	database, err := db.Open()
 	if err != nil {
@@ -31,83 +40,106 @@ func runMovieRename(cmd *cobra.Command, args []string) {
 	}
 	defer database.Close()
 
-	media, listErr := database.ListMedia(0, 10000)
-	if listErr != nil {
-		errlog.Error("Failed to read media: %v", listErr)
-		return
-	}
-	if len(media) == 0 {
-		fmt.Println("📭 No media found.")
+	items := findRenameCandidates(database)
+	if items == nil {
 		return
 	}
 
-	// Find files that need renaming
-	type renameItem struct {
-		oldPath string
-		newPath string
-		oldName string
-		newName string
-		media   db.Media
+	printRenamePreview(items)
+
+	if !confirmRenameAction() {
+		return
+	}
+
+	executeRenames(database, items)
+}
+
+func findRenameCandidates(database *db.DB) []renameItem {
+	media, listErr := database.ListMedia(0, 10000)
+	if listErr != nil {
+		errlog.Error("Failed to read media: %v", listErr)
+		return nil
+	}
+	if len(media) == 0 {
+		fmt.Println("📭 No media found.")
+		return nil
 	}
 
 	var items []renameItem
 	for i := range media {
-		if media[i].CurrentFilePath == "" {
-			continue
-		}
-		dir := filepath.Dir(media[i].CurrentFilePath)
-		oldName := filepath.Base(media[i].CurrentFilePath)
-		newName := cleaner.ToCleanFileName(media[i].CleanTitle, media[i].Year, media[i].FileExtension)
-
-		if oldName != newName {
-			items = append(items, renameItem{
-				media:   media[i],
-				oldPath: media[i].CurrentFilePath,
-				newPath: filepath.Join(dir, newName),
-				oldName: oldName,
-				newName: newName,
-			})
+		if item, ok := buildRenameItem(&media[i]); ok {
+			items = append(items, item)
 		}
 	}
 
 	if len(items) == 0 {
 		fmt.Println("✅ All files already have clean names!")
-		return
+		return nil
 	}
+	return items
+}
 
+func buildRenameItem(m *db.Media) (renameItem, bool) {
+	if m.CurrentFilePath == "" {
+		return renameItem{}, false
+	}
+	dir := filepath.Dir(m.CurrentFilePath)
+	oldName := filepath.Base(m.CurrentFilePath)
+	newName := cleaner.ToCleanFileName(m.CleanTitle, m.Year, m.FileExtension)
+	if oldName == newName {
+		return renameItem{}, false
+	}
+	return renameItem{
+		media: *m, oldPath: m.CurrentFilePath,
+		newPath: filepath.Join(dir, newName),
+		oldName: oldName, newName: newName,
+	}, true
+}
+
+func printRenamePreview(items []renameItem) {
 	fmt.Printf("📝 Found %d files to rename:\n\n", len(items))
 	for i := range items {
 		fmt.Printf("  %d. %s\n", i+1, items[i].oldName)
 		fmt.Printf("     → %s\n\n", items[i].newName)
 	}
+}
 
+func confirmRenameAction() bool {
 	fmt.Print("Rename all? [y/N]: ")
 	scanner := bufio.NewScanner(os.Stdin)
 	if !scanner.Scan() {
-		return
+		return false
 	}
 	confirm := strings.ToLower(strings.TrimSpace(scanner.Text()))
 	if confirm != "y" && confirm != "yes" {
 		fmt.Println("❌ Canceled.")
-		return
+		return false
 	}
+	return true
+}
 
+func executeRenames(database *db.DB, items []renameItem) {
 	success := 0
 	for i := range items {
-		if moveErr := MoveFile(items[i].oldPath, items[i].newPath); moveErr != nil {
-			errlog.Error("Failed: %s → %v", items[i].oldName, moveErr)
-			continue
+		if executeSingleRename(database, &items[i]) {
+			success++
 		}
-		if updateErr := database.UpdateMediaPath(items[i].media.ID, items[i].newPath); updateErr != nil {
-			errlog.Warn("DB update path error: %v", updateErr)
-		}
-		if histErr := database.InsertMoveHistory(items[i].media.ID, int(db.FileActionRename), items[i].oldPath, items[i].newPath,
-			items[i].oldName, items[i].newName); histErr != nil {
-			errlog.Warn("DB history error: %v", histErr)
-		}
-		fmt.Printf("  ✅ %s → %s\n", items[i].oldName, items[i].newName)
-		success++
 	}
-
 	fmt.Printf("\n✅ Renamed %d/%d files.\n", success, len(items))
+}
+
+func executeSingleRename(database *db.DB, item *renameItem) bool {
+	if moveErr := MoveFile(item.oldPath, item.newPath); moveErr != nil {
+		errlog.Error("Failed: %s → %v", item.oldName, moveErr)
+		return false
+	}
+	if updateErr := database.UpdateMediaPath(item.media.ID, item.newPath); updateErr != nil {
+		errlog.Warn("DB update path error: %v", updateErr)
+	}
+	if histErr := database.InsertMoveHistory(item.media.ID, int(db.FileActionRename),
+		item.oldPath, item.newPath, item.oldName, item.newName); histErr != nil {
+		errlog.Warn("DB history error: %v", histErr)
+	}
+	fmt.Printf("  ✅ %s → %s\n", item.oldName, item.newName)
+	return true
 }

@@ -34,8 +34,6 @@ func init() {
 	movieSearchCmd.Flags().StringVar(&searchFormat, "format", "", "Output format: json, table")
 }
 
-
-
 func runMovieSearch(cmd *cobra.Command, args []string) {
 	database, err := db.Open()
 	if err != nil {
@@ -44,7 +42,34 @@ func runMovieSearch(cmd *cobra.Command, args []string) {
 	}
 	defer database.Close()
 
-	// Get TMDb API key (GetConfig returns "" with nil error when key is absent)
+	client := resolveSearchTMDbClient(database)
+	if client == nil {
+		return
+	}
+
+	query := strings.Join(args, " ")
+	results := executeSearch(client, query)
+	if results == nil {
+		return
+	}
+
+	if searchFormat == string(db.OutputFormatJSON) {
+		printSearchResultsJSON(results)
+		return
+	}
+	if searchFormat == string(db.OutputFormatTable) {
+		printSearchResultsTable(results)
+		return
+	}
+
+	selected := promptSearchSelection(results)
+	if selected == nil {
+		return
+	}
+	saveSearchResult(client, database, *selected)
+}
+
+func resolveSearchTMDbClient(database *db.DB) *tmdb.Client {
 	apiKey, cfgErr := database.GetConfig("TmdbApiKey")
 	if cfgErr != nil && cfgErr.Error() != "sql: no rows in result set" {
 		errlog.Warn("Config read error: %v", cfgErr)
@@ -54,67 +79,35 @@ func runMovieSearch(cmd *cobra.Command, args []string) {
 	}
 	if apiKey == "" {
 		errlog.Error("No TMDb API key configured. Set it with: movie config set tmdb_api_key YOUR_KEY")
-		return
+		return nil
 	}
+	return tmdb.NewClient(apiKey)
+}
 
-	client := tmdb.NewClient(apiKey)
-	query := strings.Join(args, " ")
+func executeSearch(client *tmdb.Client, query string) []tmdb.SearchResult {
 	if searchFormat != string(db.OutputFormatJSON) && searchFormat != string(db.OutputFormatTable) {
 		fmt.Printf("🔎 Searching TMDb for: %s\n\n", query)
 	}
 
-	// Search TMDb API
 	results, searchErr := client.SearchMulti(query)
 	if searchErr != nil {
 		errlog.Error("TMDb search error: %v", searchErr)
-		return
+		return nil
 	}
-
 	if len(results) == 0 {
 		if searchFormat == string(db.OutputFormatJSON) {
 			fmt.Println("[]")
 		} else {
 			fmt.Println("📭 No results found on TMDb.")
 		}
-		return
+		return nil
 	}
+	return results
+}
 
-	// JSON mode: output results and exit (no interactive prompt)
-	if searchFormat == string(db.OutputFormatJSON) {
-		printSearchResultsJSON(results)
-		return
-	}
-
-	// Table mode: output results and exit (no interactive prompt)
-	if searchFormat == string(db.OutputFormatTable) {
-		printSearchResultsTable(results)
-		return
-	}
-
-	// Show results and let user pick
+func promptSearchSelection(results []tmdb.SearchResult) *tmdb.SearchResult {
 	fmt.Printf("Found %d results:\n\n", len(results))
-	for i := range results {
-		if i >= 15 {
-			break
-		}
-		title := results[i].GetDisplayTitle()
-		year := results[i].GetYear()
-		typeIcon := db.TypeIcon(results[i].MediaType)
-		typeLabel := db.TypeLabel(results[i].MediaType)
-
-		rating := "N/A"
-		if results[i].VoteAvg > 0 {
-			rating = fmt.Sprintf("%.1f", results[i].VoteAvg)
-		}
-
-		yearStr := ""
-		if year != "" {
-			yearStr = fmt.Sprintf("(%s)", year)
-		}
-
-		fmt.Printf("  %d. %s %-35s %-6s  ⭐ %-4s  [%s]\n",
-			i+1, typeIcon, title, yearStr, rating, typeLabel)
-	}
+	printSearchResultsList(results)
 
 	fmt.Println()
 	fmt.Print("Enter number to save (0 to cancel): ")
@@ -123,9 +116,34 @@ func runMovieSearch(cmd *cobra.Command, args []string) {
 	_, scanErr := fmt.Scan(&choice)
 	if scanErr != nil || choice < 1 || choice > len(results) || choice > 15 {
 		fmt.Println("❌ Canceled.")
-		return
+		return nil
 	}
+	return &results[choice-1]
+}
 
-	selected := results[choice-1]
-	saveSearchResult(client, database, selected)
+func printSearchResultsList(results []tmdb.SearchResult) {
+	for i := range results {
+		if i >= 15 {
+			break
+		}
+		printSearchResultRow(i+1, &results[i])
+	}
+}
+
+func printSearchResultRow(num int, r *tmdb.SearchResult) {
+	title := r.GetDisplayTitle()
+	year := r.GetYear()
+	typeIcon := db.TypeIcon(r.MediaType)
+	typeLabel := db.TypeLabel(r.MediaType)
+
+	rating := "N/A"
+	if r.VoteAvg > 0 {
+		rating = fmt.Sprintf("%.1f", r.VoteAvg)
+	}
+	yearStr := ""
+	if year != "" {
+		yearStr = fmt.Sprintf("(%s)", year)
+	}
+	fmt.Printf("  %d. %s %-35s %-6s  ⭐ %-4s  [%s]\n",
+		num, typeIcon, title, yearStr, rating, typeLabel)
 }

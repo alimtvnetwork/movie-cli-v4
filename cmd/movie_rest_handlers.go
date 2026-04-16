@@ -13,79 +13,82 @@ import (
 	"github.com/alimtvnetwork/movie-cli-v4/tmdb"
 )
 
-// handleTags handles POST /api/tags (add/remove tags).
-//
-//	POST body: {"media_id": 1, "tag": "favorite"}
-//	DELETE body: {"media_id": 1, "tag": "favorite"}
-//	GET /api/tags?media_id=1 — list tags for a media item
-//	GET /api/tags — list all tags with counts
 func handleTags(w http.ResponseWriter, r *http.Request, database *db.DB) {
 	switch r.Method {
 	case http.MethodGet:
-		idStr := r.URL.Query().Get("media_id")
-		if idStr != "" {
-			id, err := strconv.Atoi(idStr)
-			if err != nil {
-				http.Error(w, "invalid media_id", http.StatusBadRequest)
-				return
-			}
-			tags, tagErr := database.GetTagsByMediaID(id)
-			if tagErr != nil {
-				http.Error(w, tagErr.Error(), http.StatusInternalServerError)
-				return
-			}
-			writeJSON(w, map[string]interface{}{"media_id": id, "tags": tags})
-		} else {
-			counts, cErr := database.GetAllTagCounts()
-			if cErr != nil {
-				http.Error(w, cErr.Error(), http.StatusInternalServerError)
-				return
-			}
-			writeJSON(w, counts)
-		}
-
+		handleTagsGet(w, r, database)
 	case http.MethodPost:
-		var req struct {
-			MediaID int    `json:"media_id"`
-			Tag     string `json:"tag"`
-		}
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			http.Error(w, "invalid json", http.StatusBadRequest)
-			return
-		}
-		if req.MediaID == 0 || req.Tag == "" {
-			http.Error(w, "media_id and tag are required", http.StatusBadRequest)
-			return
-		}
-		if err := database.AddTag(req.MediaID, req.Tag); err != nil {
-			http.Error(w, err.Error(), http.StatusConflict)
-			return
-		}
-		writeJSON(w, map[string]string{"status": "added", "tag": req.Tag})
-
+		handleTagsPost(w, r, database)
 	case http.MethodDelete:
-		var req struct {
-			MediaID int    `json:"media_id"`
-			Tag     string `json:"tag"`
-		}
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			http.Error(w, "invalid json", http.StatusBadRequest)
-			return
-		}
-		removed, err := database.RemoveTag(req.MediaID, req.Tag)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		if !removed {
-			http.Error(w, "tag not found", http.StatusNotFound)
-			return
-		}
-		writeJSON(w, map[string]string{"status": "removed", "tag": req.Tag})
-
+		handleTagsDelete(w, r, database)
 	default:
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 	}
+}
+
+func handleTagsGet(w http.ResponseWriter, r *http.Request, database *db.DB) {
+	idStr := r.URL.Query().Get("media_id")
+	if idStr == "" {
+		counts, cErr := database.GetAllTagCounts()
+		if cErr != nil {
+			http.Error(w, cErr.Error(), http.StatusInternalServerError)
+			return
+		}
+		writeJSON(w, counts)
+		return
+	}
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		http.Error(w, "invalid media_id", http.StatusBadRequest)
+		return
+	}
+	tags, tagErr := database.GetTagsByMediaID(id)
+	if tagErr != nil {
+		http.Error(w, tagErr.Error(), http.StatusInternalServerError)
+		return
+	}
+	writeJSON(w, map[string]interface{}{"media_id": id, "tags": tags})
+}
+
+func handleTagsPost(w http.ResponseWriter, r *http.Request, database *db.DB) {
+	var req struct {
+		MediaID int    `json:"media_id"`
+		Tag     string `json:"tag"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid json", http.StatusBadRequest)
+		return
+	}
+	if req.MediaID == 0 || req.Tag == "" {
+		http.Error(w, "media_id and tag are required", http.StatusBadRequest)
+		return
+	}
+	if err := database.AddTag(req.MediaID, req.Tag); err != nil {
+		http.Error(w, err.Error(), http.StatusConflict)
+		return
+	}
+	writeJSON(w, map[string]string{"status": "added", "tag": req.Tag})
+}
+
+func handleTagsDelete(w http.ResponseWriter, r *http.Request, database *db.DB) {
+	var req struct {
+		MediaID int    `json:"media_id"`
+		Tag     string `json:"tag"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid json", http.StatusBadRequest)
+		return
+	}
+	removed, err := database.RemoveTag(req.MediaID, req.Tag)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if !removed {
+		http.Error(w, "tag not found", http.StatusNotFound)
+		return
+	}
+	writeJSON(w, map[string]string{"status": "removed", "tag": req.Tag})
 }
 
 // handleSimilar handles GET /api/media/{id}/similar — fetches TMDb recommendations.
@@ -95,16 +98,9 @@ func handleSimilar(w http.ResponseWriter, r *http.Request, database *db.DB) {
 		return
 	}
 
-	// Parse ID from path: /api/media/{id}/similar
-	path := strings.TrimPrefix(r.URL.Path, "/api/media/")
-	parts := strings.Split(path, "/")
-	if len(parts) < 2 || parts[1] != "similar" {
+	id := parseMediaSubpath(r.URL.Path, "similar")
+	if id <= 0 {
 		http.Error(w, "invalid path", http.StatusBadRequest)
-		return
-	}
-	id, err := strconv.ParseInt(parts[0], 10, 64)
-	if err != nil {
-		http.Error(w, "invalid id", http.StatusBadRequest)
 		return
 	}
 
@@ -118,97 +114,80 @@ func handleSimilar(w http.ResponseWriter, r *http.Request, database *db.DB) {
 		return
 	}
 
-	// Get TMDb credentials — missing keys are not fatal (empty string = no auth)
-	apiKey, keyErr := database.GetConfig("TmdbApiKey")
-	if keyErr != nil {
-		errlog.Warn("Could not read tmdb_api_key: %v", keyErr)
+	results := fetchSimilarFromTMDb(database, m)
+	if results == nil {
+		http.Error(w, "TMDb error", http.StatusBadGateway)
+		return
 	}
-	token, tokErr := database.GetConfig("TmdbToken")
-	if tokErr != nil {
-		errlog.Warn("Could not read tmdb_token: %v", tokErr)
-	}
+	writeJSON(w, map[string]interface{}{"media_id": id, "title": m.Title, "similar": results})
+}
+
+func fetchSimilarFromTMDb(database *db.DB, m *db.Media) []tmdb.SearchResult {
+	apiKey, _ := database.GetConfig("TmdbApiKey")
+	token, _ := database.GetConfig("TmdbToken")
 	client := tmdb.NewClientWithToken(apiKey, token)
 
 	results, recErr := client.GetRecommendations(m.TmdbID, m.Type, 1)
 	if recErr != nil {
-		http.Error(w, fmt.Sprintf("TMDb error: %v", recErr), http.StatusBadGateway)
-		return
+		errlog.Error("TMDb recommendations error: %v", recErr)
+		return nil
 	}
-
-	writeJSON(w, map[string]interface{}{
-		"media_id": id,
-		"title":    m.Title,
-		"similar":  results,
-	})
+	return results
 }
 
-// handleWatched handles PATCH /api/media/{id}/watched — marks a media item as watched.
+func parseMediaSubpath(urlPath, suffix string) int64 {
+	path := strings.TrimPrefix(urlPath, "/api/media/")
+	parts := strings.Split(path, "/")
+	if len(parts) < 2 || parts[1] != suffix {
+		return 0
+	}
+	id, err := strconv.ParseInt(parts[0], 10, 64)
+	if err != nil {
+		return 0
+	}
+	return id
+}
+
+// handleWatched handles PATCH /api/media/{id}/watched.
 func handleWatched(w http.ResponseWriter, r *http.Request, database *db.DB) {
 	if r.Method != http.MethodPatch {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
-	// Parse ID from path: /api/media/{id}/watched
-	path := strings.TrimPrefix(r.URL.Path, "/api/media/")
-	parts := strings.Split(path, "/")
-	if len(parts) < 2 || parts[1] != "watched" {
+	id := parseMediaSubpath(r.URL.Path, "watched")
+	if id <= 0 {
 		http.Error(w, "invalid path", http.StatusBadRequest)
 		return
 	}
-	id, err := strconv.ParseInt(parts[0], 10, 64)
-	if err != nil {
-		http.Error(w, "invalid id", http.StatusBadRequest)
-		return
-	}
 
-	// Check media exists
 	m, getErr := database.GetMediaByID(id)
 	if getErr != nil {
 		http.Error(w, "not found", http.StatusNotFound)
 		return
 	}
 
-	// Update watchlist status if in watchlist
-	if _, wlErr := database.Exec("UPDATE watchlist SET status = 'watched', watched_at = CURRENT_TIMESTAMP WHERE tmdb_id = ?", m.TmdbID); wlErr != nil {
+	markMediaWatched(database, id, m.TmdbID)
+	writeJSON(w, map[string]interface{}{"status": "marked_watched", "media_id": id, "title": m.Title})
+}
+
+func markMediaWatched(database *db.DB, id int64, tmdbID int) {
+	if _, wlErr := database.Exec("UPDATE watchlist SET status = 'watched', watched_at = CURRENT_TIMESTAMP WHERE tmdb_id = ?", tmdbID); wlErr != nil {
 		errlog.Error("watchlist update error for media %d: %v", id, wlErr)
 	}
-
-	// Also add a "watched" tag
 	if tagErr := database.AddTag(int(id), "watched"); tagErr != nil {
 		errlog.Warn("could not add watched tag for media %d: %v", id, tagErr)
 	}
-
-	writeJSON(w, map[string]interface{}{
-		"status":   "marked_watched",
-		"media_id": id,
-		"title":    m.Title,
-	})
 }
 
-// handleLogs handles GET /api/logs — returns error logs with optional filtering.
-//
-//	Query params:
-//	  level  — filter by level: ERROR, WARN, INFO (optional)
-//	  limit  — max entries to return (default 50, max 500)
-//	  search — substring match on message (optional)
+// handleLogs handles GET /api/logs.
 func handleLogs(w http.ResponseWriter, r *http.Request, database *db.DB) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
-	limitStr := r.URL.Query().Get("limit")
-	limit := 50
-	if limitStr != "" {
-		if parsed, err := strconv.Atoi(limitStr); err == nil && parsed > 0 {
-			limit = parsed
-		}
-	}
-	if limit > 500 {
-		limit = 500
-	}
-
+	limit := parseLogsLimit(r)
 	entries, err := database.RecentErrorLogs(limit)
 	if err != nil {
 		errlog.Error("Failed to read error logs: %v", err)
@@ -216,26 +195,50 @@ func handleLogs(w http.ResponseWriter, r *http.Request, database *db.DB) {
 		return
 	}
 
-	// Filter by level
+	entries = filterRESTLogEntries(r, entries)
+	writeJSON(w, map[string]interface{}{"total": len(entries), "entries": entries})
+}
+
+func parseLogsLimit(r *http.Request) int {
+	limit := 50
+	if limitStr := r.URL.Query().Get("limit"); limitStr != "" {
+		if parsed, err := strconv.Atoi(limitStr); err == nil && parsed > 0 {
+			limit = parsed
+		}
+	}
+	if limit > 500 {
+		limit = 500
+	}
+	return limit
+}
+
+func filterRESTLogEntries(r *http.Request, entries []map[string]string) []map[string]string {
 	level := strings.ToUpper(r.URL.Query().Get("level"))
 	search := strings.ToLower(r.URL.Query().Get("search"))
-
-	if level != "" || search != "" {
-		var filtered []map[string]string
-		for _, e := range entries {
-			if level != "" && e["level"] != level {
-				continue
-			}
-			if search != "" && !strings.Contains(strings.ToLower(e["message"]), search) {
-				continue
-			}
-			filtered = append(filtered, e)
-		}
-		entries = filtered
+	if level == "" && search == "" {
+		return entries
 	}
+	var filtered []map[string]string
+	for _, e := range entries {
+		if level != "" && e["level"] != level {
+			continue
+		}
+		if search != "" && !strings.Contains(strings.ToLower(e["message"]), search) {
+			continue
+		}
+		filtered = append(filtered, e)
+	}
+	return filtered
+}
 
-	writeJSON(w, map[string]interface{}{
-		"total":   len(entries),
-		"entries": entries,
-	})
+// splitGenres splits a comma-separated genre string.
+func splitGenres(genres string) []string {
+	var out []string
+	for _, g := range strings.Split(genres, ",") {
+		g = strings.TrimSpace(g)
+		if g != "" {
+			out = append(out, g)
+		}
+	}
+	return out
 }

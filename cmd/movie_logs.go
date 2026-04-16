@@ -59,37 +59,51 @@ func runMovieLogs(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	// Filter by level if specified
-	if logsLevel != "" {
-		lvl := strings.ToUpper(logsLevel)
-		var filtered []map[string]string
-		for _, e := range entries {
-			if e["level"] == lvl {
-				filtered = append(filtered, e)
-			}
-		}
-		entries = filtered
-	}
+	entries = filterLogEntries(entries)
 
 	if len(entries) == 0 {
-		if logsFormat == "json" {
-			fmt.Println("[]")
-		} else {
-			fmt.Println("✅ No log entries found.")
-		}
+		printEmptyLogs()
 		return
 	}
 
 	if logsFormat == "json" {
-		enc := json.NewEncoder(os.Stdout)
-		enc.SetIndent("", "  ")
-		if encErr := enc.Encode(entries); encErr != nil {
-			errlog.Error("JSON encode error: %v", encErr)
-		}
+		printLogsJSON(entries)
 		return
 	}
+	printLogsDefault(entries)
+}
 
-	// Default format
+func filterLogEntries(entries []map[string]string) []map[string]string {
+	if logsLevel == "" {
+		return entries
+	}
+	lvl := strings.ToUpper(logsLevel)
+	var filtered []map[string]string
+	for _, e := range entries {
+		if e["level"] == lvl {
+			filtered = append(filtered, e)
+		}
+	}
+	return filtered
+}
+
+func printEmptyLogs() {
+	if logsFormat == "json" {
+		fmt.Println("[]")
+	} else {
+		fmt.Println("✅ No log entries found.")
+	}
+}
+
+func printLogsJSON(entries []map[string]string) {
+	enc := json.NewEncoder(os.Stdout)
+	enc.SetIndent("", "  ")
+	if encErr := enc.Encode(entries); encErr != nil {
+		errlog.Error("JSON encode error: %v", encErr)
+	}
+}
+
+func printLogsDefault(entries []map[string]string) {
 	levelFilter := ""
 	if logsLevel != "" {
 		levelFilter = fmt.Sprintf(" (level: %s)", strings.ToUpper(logsLevel))
@@ -98,33 +112,47 @@ func runMovieLogs(cmd *cobra.Command, args []string) {
 	fmt.Println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 
 	for _, e := range entries {
-		levelIcon := "ℹ️ "
-		if e["level"] == "ERROR" {
-			levelIcon = "❌"
-		} else if e["level"] == "WARN" {
-			levelIcon = "⚠️ "
-		}
-
-		fmt.Printf("\n  %s [%s] #%s  %s\n", levelIcon, e["level"], e["id"], e["timestamp"])
-		fmt.Printf("     Source:   %s\n", e["source"])
-		if e["function"] != "" {
-			fmt.Printf("     Function: %s\n", e["function"])
-		}
-		if e["command"] != "" {
-			fmt.Printf("     Command:  %s\n", e["command"])
-		}
-		if e["work_dir"] != "" {
-			fmt.Printf("     WorkDir:  %s\n", e["work_dir"])
-		}
-		fmt.Printf("     Message:  %s\n", e["message"])
-		if e["stack_trace"] != "" {
-			fmt.Printf("     Stack:\n")
-			for _, line := range strings.Split(e["stack_trace"], "\n") {
-				if line != "" {
-					fmt.Printf("       %s\n", line)
-				}
-			}
-		}
+		printLogEntry(e)
 	}
 	fmt.Println()
+}
+
+func printLogEntry(e map[string]string) {
+	levelIcon := logLevelIcon(e["level"])
+	fmt.Printf("\n  %s [%s] #%s  %s\n", levelIcon, e["level"], e["id"], e["timestamp"])
+	fmt.Printf("     Source:   %s\n", e["source"])
+	printOptionalField("     Function: %s\n", e["function"])
+	printOptionalField("     Command:  %s\n", e["command"])
+	printOptionalField("     WorkDir:  %s\n", e["work_dir"])
+	fmt.Printf("     Message:  %s\n", e["message"])
+	printStackTrace(e["stack_trace"])
+}
+
+func logLevelIcon(level string) string {
+	switch level {
+	case "ERROR":
+		return "❌"
+	case "WARN":
+		return "⚠️ "
+	default:
+		return "ℹ️ "
+	}
+}
+
+func printOptionalField(format, value string) {
+	if value != "" {
+		fmt.Printf(format, value)
+	}
+}
+
+func printStackTrace(trace string) {
+	if trace == "" {
+		return
+	}
+	fmt.Printf("     Stack:\n")
+	for _, line := range strings.Split(trace, "\n") {
+		if line != "" {
+			fmt.Printf("       %s\n", line)
+		}
+	}
 }

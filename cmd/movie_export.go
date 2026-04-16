@@ -37,9 +37,9 @@ func init() {
 
 // exportEnvelope is the top-level JSON structure.
 type exportEnvelope struct {
-	Meta    exportMeta       `json:"meta"`
-	Storage *exportStorage   `json:"storage,omitempty"`
-	Genres  []exportGenre    `json:"genres,omitempty"`
+	Meta    exportMeta        `json:"meta"`
+	Storage *exportStorage    `json:"storage,omitempty"`
+	Genres  []exportGenre     `json:"genres,omitempty"`
 	Media   []exportMediaJSON `json:"media"`
 }
 
@@ -51,12 +51,12 @@ type exportMeta struct {
 }
 
 type exportStorage struct {
-	TotalSizeMb   float64 `json:"total_size_mb"`
-	TotalHuman    string  `json:"total_human"`
-	LargestMb     float64 `json:"largest_file_mb"`
-	LargestTitle  string  `json:"largest_file_title,omitempty"`
-	SmallestMb    float64 `json:"smallest_file_mb"`
-	AverageMb     float64 `json:"average_file_mb"`
+	TotalSizeMb  float64 `json:"total_size_mb"`
+	TotalHuman   string  `json:"total_human"`
+	LargestMb    float64 `json:"largest_file_mb"`
+	LargestTitle string  `json:"largest_file_title,omitempty"`
+	SmallestMb   float64 `json:"smallest_file_mb"`
+	AverageMb    float64 `json:"average_file_mb"`
 }
 
 type exportGenre struct {
@@ -127,59 +127,67 @@ func runExport(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	// Build media array
+	envelope := buildExportEnvelope(database, items)
+	writeExportFile(envelope, len(items))
+}
+
+func buildExportEnvelope(database *db.DB, items []db.Media) exportEnvelope {
 	mediaOut := make([]exportMediaJSON, len(items))
 	for i := range items {
 		mediaOut[i] = toExportMediaJSON(items[i])
 	}
 
-	// Counts
 	totalMovies, _ := database.CountMedia(string(db.MediaTypeMovie))
 	totalTV, _ := database.CountMedia(string(db.MediaTypeTV))
 
 	envelope := exportEnvelope{
 		Meta: exportMeta{
-			TotalItems:  len(items),
-			TotalMovies: totalMovies,
-			TotalTV:     totalTV,
-			ExportedAt:  db.NowUTC(),
+			TotalItems: len(items), TotalMovies: totalMovies,
+			TotalTV: totalTV, ExportedAt: db.NowUTC(),
 		},
 		Media: mediaOut,
 	}
 
-	// Storage stats
+	envelope.Storage = buildExportStorage(database, items)
+	envelope.Genres = buildExportGenres(database)
+	return envelope
+}
+
+func buildExportStorage(database *db.DB, items []db.Media) *exportStorage {
 	totalSize, largest, smallest, sizeErr := database.FileSizeStats()
-	if sizeErr == nil && totalSize > 0 {
-		st := &exportStorage{
-			TotalSizeMb: totalSize,
-			TotalHuman:  db.HumanSize(totalSize),
-			LargestMb:   largest,
-			SmallestMb:  smallest,
-		}
-		if len(items) > 0 {
-			st.AverageMb = totalSize / float64(len(items))
-		}
-		// Find title of largest file by scanning media list
-		for _, m := range items {
-			if m.FileSizeMb == largest {
-				st.LargestTitle = m.CleanTitle
-				break
-			}
-		}
-		envelope.Storage = st
+	if sizeErr != nil || totalSize <= 0 {
+		return nil
 	}
+	st := &exportStorage{
+		TotalSizeMb: totalSize, TotalHuman: db.HumanSize(totalSize),
+		LargestMb: largest, SmallestMb: smallest,
+	}
+	if len(items) > 0 {
+		st.AverageMb = totalSize / float64(len(items))
+	}
+	for _, m := range items {
+		if m.FileSizeMb == largest {
+			st.LargestTitle = m.CleanTitle
+			break
+		}
+	}
+	return st
+}
 
-	// Genre breakdown
+func buildExportGenres(database *db.DB) []exportGenre {
 	genres, genreErr := database.TopGenres(50)
-	if genreErr == nil && len(genres) > 0 {
-		for name, count := range genres {
-			envelope.Genres = append(envelope.Genres, exportGenre{Name: name, Count: count})
-		}
-		sort.Slice(envelope.Genres, func(i, j int) bool {
-			return envelope.Genres[i].Count > envelope.Genres[j].Count
-		})
+	if genreErr != nil || len(genres) == 0 {
+		return nil
 	}
+	var out []exportGenre
+	for name, count := range genres {
+		out = append(out, exportGenre{Name: name, Count: count})
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Count > out[j].Count })
+	return out
+}
 
+func writeExportFile(envelope exportEnvelope, itemCount int) {
 	data, err := json.MarshalIndent(envelope, "", "  ")
 	if err != nil {
 		errlog.Error("JSON encoding error: %v", err)
@@ -198,6 +206,5 @@ func runExport(cmd *cobra.Command, args []string) {
 		errlog.Error("Failed to write file: %v", err)
 		return
 	}
-
-	fmt.Printf("✅ Exported %d items → %s\n", len(items), outPath)
+	fmt.Printf("✅ Exported %d items → %s\n", itemCount, outPath)
 }
