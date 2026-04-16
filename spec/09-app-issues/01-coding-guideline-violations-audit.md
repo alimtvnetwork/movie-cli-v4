@@ -138,9 +138,9 @@
 **Priority order:** `runMovieInfo` (149L) → `suggestByType` (119L)
 **Estimated effort:** Large
 
-### Phase 4: Split Oversized Files
-**Scope:** Split 6 files exceeding 300 lines.
-**Order:** `movie_undo.go` → `movie_redo.go` → `movie_popout.go` → `db/media.go` → `movie_rest.go`
+### Phase 4: Split Oversized Files ✅ DONE (2026-04-16)
+**Result:** Split 3 files: `tmdb/client.go` (491→299 + helpers.go 202), `movie_undo.go` (479→147 + helpers 343), `movie_redo.go` (471→142 + helpers 340). Helper files are at boundary but contain many small focused functions.
+**Order:** `tmdb/client.go` → `movie_undo.go` → `movie_redo.go`
 **Estimated effort:** Medium
 
 ### Phase 5: Remove `else` After `return` ✅ DONE (2026-04-16)
