@@ -140,24 +140,25 @@ func runMovieRescan(cmd *cobra.Command, args []string) {
 }
 
 func fetchRescanEntries(database *db.DB) ([]db.Media, error) {
+	var entries []db.Media
+	var err error
 	if rescanAll {
-		entries, err := database.ListAllMedia()
-		if err != nil {
-			return nil, err
-		}
-		if rescanLimit > 0 && len(entries) > rescanLimit {
-			entries = entries[:rescanLimit]
-		}
-		return entries, nil
+		entries, err = database.ListAllMedia()
 	}
-	entries, err := database.GetMediaWithMissingData()
+	if !rescanAll {
+		entries, err = database.GetMediaWithMissingData()
+	}
 	if err != nil {
 		return nil, err
 	}
+	return applyRescanLimit(entries), nil
+}
+
+func applyRescanLimit(entries []db.Media) []db.Media {
 	if rescanLimit > 0 && len(entries) > rescanLimit {
-		entries = entries[:rescanLimit]
+		return entries[:rescanLimit]
 	}
-	return entries, nil
+	return entries
 }
 
 func processRescanEntries(database *db.DB, client *tmdb.Client, entries []db.Media) (int, int) {
