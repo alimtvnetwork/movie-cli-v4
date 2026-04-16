@@ -123,6 +123,21 @@ func (d *DB) createTables() error {
 	);
 
 	-- Join Tables
+	CREATE TABLE IF NOT EXISTS Director (
+		DirectorId   INTEGER PRIMARY KEY AUTOINCREMENT,
+		Name         TEXT NOT NULL UNIQUE,
+		TmdbPersonId INTEGER UNIQUE
+	);
+
+	CREATE TABLE IF NOT EXISTS MediaDirector (
+		MediaDirectorId INTEGER PRIMARY KEY AUTOINCREMENT,
+		MediaId         INTEGER NOT NULL,
+		DirectorId      INTEGER NOT NULL,
+		UNIQUE (MediaId, DirectorId),
+		FOREIGN KEY (MediaId) REFERENCES Media(MediaId) ON DELETE CASCADE,
+		FOREIGN KEY (DirectorId) REFERENCES Director(DirectorId)
+	);
+
 	CREATE TABLE IF NOT EXISTS MediaGenre (
 		MediaGenreId INTEGER PRIMARY KEY AUTOINCREMENT,
 		MediaId      INTEGER NOT NULL,
