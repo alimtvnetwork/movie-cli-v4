@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## v2.16.0
+
+### Changed
+- **Extracted helpers from 12 oversized functions** — all command functions now comply with the ≤50-line guideline
+  - `runMovieLsTable` (81→38) — extracted `printLsTableHeader`, `printLsTableRow`, `printLsTableDivider`, `formatRating`
+  - `printMediaDetailTable` (75→30) — extracted `buildDetailTableRows` with declarative optional field list
+  - `printMediaDetail` (69→33) — extracted `printDetailHeader`, `printDetailIdentifiers`, `printDetailRatings`, `printDetailCredits`, `printDetailFinancials`, `printDetailDescription`, `printDetailFiles`
+  - `runMovieScan` (87→37) — extracted `createScanContext`, `executeScan`, `finalizeScan`
+  - `runMovieRescan` (71→38) — extracted `fetchRescanEntries`, `processRescanEntries`, `printRescanResult`
+  - `runMovieCd` (67→25) — extracted `listScanFolders`, `matchScanFolder`
+  - `runWatchLoop` (64→30) — extracted `seedWatchSeen`, `processWatchCycle`, `logWatchScanHistory`
+  - `writeHTMLReport` (64→33) — extracted `buildHTMLReportItems`, `splitGenreList`
+  - `writeScanSummary` (62→27) — extracted `buildSummaryItems`, `categorizeByGenre`
+  - `promptDestination` (62→38) — extracted `loadDestinationDirs`, `loadConfigDir`
+  - `runMovieDuplicates` (60→24) — extracted `findDuplicateGroups`, `printDuplicateGroups`, `resolveDuplicatePath`
+  - `runMoviePopout` (64) — already well-structured, no change needed
+
 ## v2.15.0
 
 ### Fixed
