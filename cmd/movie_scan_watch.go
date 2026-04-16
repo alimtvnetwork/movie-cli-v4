@@ -68,7 +68,10 @@ func runWatchLoop(scanDir, outputDir string, database *db.DB, creds tmdbCredenti
 			folderId, folderErr := database.UpsertScanFolder(scanDir)
 			if folderErr != nil {
 				errlog.Warn("Could not register scan folder: %v", folderErr)
-			} else if histErr := database.InsertScanHistory(int(folderId), watchCtx.TotalFiles, watchCtx.MovieCount, watchCtx.TVCount, 0, 0, 0, 0, 0); histErr != nil {
+			} else if histErr := database.InsertScanHistory(db.ScanHistoryInput{
+				ScanFolderID: int(folderId), TotalFiles: watchCtx.TotalFiles,
+				Movies: watchCtx.MovieCount, TV: watchCtx.TVCount,
+			}); histErr != nil {
 				errlog.Warn("Could not log watch scan history: %v", histErr)
 			}
 		}

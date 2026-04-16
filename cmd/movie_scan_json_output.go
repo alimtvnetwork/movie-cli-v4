@@ -73,15 +73,15 @@ func buildMediaJSONItem(m *db.Media, status string) scanJSONItem {
 }
 
 // printScanJSON writes the full scan result as JSON to stdout.
-func printScanJSON(scanDir string, items []scanJSONItem, totalFiles, movies, tvShows, skipped int) {
+func printScanJSON(scanDir string, items []scanJSONItem, stats ScanStats) {
 	output := scanJSONOutput{
 		ScannedFolder: scanDir,
 		ScannedAt:     time.Now().UTC().Format(time.RFC3339),
 		DryRun:        scanDryRun,
-		TotalFiles:    totalFiles,
-		Movies:        movies,
-		TVShows:       tvShows,
-		Skipped:       skipped,
+		TotalFiles:    stats.Total,
+		Movies:        stats.Movies,
+		TVShows:       stats.TV,
+		Skipped:       stats.Skipped,
 		Items:         items,
 	}
 

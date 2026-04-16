@@ -46,7 +46,7 @@ type htmlReportItem struct {
 }
 
 // writeHTMLReport generates report.html in the output directory.
-func writeHTMLReport(outputDir, scanDir string, items []db.Media, total, movies, tv, skipped int) error {
+func writeHTMLReport(stats ScanStats) error {
 	tmplBytes, err := templates.FS.ReadFile("report.html")
 	if err != nil {
 		return apperror.Wrap("read template", err)
@@ -57,8 +57,8 @@ func writeHTMLReport(outputDir, scanDir string, items []db.Media, total, movies,
 		return apperror.Wrap("parse template", err)
 	}
 
-	reportItems := make([]htmlReportItem, 0, len(items))
-	for _, m := range items {
+	reportItems := make([]htmlReportItem, 0, len(stats.Items))
+	for _, m := range stats.Items {
 		var genres []string
 		if m.Genre != "" {
 			for _, g := range strings.Split(m.Genre, ",") {
@@ -87,17 +87,17 @@ func writeHTMLReport(outputDir, scanDir string, items []db.Media, total, movies,
 	}
 
 	data := htmlReportData{
-		ScannedFolder: scanDir,
+		ScannedFolder: stats.ScanDir,
 		ScannedAt:     time.Now().Format("2006-01-02 15:04:05"),
-		TotalFiles:    total,
-		Movies:        movies,
-		TVShows:       tv,
-		Skipped:       skipped,
+		TotalFiles:    stats.Total,
+		Movies:        stats.Movies,
+		TVShows:       stats.TV,
+		Skipped:       stats.Skipped,
 		Port:          defaultRESTPort,
 		Items:         reportItems,
 	}
 
-	outPath := filepath.Join(outputDir, "report.html")
+	outPath := filepath.Join(stats.OutputDir, "report.html")
 	f, err := os.Create(outPath)
 	if err != nil {
 		return apperror.Wrap("create file", err)

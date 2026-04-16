@@ -84,10 +84,11 @@ func initRestLogger(database *db.DB) {
 		errlog.Warn("Could not init error logger: %v", initErr)
 	} else {
 		errlog.SetDBWriter(func(e errlog.Entry) {
-			if dbErr := database.InsertErrorLog(
-				e.Timestamp, string(e.Level), e.Source, e.Function,
-				e.Command, e.WorkDir, e.Message, e.StackTrace,
-			); dbErr != nil {
+			if dbErr := database.InsertErrorLog(db.ErrorLogEntry{
+				Timestamp: e.Timestamp, Level: string(e.Level), Source: e.Source,
+				Function: e.Function, Command: e.Command, WorkDir: e.WorkDir,
+				Message: e.Message, StackTrace: e.StackTrace,
+			}); dbErr != nil {
 				errlog.Warn("Could not write error to DB: %v", dbErr)
 			}
 		})

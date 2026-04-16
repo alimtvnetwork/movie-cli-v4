@@ -67,15 +67,24 @@ type ActionRecord struct {
 
 const actionCols = `ActionHistoryId, FileActionId, MediaId, MediaSnapshot, Detail, BatchId, IsReverted, CreatedAt`
 
+// ActionInput holds fields for inserting an action history record.
+type ActionInput struct {
+	FileAction FileActionType
+	MediaID    sql.NullInt64
+	Snapshot   string
+	Detail     string
+	BatchID    string
+}
+
 // InsertAction logs a state-changing action to ActionHistory.
-func (d *DB) InsertAction(fileAction FileActionType, mediaId sql.NullInt64, snapshot, detail, batchId string) (int64, error) {
+func (d *DB) InsertAction(input ActionInput) (int64, error) {
 	res, err := d.Exec(`
 		INSERT INTO ActionHistory (FileActionId, MediaId, MediaSnapshot, Detail, BatchId)
 		VALUES (?, ?, ?, ?, ?)`,
-		int(fileAction), mediaId, snapshot, detail, batchId,
+		int(input.FileAction), input.MediaID, input.Snapshot, input.Detail, input.BatchID,
 	)
 	if err != nil {
-		return 0, apperror.Wrapf(err, "insert action (%s)", fileAction)
+		return 0, apperror.Wrapf(err, "insert action (%s)", input.FileAction)
 	}
 	return res.LastInsertId()
 }
@@ -83,7 +92,13 @@ func (d *DB) InsertAction(fileAction FileActionType, mediaId sql.NullInt64, snap
 // InsertActionSimple is a convenience wrapper when MediaId is a plain int64.
 func (d *DB) InsertActionSimple(fileAction FileActionType, mediaId int64, snapshot, detail, batchId string) (int64, error) {
 	mid := sql.NullInt64{Int64: mediaId, Valid: mediaId > 0}
-	return d.InsertAction(fileAction, mid, snapshot, detail, batchId)
+	return d.InsertAction(ActionInput{
+		FileAction: fileAction,
+		MediaID:    mid,
+		Snapshot:   snapshot,
+		Detail:     detail,
+		BatchID:    batchId,
+	})
 }
 
 // GetLastRevertableAction returns the most recent non-reverted action.

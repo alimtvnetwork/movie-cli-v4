@@ -16,11 +16,20 @@ type WatchlistEntry struct {
 	WatchedAt sql.NullString
 }
 
+// WatchlistInput holds fields for adding to the watchlist.
+type WatchlistInput struct {
+	TmdbID    int
+	Title     string
+	Year      int
+	MediaType string
+	MediaID   int64
+}
+
 // AddToWatchlist inserts or updates a watchlist entry as "to-watch".
-func (d *DB) AddToWatchlist(tmdbID int, title string, year int, mediaType string, mediaID int64) error {
+func (d *DB) AddToWatchlist(input WatchlistInput) error {
 	var mid sql.NullInt64
-	if mediaID > 0 {
-		mid = sql.NullInt64{Int64: mediaID, Valid: true}
+	if input.MediaID > 0 {
+		mid = sql.NullInt64{Int64: input.MediaID, Valid: true}
 	}
 	_, err := d.Exec(`
 		INSERT INTO Watchlist (TmdbId, Title, Year, Type, Status, MediaId)
@@ -30,7 +39,7 @@ func (d *DB) AddToWatchlist(tmdbID int, title string, year int, mediaType string
 			Year  = excluded.Year,
 			Type  = excluded.Type,
 			MediaId = COALESCE(excluded.MediaId, Watchlist.MediaId)`,
-		tmdbID, title, year, mediaType, mid)
+		input.TmdbID, input.Title, input.Year, input.MediaType, mid)
 	return err
 }
 
