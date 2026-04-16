@@ -2,4 +2,4 @@
 package cmd
 
 // msgDatabaseError is the standard error message for database open failures.
-const msgDatabaseError = msgDatabaseError
+const msgDatabaseError = "Database error: %v"
