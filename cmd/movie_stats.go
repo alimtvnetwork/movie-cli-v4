@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"sort"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -32,13 +33,13 @@ func init() {
 
 // statsJSONOutput is the JSON structure for --format json.
 type statsJSONOutput struct {
-	TotalMovies  int              `json:"total_movies"`
-	TotalTV      int              `json:"total_tv_shows"`
-	Total        int              `json:"total"`
-	Storage      *statsStorage    `json:"storage,omitempty"`
-	TopGenres    []statsGenre     `json:"top_genres,omitempty"`
-	AvgImdb      float64          `json:"avg_imdb_rating,omitempty"`
-	AvgTmdb      float64          `json:"avg_tmdb_rating,omitempty"`
+	TotalMovies int           `json:"total_movies"`
+	TotalTV     int           `json:"total_tv_shows"`
+	Total       int           `json:"total"`
+	Storage     *statsStorage `json:"storage,omitempty"`
+	TopGenres   []statsGenre  `json:"top_genres,omitempty"`
+	AvgImdb     float64       `json:"avg_imdb_rating,omitempty"`
+	AvgTmdb     float64       `json:"avg_tmdb_rating,omitempty"`
 }
 
 type statsStorage struct {
@@ -71,75 +72,35 @@ func runMovieStats(cmd *cobra.Command, args []string) {
 	}
 
 	if total == 0 {
-		if statsFormat == "json" {
-			fmt.Println("{}")
-		} else {
-			fmt.Println("📭 No media in library. Run 'movie scan <folder>' first.")
-		}
+		printEmptyStats()
 		return
 	}
 
-	if statsFormat == string(db.OutputFormatJSON) {
+	switch statsFormat {
+	case string(db.OutputFormatJSON):
 		printStatsJSON(database, totalMovies, totalTV, total)
-	} else if statsFormat == string(db.OutputFormatTable) {
+	case string(db.OutputFormatTable):
 		printStatsTable(database, totalMovies, totalTV, total)
-	} else {
+	default:
 		printStatsDefault(database, totalMovies, totalTV, total)
+	}
+}
+
+func printEmptyStats() {
+	if statsFormat == "json" {
+		fmt.Println("{}")
+	} else {
+		fmt.Println("📭 No media in library. Run 'movie scan <folder>' first.")
 	}
 }
 
 func printStatsJSON(database *db.DB, totalMovies, totalTV, total int) {
 	out := statsJSONOutput{
-		TotalMovies: totalMovies,
-		TotalTV:     totalTV,
-		Total:       total,
+		TotalMovies: totalMovies, TotalTV: totalTV, Total: total,
 	}
-
-	// Storage
-	totalSize, largestSize, smallestSize, sizeErr := database.FileSizeStats()
-	if sizeErr == nil && totalSize > 0 {
-		out.Storage = &statsStorage{
-			TotalSize:    int64(totalSize * 1024 * 1024),
-			TotalHuman:   db.HumanSize(totalSize),
-			LargestFile:  int64(largestSize * 1024 * 1024),
-			SmallestFile: int64(smallestSize * 1024 * 1024),
-			AverageSize:  int64(totalSize * 1024 * 1024) / int64(total),
-		}
-	}
-
-	// Genres
-	genres, genreErr := database.TopGenres(10)
-	if genreErr == nil && len(genres) > 0 {
-		for n, c := range genres {
-			out.TopGenres = append(out.TopGenres, statsGenre{Name: n, Count: c})
-		}
-		sort.Slice(out.TopGenres, func(i, j int) bool {
-			return out.TopGenres[i].Count > out.TopGenres[j].Count
-		})
-	}
-
-	// Ratings
-	allMedia, listErr := database.ListMedia(0, 100000)
-	if listErr == nil {
-		var sumImdb, sumTmdb float64
-		var cntImdb, cntTmdb int
-		for i := range allMedia {
-			if allMedia[i].ImdbRating > 0 {
-				sumImdb += allMedia[i].ImdbRating
-				cntImdb++
-			}
-			if allMedia[i].TmdbRating > 0 {
-				sumTmdb += allMedia[i].TmdbRating
-				cntTmdb++
-			}
-		}
-		if cntImdb > 0 {
-			out.AvgImdb = sumImdb / float64(cntImdb)
-		}
-		if cntTmdb > 0 {
-			out.AvgTmdb = sumTmdb / float64(cntTmdb)
-		}
-	}
+	out.Storage = buildStatsStorageJSON(database, total)
+	out.TopGenres = buildStatsGenresJSON(database)
+	out.AvgImdb, out.AvgTmdb = computeAvgRatings(database)
 
 	enc := json.NewEncoder(os.Stdout)
 	enc.SetIndent("", "  ")
@@ -148,83 +109,87 @@ func printStatsJSON(database *db.DB, totalMovies, totalTV, total int) {
 	}
 }
 
+func buildStatsStorageJSON(database *db.DB, total int) *statsStorage {
+	totalSize, largestSize, smallestSize, sizeErr := database.FileSizeStats()
+	if sizeErr != nil || totalSize <= 0 {
+		return nil
+	}
+	return &statsStorage{
+		TotalSize:    int64(totalSize * 1024 * 1024),
+		TotalHuman:   db.HumanSize(totalSize),
+		LargestFile:  int64(largestSize * 1024 * 1024),
+		SmallestFile: int64(smallestSize * 1024 * 1024),
+		AverageSize:  int64(totalSize*1024*1024) / int64(total),
+	}
+}
+
+func buildStatsGenresJSON(database *db.DB) []statsGenre {
+	genres, genreErr := database.TopGenres(10)
+	if genreErr != nil || len(genres) == 0 {
+		return nil
+	}
+	var out []statsGenre
+	for n, c := range genres {
+		out = append(out, statsGenre{Name: n, Count: c})
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Count > out[j].Count })
+	return out
+}
+
 func printStatsDefault(database *db.DB, totalMovies, totalTV, total int) {
+	printStatsDefaultCounts(totalMovies, totalTV, total)
+	printStatsDefaultStorage(database, total)
+	printStatsDefaultGenres(database)
+	printStatsDefaultRatings(database)
+}
+
+func printStatsDefaultCounts(totalMovies, totalTV, total int) {
 	fmt.Println("📊 Library Statistics")
 	fmt.Println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 	fmt.Printf("  🎬 Total Movies:    %d\n", totalMovies)
 	fmt.Printf("  📺 Total TV Shows:  %d\n", totalTV)
 	fmt.Printf("  📁 Total:           %d\n", total)
 	fmt.Println()
+}
 
-	// File size stats
+func printStatsDefaultStorage(database *db.DB, total int) {
 	totalSize, largestSize, smallestSize, sizeErr := database.FileSizeStats()
 	if sizeErr != nil {
 		errlog.Warn("File size stats error: %v", sizeErr)
-	} else if totalSize > 0 {
-		fmt.Println("  💾 Storage:")
-		fmt.Printf("     Total Size:    %s\n", db.HumanSize(totalSize))
-		fmt.Printf("     Largest File:  %s\n", db.HumanSize(largestSize))
-		fmt.Printf("     Smallest File: %s\n", db.HumanSize(smallestSize))
-		if total > 0 {
-			fmt.Printf("     Average Size:  %s\n", db.HumanSize(totalSize/float64(total)))
-		}
-		fmt.Println()
+		return
 	}
-
-	// Top genres
-	genres, genreErr := database.TopGenres(10)
-	if genreErr != nil {
-		errlog.Warn("Genre stats error: %v", genreErr)
-	} else if len(genres) > 0 {
-		type gc struct {
-			name  string
-			count int
-		}
-		var sorted []gc
-		for n, c := range genres {
-			sorted = append(sorted, gc{n, c})
-		}
-		sort.Slice(sorted, func(i, j int) bool {
-			return sorted[i].count > sorted[j].count
-		})
-
-		fmt.Println("  🎭 Top Genres:")
-		for i, g := range sorted {
-			if i >= 10 {
-				break
-			}
-			bar := ""
-			for j := 0; j < g.count && j < 30; j++ {
-				bar += "█"
-			}
-			fmt.Printf("     %-20s %s %d\n", g.name, bar, g.count)
-		}
-		fmt.Println()
+	if totalSize <= 0 {
+		return
 	}
-
-	// Average ratings
-	var avgImdb, avgTmdb float64
-	var imdbCount, tmdbCount int
-
-	allMedia, listErr := database.ListMedia(0, 10000)
-	if listErr != nil {
-		errlog.Warn("List media error: %v", listErr)
+	fmt.Println("  💾 Storage:")
+	fmt.Printf("     Total Size:    %s\n", db.HumanSize(totalSize))
+	fmt.Printf("     Largest File:  %s\n", db.HumanSize(largestSize))
+	fmt.Printf("     Smallest File: %s\n", db.HumanSize(smallestSize))
+	if total > 0 {
+		fmt.Printf("     Average Size:  %s\n", db.HumanSize(totalSize/float64(total)))
 	}
-	for i := range allMedia {
-		if allMedia[i].ImdbRating > 0 {
-			avgImdb += allMedia[i].ImdbRating
-			imdbCount++
-		}
-		if allMedia[i].TmdbRating > 0 {
-			avgTmdb += allMedia[i].TmdbRating
-			tmdbCount++
-		}
-	}
+	fmt.Println()
+}
 
-	if imdbCount > 0 {
-		fmt.Printf("  ⭐ Avg IMDb Rating: %.1f\n", avgImdb/float64(imdbCount))
+func printStatsDefaultGenres(database *db.DB) {
+	sorted := sortedGenreCounts(database, 10)
+	if len(sorted) == 0 {
+		return
 	}
-	if tmdbCount > 0 {
-		fmt.Printf("  ⭐ Avg TMDb Rating: %.1f\n", avgTmdb/float64(tmdbCount))
+	fmt.Println("  🎭 Top Genres:")
+	for _, g := range sorted {
+		bar := strings.Repeat("█", minInt(g.count, 30))
+		fmt.Printf("     %-20s %s %d\n", g.name, bar, g.count)
+	}
+	fmt.Println()
+}
+
+func printStatsDefaultRatings(database *db.DB) {
+	avgImdb, avgTmdb := computeAvgRatings(database)
+	if avgImdb > 0 {
+		fmt.Printf("  ⭐ Avg IMDb Rating: %.1f\n", avgImdb)
+	}
+	if avgTmdb > 0 {
+		fmt.Printf("  ⭐ Avg TMDb Rating: %.1f\n", avgTmdb)
 	}
 }

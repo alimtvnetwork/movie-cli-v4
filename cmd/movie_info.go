@@ -11,13 +11,11 @@ package cmd
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
 
 	"github.com/spf13/cobra"
 
-	"github.com/alimtvnetwork/movie-cli-v4/cleaner"
 	"github.com/alimtvnetwork/movie-cli-v4/db"
 	"github.com/alimtvnetwork/movie-cli-v4/errlog"
 	"github.com/alimtvnetwork/movie-cli-v4/tmdb"
@@ -44,8 +42,6 @@ func init() {
 	movieInfoCmd.Flags().StringVar(&infoFormat, "format", "", "Output format: json, table")
 }
 
-
-
 func runMovieInfo(cmd *cobra.Command, args []string) {
 	database, err := db.Open()
 	if err != nil {
@@ -56,24 +52,69 @@ func runMovieInfo(cmd *cobra.Command, args []string) {
 
 	query := strings.Join(args, " ")
 
-	// 1) Try local DB first (by ID or title)
 	m, resolveErr := resolveMediaByQuery(database, query)
 	if resolveErr == nil {
-		if infoFormat == string(db.OutputFormatJSON) {
-			printMediaDetailJSON(m, "local")
-		} else if infoFormat == string(db.OutputFormatTable) {
-			printMediaDetailTable(m)
-		} else {
-			fmt.Println("📚 Found in local library:")
-			fmt.Println()
-			printMediaDetail(m)
-		}
+		displayMediaInfo(m, "local")
 		return
 	}
 
-	// 3) Not in DB — fall back to TMDb API
+	m = fetchAndStoreFromTMDb(database, query)
+	if m != nil {
+		displayMediaInfo(m, "tmdb")
+	}
+}
+
+func displayMediaInfo(m *db.Media, source string) {
+	switch infoFormat {
+	case string(db.OutputFormatJSON):
+		printMediaDetailJSON(m, source)
+	case string(db.OutputFormatTable):
+		printMediaDetailTable(m)
+	default:
+		label := "📚 Found in local library:"
+		if source == "tmdb" {
+			label = "✅ Saved to your library!"
+		}
+		fmt.Println(label)
+		fmt.Println()
+		printMediaDetail(m)
+	}
+}
+
+func fetchAndStoreFromTMDb(database *db.DB, query string) *db.Media {
 	fmt.Printf("🔎 Not found locally. Searching TMDb for: %s\n\n", query)
 
+	client := resolveInfoTMDbClient(database)
+	if client == nil {
+		return nil
+	}
+
+	tmdbResults, searchErr := client.SearchMulti(query)
+	if searchErr != nil {
+		errlog.Error("TMDb search error: %v", searchErr)
+		return nil
+	}
+	if len(tmdbResults) == 0 {
+		fmt.Println("📭 No results found on TMDb either.")
+		return nil
+	}
+
+	selected := tmdbResults[0]
+
+	existing := checkExistingByTmdbID(database, selected.ID)
+	if existing != nil {
+		return existing
+	}
+
+	m := buildInfoMedia(selected)
+	enrichInfoMedia(client, m, selected)
+	downloadInfoThumbnail(client, database, m, selected.PosterPath)
+	saveInfoMedia(database, m)
+
+	return m
+}
+
+func resolveInfoTMDbClient(database *db.DB) *tmdb.Client {
 	apiKey, cfgErr := database.GetConfig("TmdbApiKey")
 	if cfgErr != nil && cfgErr.Error() != "sql: no rows in result set" {
 		errlog.Warn("Config read error: %v", cfgErr)
@@ -83,53 +124,27 @@ func runMovieInfo(cmd *cobra.Command, args []string) {
 	}
 	if apiKey == "" {
 		errlog.Error("No TMDb API key configured. Set it with: movie config set tmdb_api_key YOUR_KEY")
-		return
+		return nil
 	}
+	return tmdb.NewClient(apiKey)
+}
 
-	client := tmdb.NewClient(apiKey)
-	tmdbResults, searchErr := client.SearchMulti(query)
-	if searchErr != nil {
-		errlog.Error("TMDb search error: %v", searchErr)
-		return
-	}
-	if len(tmdbResults) == 0 {
-		fmt.Println("📭 No results found on TMDb either.")
-		return
-	}
-
-	// Pick the first (most relevant) result
-	selected := tmdbResults[0]
-	title := selected.GetDisplayTitle()
-	year := selected.GetYear()
-	yearInt := 0
-	if year != "" {
-		yearInt, _ = strconv.Atoi(year)
-	}
-
-	fmt.Printf("⏳ Fetching details for: %s (%s)...\n", title, year)
-
-	// Check if this TMDb ID already exists in DB (avoid duplicates)
-	existing, existErr := database.GetMediaByTmdbID(selected.ID)
+func checkExistingByTmdbID(database *db.DB, tmdbID int) *db.Media {
+	existing, existErr := database.GetMediaByTmdbID(tmdbID)
 	if existErr != nil && existErr.Error() != "sql: no rows in result set" {
 		errlog.Warn("DB lookup error: %v", existErr)
 	}
-	if existing != nil {
-		if infoFormat == string(db.OutputFormatJSON) {
-			printMediaDetailJSON(existing, "local")
-		} else if infoFormat == string(db.OutputFormatTable) {
-			printMediaDetailTable(existing)
-		} else {
-			fmt.Println("📚 Already in your library:")
-			fmt.Println()
-			printMediaDetail(existing)
-		}
-		return
-	}
+	return existing
+}
 
-	// Build media record with full details
-	m = &db.Media{
-		Title:       title,
-		CleanTitle:  title,
+func buildInfoMedia(selected tmdb.SearchResult) *db.Media {
+	yearInt := 0
+	if year := selected.GetYear(); year != "" {
+		yearInt, _ = strconv.Atoi(year)
+	}
+	return &db.Media{
+		Title:       selected.GetDisplayTitle(),
+		CleanTitle:  selected.GetDisplayTitle(),
 		Year:        yearInt,
 		TmdbID:      selected.ID,
 		TmdbRating:  selected.VoteAvg,
@@ -137,61 +152,51 @@ func runMovieInfo(cmd *cobra.Command, args []string) {
 		Description: selected.Overview,
 		Genre:       tmdb.GenreNames(selected.GenreIDs),
 	}
+}
 
-	if selected.MediaType == string(db.MediaTypeMovie) || selected.MediaType == "" {
-		m.Type = string(db.MediaTypeMovie)
-		fetchMovieDetails(client, selected.ID, m)
-	} else if selected.MediaType == string(db.MediaTypeTV) {
+func enrichInfoMedia(client *tmdb.Client, m *db.Media, selected tmdb.SearchResult) {
+	if selected.MediaType == string(db.MediaTypeTV) {
 		m.Type = string(db.MediaTypeTV)
 		fetchTVDetails(client, selected.ID, m)
+	} else {
+		m.Type = string(db.MediaTypeMovie)
+		fetchMovieDetails(client, selected.ID, m)
 	}
+}
 
-	// Download thumbnail
-	if selected.PosterPath != "" {
-		slug := cleaner.ToSlug(m.CleanTitle)
-		if m.Year > 0 {
-			slug += "-" + strconv.Itoa(m.Year)
-		}
-		thumbDir := filepath.Join(database.BasePath, "thumbnails", slug)
-		if mkdirErr := os.MkdirAll(thumbDir, 0755); mkdirErr != nil {
-			errlog.Warn("Cannot create thumbnail dir: %v", mkdirErr)
-		}
-		thumbPath := filepath.Join(thumbDir, slug+".jpg")
-		if dlErr := client.DownloadPoster(selected.PosterPath, thumbPath); dlErr != nil {
-			errlog.Warn("Thumbnail download failed: %v", dlErr)
-		} else {
-			m.ThumbnailPath = thumbPath
-		}
+func downloadInfoThumbnail(client *tmdb.Client, database *db.DB, m *db.Media, posterPath string) {
+	if posterPath == "" {
+		return
 	}
+	downloadThumbnailForMedia(client, database, m, posterPath)
+}
 
-	// Save to DB and link genres
+func saveInfoMedia(database *db.DB, m *db.Media) {
 	mediaID, insertErr := database.InsertMedia(m)
 	if insertErr != nil {
-		if m.TmdbID > 0 {
-			insertErr = database.UpdateMediaByTmdbID(m)
-			if insertErr == nil && m.Genre != "" {
-				existing, _ := database.GetMediaByTmdbID(m.TmdbID)
-				if existing != nil {
-					database.ReplaceMediaGenres(existing.ID, m.Genre)
-				}
-			}
-		}
-		if insertErr != nil {
-			errlog.Error("DB error: %v", insertErr)
-			return
-		}
-	} else if mediaID > 0 && m.Genre != "" {
+		handleInfoInsertError(database, m, insertErr)
+		return
+	}
+	if mediaID > 0 && m.Genre != "" {
 		database.LinkMediaGenres(mediaID, m.Genre)
 	}
+}
 
-	if infoFormat == string(db.OutputFormatJSON) {
-		printMediaDetailJSON(m, "tmdb")
-	} else if infoFormat == string(db.OutputFormatTable) {
-		printMediaDetailTable(m)
-	} else {
-		fmt.Println()
-		fmt.Println("✅ Saved to your library!")
-		fmt.Println()
-		printMediaDetail(m)
+func handleInfoInsertError(database *db.DB, m *db.Media, insertErr error) {
+	if m.TmdbID <= 0 {
+		errlog.Error("DB error: %v", insertErr)
+		return
+	}
+	updateErr := database.UpdateMediaByTmdbID(m)
+	if updateErr != nil {
+		errlog.Error("DB error: %v", updateErr)
+		return
+	}
+	if m.Genre == "" {
+		return
+	}
+	existing, _ := database.GetMediaByTmdbID(m.TmdbID)
+	if existing != nil {
+		database.ReplaceMediaGenres(existing.ID, m.Genre)
 	}
 }
