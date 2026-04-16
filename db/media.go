@@ -160,7 +160,7 @@ func (d *DB) UpdateMediaPath(mediaID int64, newPath string) error {
 	return err
 }
 
-// ListMedia returns paginated media records.
+// ListMedia returns paginated media records with genres populated.
 func (d *DB) ListMedia(offset, limit int) ([]Media, error) {
 	rows, err := d.Query(`SELECT `+mediaColumns+`
 		FROM Media WHERE OriginalFilePath != ''
@@ -169,7 +169,12 @@ func (d *DB) ListMedia(offset, limit int) ([]Media, error) {
 		return nil, err
 	}
 	defer rows.Close()
-	return scanMediaRows(rows)
+	items, err := scanMediaRows(rows)
+	if err != nil {
+		return nil, err
+	}
+	d.populateGenres(items)
+	return items, nil
 }
 
 // SearchMedia searches by title (fuzzy via LIKE).
@@ -181,19 +186,34 @@ func (d *DB) SearchMedia(query string) ([]Media, error) {
 		return nil, err
 	}
 	defer rows.Close()
-	return scanMediaRows(rows)
+	items, err := scanMediaRows(rows)
+	if err != nil {
+		return nil, err
+	}
+	d.populateGenres(items)
+	return items, nil
 }
 
-// GetMediaByID returns a single media record.
+// GetMediaByID returns a single media record with genres populated.
 func (d *DB) GetMediaByID(id int64) (*Media, error) {
 	row := d.QueryRow(`SELECT `+mediaColumns+` FROM Media WHERE MediaId = ?`, id)
-	return scanMediaRow(row)
+	m, err := scanMediaRow(row)
+	if err != nil {
+		return nil, err
+	}
+	d.populateGenre(m)
+	return m, nil
 }
 
-// GetMediaByTmdbID returns a media record by its TMDb ID.
+// GetMediaByTmdbID returns a media record by its TMDb ID with genres populated.
 func (d *DB) GetMediaByTmdbID(tmdbID int) (*Media, error) {
 	row := d.QueryRow(`SELECT `+mediaColumns+` FROM Media WHERE TmdbId = ?`, tmdbID)
-	return scanMediaRow(row)
+	m, err := scanMediaRow(row)
+	if err != nil {
+		return nil, err
+	}
+	d.populateGenre(m)
+	return m, nil
 }
 
 // CountMedia returns total count of scan-indexed items.
@@ -208,7 +228,7 @@ func (d *DB) CountMedia(mediaType string) (int, error) {
 	return count, err
 }
 
-// ListAllMedia returns all media records that have a file path.
+// ListAllMedia returns all media records that have a file path with genres populated.
 func (d *DB) ListAllMedia() ([]Media, error) {
 	rows, err := d.Query(`SELECT `+mediaColumns+`
 		FROM Media WHERE OriginalFilePath != ''
@@ -217,7 +237,12 @@ func (d *DB) ListAllMedia() ([]Media, error) {
 		return nil, err
 	}
 	defer rows.Close()
-	return scanMediaRows(rows)
+	items, err := scanMediaRows(rows)
+	if err != nil {
+		return nil, err
+	}
+	d.populateGenres(items)
+	return items, nil
 }
 
 // GetMediaWithMissingData returns entries with no genres, no rating, or no description.
@@ -283,7 +308,7 @@ func (d *DB) FileSizeStats() (total float64, largest float64, smallest float64, 
 	return
 }
 
-// MediaByType returns media filtered by type.
+// MediaByType returns media filtered by type with genres populated.
 func (d *DB) MediaByType(mediaType string, limit int) ([]Media, error) {
 	rows, err := d.Query(`SELECT `+mediaColumns+`
 		FROM Media WHERE Type = ? ORDER BY Popularity DESC LIMIT ?`, mediaType, limit)
@@ -291,7 +316,12 @@ func (d *DB) MediaByType(mediaType string, limit int) ([]Media, error) {
 		return nil, err
 	}
 	defer rows.Close()
-	return scanMediaRows(rows)
+	items, err := scanMediaRows(rows)
+	if err != nil {
+		return nil, err
+	}
+	d.populateGenres(items)
+	return items, nil
 }
 
 // TopGenres returns genres sorted by frequency via the normalized Genre/MediaGenre tables.
