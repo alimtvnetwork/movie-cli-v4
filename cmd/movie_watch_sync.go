@@ -9,6 +9,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/alimtvnetwork/movie-cli-v4/apperror"
 	"github.com/alimtvnetwork/movie-cli-v4/db"
 	"github.com/alimtvnetwork/movie-cli-v4/errlog"
 )
