@@ -129,7 +129,9 @@ func runMoviePopout(cmd *cobra.Command, args []string) {
 
 	if success > 0 {
 		fmt.Println()
-		offerFolderCleanup(scanner, database, rootDir, items, batchID)
+		offerFolderCleanup(CleanupContext{
+			Scanner: scanner, Database: database, BatchID: batchID,
+		}, rootDir, items)
 	}
 }
 

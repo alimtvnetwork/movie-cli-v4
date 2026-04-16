@@ -13,14 +13,14 @@ import (
 )
 
 // offerFolderCleanup lists source subfolders and offers removal options.
-func offerFolderCleanup(scanner *bufio.Scanner, database *db.DB, rootDir string, items []popoutItem, batchID string) {
+func offerFolderCleanup(cc CleanupContext, rootDir string, items []popoutItem) {
 	folders := collectPopoutFolders(rootDir, items)
 	if len(folders) == 0 {
 		return
 	}
 
 	printFolderSummary(folders)
-	promptFolderAction(scanner, database, folders, batchID)
+	promptFolderAction(cc, folders)
 }
 
 func collectPopoutFolders(rootDir string, items []popoutItem) []popoutFolderInfo {
@@ -69,7 +69,7 @@ func printFolderSummary(folders []popoutFolderInfo) {
 	}
 }
 
-func promptFolderAction(scanner *bufio.Scanner, database *db.DB, folders []popoutFolderInfo, batchID string) {
+func promptFolderAction(cc CleanupContext, folders []popoutFolderInfo) {
 	fmt.Println()
 	fmt.Println("  Options:")
 	fmt.Println("    [a] Remove all listed folders")
@@ -78,20 +78,20 @@ func promptFolderAction(scanner *bufio.Scanner, database *db.DB, folders []popou
 	fmt.Println("    [l] List files in each folder before deciding")
 	fmt.Print("\n  Choose [a/s/n/l]: ")
 
-	if !scanner.Scan() {
+	if !cc.Scanner.Scan() {
 		return
 	}
-	choice := strings.ToLower(strings.TrimSpace(scanner.Text()))
+	choice := strings.ToLower(strings.TrimSpace(cc.Scanner.Text()))
 
 	switch choice {
 	case "a":
 		for _, f := range folders {
-			removeFolder(database, f.path, f.name, batchID)
+			removeFolder(cc.Database, f.path, f.name, cc.BatchID)
 		}
 	case "s":
-		selectiveFolderRemoval(scanner, database, folders, batchID)
+		selectiveFolderRemoval(cc, folders)
 	case "l":
-		listThenDecide(scanner, database, folders, batchID)
+		listThenDecide(cc, folders)
 	case "n":
 		fmt.Println("  📁 All folders kept.")
 	default:
@@ -99,7 +99,7 @@ func promptFolderAction(scanner *bufio.Scanner, database *db.DB, folders []popou
 	}
 }
 
-func selectiveFolderRemoval(scanner *bufio.Scanner, database *db.DB, folders []popoutFolderInfo, batchID string) {
+func selectiveFolderRemoval(cc CleanupContext, folders []popoutFolderInfo) {
 	for _, f := range folders {
 		status := "empty"
 		if len(f.files) > 0 {
@@ -113,19 +113,19 @@ func selectiveFolderRemoval(scanner *bufio.Scanner, database *db.DB, folders []p
 			}
 		}
 		fmt.Print("    Remove? [y/N]: ")
-		if !scanner.Scan() {
+		if !cc.Scanner.Scan() {
 			return
 		}
-		answer := strings.ToLower(strings.TrimSpace(scanner.Text()))
+		answer := strings.ToLower(strings.TrimSpace(cc.Scanner.Text()))
 		if answer == "y" || answer == "yes" {
-			removeFolder(database, f.path, f.name, batchID)
+			removeFolder(cc.Database, f.path, f.name, cc.BatchID)
 			continue
 		}
 		fmt.Println("    Kept.")
 	}
 }
 
-func listThenDecide(scanner *bufio.Scanner, database *db.DB, folders []popoutFolderInfo, batchID string) {
+func listThenDecide(cc CleanupContext, folders []popoutFolderInfo) {
 	for _, f := range folders {
 		fmt.Printf("\n  📁 %s/\n", f.name)
 		if len(f.files) == 0 {
@@ -137,12 +137,12 @@ func listThenDecide(scanner *bufio.Scanner, database *db.DB, folders []popoutFol
 			}
 		}
 		fmt.Print("    Remove? [y/N]: ")
-		if !scanner.Scan() {
+		if !cc.Scanner.Scan() {
 			return
 		}
-		answer := strings.ToLower(strings.TrimSpace(scanner.Text()))
+		answer := strings.ToLower(strings.TrimSpace(cc.Scanner.Text()))
 		if answer == "y" || answer == "yes" {
-			removeFolder(database, f.path, f.name, batchID)
+			removeFolder(cc.Database, f.path, f.name, cc.BatchID)
 			continue
 		}
 		fmt.Println("    Kept.")

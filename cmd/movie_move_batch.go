@@ -237,7 +237,10 @@ func trackMove(database *db.DB, result cleaner.Result, fileInfo os.FileInfo, src
 		}
 	}
 
-	saveHistoryLog(database.BasePath, result.CleanTitle, result.Year, srcPath, destPath)
+	saveHistoryLog(HistoryLogInput{
+		BasePath: database.BasePath, Title: result.CleanTitle,
+		Year: result.Year, FromPath: srcPath, ToPath: destPath,
+	})
 }
 
 func findOrCreateMoveMedia(database *db.DB, result cleaner.Result, fileInfo os.FileInfo, srcPath, destPath string) int64 {

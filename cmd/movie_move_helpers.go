@@ -260,18 +260,18 @@ func crossDeviceMove(src, dst string) error {
 
 // saveHistoryLog writes a JSON move record to the history log.
 // All errors are logged via errlog — never swallowed.
-func saveHistoryLog(basePath, title string, year int, fromPath, toPath string) {
-	historyDir := filepath.Join(basePath, "json", "history")
+func saveHistoryLog(input HistoryLogInput) {
+	historyDir := filepath.Join(input.BasePath, "json", "history")
 	if err := os.MkdirAll(historyDir, 0755); err != nil {
 		errlog.Warn("Cannot create history dir: %v", err)
 		return
 	}
 
 	record := map[string]interface{}{
-		"title":     title,
-		"year":      year,
-		"from_path": fromPath,
-		"to_path":   toPath,
+		"title":     input.Title,
+		"year":      input.Year,
+		"from_path": input.FromPath,
+		"to_path":   input.ToPath,
 		"moved_at":  time.Now().UTC().Format(time.RFC3339),
 	}
 

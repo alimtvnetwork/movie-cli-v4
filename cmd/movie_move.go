@@ -73,12 +73,16 @@ func runMovieMove(cmd *cobra.Command, args []string) {
 		return
 	}
 
+	mc := MoveContext{
+		Database: database, Scanner: scanner,
+		SourceDir: sourceDir, Files: files, Home: home,
+	}
 	if moveAllFlag {
-		runBatchMove(database, scanner, sourceDir, files, home)
+		runBatchMove(mc)
 		return
 	}
 
-	runInteractiveMove(database, scanner, sourceDir, files, home)
+	runInteractiveMove(mc)
 }
 
 func resolveSourceDir(args []string, scanner *bufio.Scanner, database *db.DB, home string) string {
