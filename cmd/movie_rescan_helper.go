@@ -46,11 +46,11 @@ func rescanMediaEntry(database *db.DB, client *tmdb.Client, m *db.Media) bool {
 	m.Description = best.Overview
 	m.Genre = tmdb.GenreNames(best.GenreIDs)
 
-	if best.MediaType == "movie" || best.MediaType == "" {
-		m.Type = "movie"
+	if best.MediaType == string(db.MediaTypeMovie) || best.MediaType == "" {
+		m.Type = string(db.MediaTypeMovie)
 		fetchMovieDetails(client, best.ID, m)
-	} else if best.MediaType == "tv" {
-		m.Type = "tv"
+	} else if best.MediaType == string(db.MediaTypeTV) {
+		m.Type = string(db.MediaTypeTV)
 		fetchTVDetails(client, best.ID, m)
 	}
 

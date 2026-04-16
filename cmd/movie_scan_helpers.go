@@ -50,11 +50,11 @@ func createOutputDirs(outputDir string) error {
 	if err := os.MkdirAll(outputDir, 0755); err != nil {
 		return fmt.Errorf("cannot create output directory: %v", err)
 	}
-	if err := os.MkdirAll(filepath.Join(outputDir, "json", "movie"), 0755); err != nil {
-		return fmt.Errorf("cannot create json/movie dir: %v", err)
+	if err := os.MkdirAll(filepath.Join(outputDir, "json", string(db.MediaTypeMovie)), 0755); err != nil {
+		return fmt.Errorf("cannot create json/%s dir: %v", db.MediaTypeMovie, err)
 	}
-	if err := os.MkdirAll(filepath.Join(outputDir, "json", "tv"), 0755); err != nil {
-		return fmt.Errorf("cannot create json/tv dir: %v", err)
+	if err := os.MkdirAll(filepath.Join(outputDir, "json", string(db.MediaTypeTV)), 0755); err != nil {
+		return fmt.Errorf("cannot create json/%s dir: %v", db.MediaTypeTV, err)
 	}
 	return nil
 }

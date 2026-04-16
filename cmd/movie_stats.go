@@ -62,8 +62,8 @@ func runMovieStats(cmd *cobra.Command, args []string) {
 	}
 	defer database.Close()
 
-	totalMovies, _ := database.CountMedia("movie")
-	totalTV, _ := database.CountMedia("tv")
+	totalMovies, _ := database.CountMedia(string(db.MediaTypeMovie))
+	totalTV, _ := database.CountMedia(string(db.MediaTypeTV))
 	total, err := database.CountMedia("")
 	if err != nil {
 		errlog.Error("Database error: %v", err)
@@ -79,9 +79,9 @@ func runMovieStats(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	if statsFormat == "json" {
+	if statsFormat == string(db.OutputFormatJSON) {
 		printStatsJSON(database, totalMovies, totalTV, total)
-	} else if statsFormat == "table" {
+	} else if statsFormat == string(db.OutputFormatTable) {
 		printStatsTable(database, totalMovies, totalTV, total)
 	} else {
 		printStatsDefault(database, totalMovies, totalTV, total)

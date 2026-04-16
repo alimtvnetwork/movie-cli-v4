@@ -259,8 +259,8 @@ func handleStats(w http.ResponseWriter, r *http.Request, database *db.DB) {
 		return
 	}
 	total, _ := database.CountMedia("")
-	movies, _ := database.CountMedia("movie")
-	tv, _ := database.CountMedia("tv")
+	movies, _ := database.CountMedia(string(db.MediaTypeMovie))
+	tv, _ := database.CountMedia(string(db.MediaTypeTV))
 	writeJSON(w, map[string]int{"total": total, "movies": movies, "tv_shows": tv})
 }
 
@@ -294,7 +294,7 @@ func serveHTMLReport(w http.ResponseWriter, database *db.DB, port int) {
 	movies, tv := 0, 0
 	reportItems := make([]htmlReportItem, 0, len(items))
 	for _, m := range items {
-		if m.Type == "movie" {
+		if m.Type == string(db.MediaTypeMovie) {
 			movies++
 		} else {
 			tv++

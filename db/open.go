@@ -56,8 +56,8 @@ func Open() (*DB, error) {
 	base := filepath.Join(binDir, "data")
 	dirs := []string{
 		base,
-		filepath.Join(base, "json", "movie"),
-		filepath.Join(base, "json", "tv"),
+		filepath.Join(base, "json", string(MediaTypeMovie)),
+		filepath.Join(base, "json", string(MediaTypeTV)),
 		filepath.Join(base, "json", "history"),
 		filepath.Join(base, "thumbnails"),
 		filepath.Join(base, "config"),

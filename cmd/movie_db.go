@@ -37,8 +37,8 @@ func runMovieDB(cmd *cobra.Command, args []string) {
 	// Show record counts
 	total, countErr := database.CountMedia("")
 	if countErr == nil {
-		movies, _ := database.CountMedia("movie")
-		tv, _ := database.CountMedia("tv")
+		movies, _ := database.CountMedia(string(db.MediaTypeMovie))
+		tv, _ := database.CountMedia(string(db.MediaTypeTV))
 		fmt.Printf("\n  Records: %d total (%d movies, %d TV shows)\n", total, movies, tv)
 	}
 

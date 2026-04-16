@@ -59,9 +59,9 @@ func runMovieInfo(cmd *cobra.Command, args []string) {
 	// 1) Try local DB first (by ID or title)
 	m, resolveErr := resolveMediaByQuery(database, query)
 	if resolveErr == nil {
-		if infoFormat == "json" {
+		if infoFormat == string(db.OutputFormatJSON) {
 			printMediaDetailJSON(m, "local")
-		} else if infoFormat == "table" {
+		} else if infoFormat == string(db.OutputFormatTable) {
 			printMediaDetailTable(m)
 		} else {
 			fmt.Println("📚 Found in local library:")
@@ -114,9 +114,9 @@ func runMovieInfo(cmd *cobra.Command, args []string) {
 		errlog.Warn("DB lookup error: %v", existErr)
 	}
 	if existing != nil {
-		if infoFormat == "json" {
+		if infoFormat == string(db.OutputFormatJSON) {
 			printMediaDetailJSON(existing, "local")
-		} else if infoFormat == "table" {
+		} else if infoFormat == string(db.OutputFormatTable) {
 			printMediaDetailTable(existing)
 		} else {
 			fmt.Println("📚 Already in your library:")
@@ -138,11 +138,11 @@ func runMovieInfo(cmd *cobra.Command, args []string) {
 		Genre:       tmdb.GenreNames(selected.GenreIDs),
 	}
 
-	if selected.MediaType == "movie" || selected.MediaType == "" {
-		m.Type = "movie"
+	if selected.MediaType == string(db.MediaTypeMovie) || selected.MediaType == "" {
+		m.Type = string(db.MediaTypeMovie)
 		fetchMovieDetails(client, selected.ID, m)
-	} else if selected.MediaType == "tv" {
-		m.Type = "tv"
+	} else if selected.MediaType == string(db.MediaTypeTV) {
+		m.Type = string(db.MediaTypeTV)
 		fetchTVDetails(client, selected.ID, m)
 	}
 
@@ -184,9 +184,9 @@ func runMovieInfo(cmd *cobra.Command, args []string) {
 		database.LinkMediaGenres(mediaID, m.Genre)
 	}
 
-	if infoFormat == "json" {
+	if infoFormat == string(db.OutputFormatJSON) {
 		printMediaDetailJSON(m, "tmdb")
-	} else if infoFormat == "table" {
+	} else if infoFormat == string(db.OutputFormatTable) {
 		printMediaDetailTable(m)
 	} else {
 		fmt.Println()

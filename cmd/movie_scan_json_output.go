@@ -48,7 +48,7 @@ func buildDryRunJSONItems(videoFiles []videoFile) (items []scanJSONItem, movies,
 			Type:       result.Type,
 			Status:     "new",
 		})
-		if result.Type == "movie" {
+		if result.Type == string(db.MediaTypeMovie) {
 			movies++
 		} else {
 			tvShows++

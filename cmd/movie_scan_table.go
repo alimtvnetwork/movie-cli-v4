@@ -87,7 +87,7 @@ func buildDryRunTableRows(videoFiles []videoFile) (rows []scanTableRow, movies, 
 			Status:     "new",
 		}
 		rows = append(rows, row)
-		if result.Type == "movie" {
+		if result.Type == string(db.MediaTypeMovie) {
 			movies++
 		} else {
 			tvShows++

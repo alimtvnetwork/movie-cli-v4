@@ -22,7 +22,7 @@ const mediaColumns = `MediaId, Title, CleanTitle, Year, Type,
 type Media struct {
 	Title            string
 	CleanTitle       string
-	Type             string // "movie" or "tv"
+	Type             string // MediaTypeMovie or MediaTypeTV
 	ImdbID           string
 	Description      string
 	Director         string

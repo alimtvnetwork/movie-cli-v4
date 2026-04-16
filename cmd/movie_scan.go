@@ -124,7 +124,7 @@ func runMovieScan(cmd *cobra.Command, args []string) {
 	var jsonItems []scanJSONItem
 
 	videoFiles := collectVideoFiles(scanDir, scanRecursive, scanDepth)
-	useTable := scanFormat == "table"
+	useTable := scanFormat == string(db.OutputFormatTable)
 	useTMDb := creds.HasAuth()
 
 	// Generate batch ID for action_history tracking
@@ -196,10 +196,7 @@ func runMovieScan(cmd *cobra.Command, args []string) {
 						detail := fmt.Sprintf("Rescan updated: %s", em.CleanTitle)
 						database.InsertActionSimple(db.FileActionRescanUpdate, em.ID, preSnapshot, detail, scanBatchID)
 						if !useTable && !useJSON {
-							typeIcon := "🎬"
-							if em.Type == "tv" {
-								typeIcon = "📺"
-							}
+							typeIcon := db.TypeIcon(em.Type)
 							fmt.Printf("\n  %d. %s %s", totalFiles, typeIcon, em.CleanTitle)
 							if em.Year > 0 {
 								fmt.Printf(" (%d)", em.Year)
@@ -220,10 +217,7 @@ func runMovieScan(cmd *cobra.Command, args []string) {
 					if useTable {
 						printScanTableRow(buildMediaTableRow(totalFiles, em, "existing"))
 					} else if !useJSON {
-						typeIcon := "🎬"
-						if em.Type == "tv" {
-							typeIcon = "📺"
-						}
+						typeIcon := db.TypeIcon(em.Type)
 						fmt.Printf("\n  %d. %s %s", totalFiles, typeIcon, em.CleanTitle)
 						if em.Year > 0 {
 							fmt.Printf(" (%d)", em.Year)
@@ -233,7 +227,7 @@ func runMovieScan(cmd *cobra.Command, args []string) {
 					}
 				}
 				scannedItems = append(scannedItems, *em)
-				if em.Type == "movie" {
+				if em.Type == string(db.MediaTypeMovie) {
 					movieCount++
 				} else {
 					tvCount++
@@ -317,17 +311,14 @@ func runDryRunScan(videoFiles []videoFile, useJSON, useTable bool,
 		for _, vf := range videoFiles {
 			*totalFiles++
 			result := cleaner.Clean(vf.Name)
-			typeIcon := "🎬"
-			if result.Type == "tv" {
-				typeIcon = "📺"
-			}
+			typeIcon := db.TypeIcon(result.Type)
 			fmt.Printf("\n  %d. %s %s", *totalFiles, typeIcon, result.CleanTitle)
 			if result.Year > 0 {
 				fmt.Printf(" (%d)", result.Year)
 			}
 			fmt.Printf(" [%s]\n", result.Type)
 			fmt.Printf("     └─ %s\n", vf.Name)
-			if result.Type == "movie" {
+			if result.Type == string(db.MediaTypeMovie) {
 				*movieCount++
 			} else {
 				*tvCount++

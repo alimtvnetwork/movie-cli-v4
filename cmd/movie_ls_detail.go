@@ -21,10 +21,7 @@ func showMediaDetail(database *db.DB, id int64) {
 }
 
 func printMediaDetail(m *db.Media) {
-	typeIcon := "🎬 Movie"
-	if m.Type == "tv" {
-		typeIcon = "📺 TV Show"
-	}
+	typeIcon := db.TypeIcon(m.Type) + " " + db.TypeLabel(m.Type)
 
 	fmt.Println("╔══════════════════════════════════════════════════════════╗")
 	fmt.Printf("║  %s\n", m.Title)
