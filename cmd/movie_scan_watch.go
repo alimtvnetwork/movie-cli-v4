@@ -15,18 +15,18 @@ var scanWatchInterval int
 
 // runWatchLoop polls the scan directory for new video files at a fixed interval.
 // It keeps a set of already-seen file paths and processes only new ones.
-func runWatchLoop(scanDir, outputDir string, database *db.DB, creds tmdbCredentials) {
+func runWatchLoop(cfg ScanServiceConfig) {
 	seen := make(map[string]bool)
 
 	// Seed with existing files so we don't re-process them
-	initial := collectVideoFiles(scanDir, scanRecursive, scanDepth)
+	initial := collectVideoFiles(cfg.ScanDir, scanRecursive, scanDepth)
 	for _, vf := range initial {
 		seen[vf.FullPath] = true
 	}
 
 	interval := time.Duration(scanWatchInterval) * time.Second
-	client := tmdb.NewClientWithToken(creds.APIKey, creds.Token)
-	useTMDb := creds.HasAuth()
+	client := tmdb.NewClientWithToken(cfg.Creds.APIKey, cfg.Creds.Token)
+	useTMDb := cfg.Creds.HasAuth()
 
 	fmt.Printf("\n  👁️  Watching for new files (every %ds) — press Ctrl+C to stop\n", scanWatchInterval)
 	fmt.Println("  ──────────────────────────────────────────")
@@ -36,7 +36,7 @@ func runWatchLoop(scanDir, outputDir string, database *db.DB, creds tmdbCredenti
 		time.Sleep(interval)
 		cycle++
 
-		current := collectVideoFiles(scanDir, scanRecursive, scanDepth)
+		current := collectVideoFiles(cfg.ScanDir, scanRecursive, scanDepth)
 		var newFiles []videoFile
 		for _, vf := range current {
 			if !seen[vf.FullPath] {
@@ -53,10 +53,10 @@ func runWatchLoop(scanDir, outputDir string, database *db.DB, creds tmdbCredenti
 			len(newFiles), time.Now().Format("15:04:05"))
 
 		watchCtx := &ScanContext{
-			Database: database,
-			Client:   client,
-			HasTMDb:  useTMDb,
-			OutputDir: outputDir,
+			Database:  cfg.Database,
+			Client:    client,
+			HasTMDb:   useTMDb,
+			OutputDir: cfg.OutputDir,
 		}
 
 		for _, vf := range newFiles {
@@ -65,10 +65,10 @@ func runWatchLoop(scanDir, outputDir string, database *db.DB, creds tmdbCredenti
 
 		// Log watch cycle
 		if !scanDryRun {
-			folderId, folderErr := database.UpsertScanFolder(scanDir)
+			folderId, folderErr := cfg.Database.UpsertScanFolder(cfg.ScanDir)
 			if folderErr != nil {
 				errlog.Warn("Could not register scan folder: %v", folderErr)
-			} else if histErr := database.InsertScanHistory(db.ScanHistoryInput{
+			} else if histErr := cfg.Database.InsertScanHistory(db.ScanHistoryInput{
 				ScanFolderID: int(folderId), TotalFiles: watchCtx.TotalFiles,
 				Movies: watchCtx.MovieCount, TV: watchCtx.TVCount,
 			}); histErr != nil {

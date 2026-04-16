@@ -120,7 +120,10 @@ func runMovieScan(cmd *cobra.Command, args []string) {
 			&jsonItems, &ctx.TotalFiles, &ctx.MovieCount, &ctx.TVCount)
 	}
 	if !scanDryRun {
-		removed = runMainScanLoop(ctx, videoFiles, tmdbClient, scanDir, ctx.BatchID, useJSON, useTable, useTMDb, &jsonItems)
+		removed = runMainScanLoop(ctx, videoFiles, ScanLoopConfig{
+			Client: tmdbClient, ScanDir: scanDir, BatchID: ctx.BatchID,
+			UseJSON: useJSON, UseTable: useTable, HasTMDb: useTMDb,
+		}, &jsonItems)
 	}
 
 	if useTable {
@@ -142,7 +145,9 @@ func runMovieScan(cmd *cobra.Command, args []string) {
 		})
 	}
 
-	startPostScanServices(cmd, scanDir, outputDir, database, creds, tmdbClient)
+	startPostScanServices(cmd, ScanServiceConfig{
+		ScanDir: scanDir, OutputDir: outputDir, Database: database, Creds: creds,
+	}, tmdbClient)
 }
 
 func initScanLogger(database *db.DB, outputDir string) {
@@ -179,25 +184,25 @@ func registerScanHistory(database *db.DB, scanDir string, ctx *ScanContext) {
 	}
 }
 
-func startPostScanServices(cmd *cobra.Command, scanDir, outputDir string, database *db.DB, creds tmdbCredentials, client *tmdb.Client) {
+func startPostScanServices(cmd *cobra.Command, cfg ScanServiceConfig, client *tmdb.Client) {
 	if scanDryRun {
 		return
 	}
 	if scanRest {
-		startRestWithOptionalWatch(cmd, scanDir, outputDir, database, creds)
+		startRestWithOptionalWatch(cmd, cfg)
 		return
 	}
 	if scanWatch {
-		runWatchLoop(scanDir, outputDir, database, creds)
+		runWatchLoop(cfg)
 	}
 }
 
-func startRestWithOptionalWatch(cmd *cobra.Command, scanDir, outputDir string, database *db.DB, creds tmdbCredentials) {
+func startRestWithOptionalWatch(cmd *cobra.Command, cfg ScanServiceConfig) {
 	restPort = scanRestPort
 	fmt.Printf("\n🚀 Starting REST server on http://localhost:%d ...\n", restPort)
 	go openBrowser(fmt.Sprintf("http://localhost:%d", restPort))
 	if scanWatch {
-		go runWatchLoop(scanDir, outputDir, database, creds)
+		go runWatchLoop(cfg)
 	}
 	runMovieRest(cmd, []string{})
 }

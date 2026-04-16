@@ -10,33 +10,33 @@ import (
 )
 
 // runMainScanLoop processes all video files: detects removals, rescans existing, processes new.
-func runMainScanLoop(ctx *ScanContext, videoFiles []videoFile, creds *tmdb.Client,
-	scanDir, scanBatchID string, useJSON, useTable, useTMDb bool, jsonItems *[]scanJSONItem) int {
+func runMainScanLoop(ctx *ScanContext, videoFiles []videoFile, cfg ScanLoopConfig,
+	jsonItems *[]scanJSONItem) int {
 	database := ctx.Database
 
-	existingMedia, _ := database.GetMediaByScanDir(scanDir)
+	existingMedia, _ := database.GetMediaByScanDir(cfg.ScanDir)
 	diskPaths := make(map[string]bool, len(videoFiles))
 	for _, vf := range videoFiles {
 		diskPaths[vf.FullPath] = true
 	}
 
-	removed := removeStaleEntries(database, existingMedia, diskPaths, scanBatchID, useJSON, useTable)
+	removed := removeStaleEntries(database, existingMedia, diskPaths, cfg.BatchID, cfg.UseJSON, cfg.UseTable)
 
 	existingPaths := make(map[string]*db.Media, len(existingMedia))
 	for i := range existingMedia {
 		existingPaths[existingMedia[i].OriginalFilePath] = &existingMedia[i]
 	}
 
-	client := tmdb.NewClientWithToken(creds.APIKey, creds.AccessToken)
+	client := tmdb.NewClientWithToken(cfg.Client.APIKey, cfg.Client.AccessToken)
 	for _, vf := range videoFiles {
 		if em, found := existingPaths[vf.FullPath]; found {
-			processExistingMedia(ctx, em, vf, client, database, scanBatchID, useTMDb, useTable, useJSON)
+			processExistingMedia(ctx, em, vf, client, database, cfg.BatchID, cfg.HasTMDb, cfg.UseTable, cfg.UseJSON)
 			continue
 		}
 		processVideoFile(vf, ctx)
 	}
 
-	if useJSON {
+	if cfg.UseJSON {
 		for i := range ctx.ScannedItems {
 			status := "existing"
 			if existingPaths[ctx.ScannedItems[i].OriginalFilePath] == nil {
