@@ -8,9 +8,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/alimtvnetwork/movie-cli-v3/db"
-	"github.com/alimtvnetwork/movie-cli-v3/errlog"
-	"github.com/alimtvnetwork/movie-cli-v3/tmdb"
+	"github.com/alimtvnetwork/movie-cli-v4/db"
+	"github.com/alimtvnetwork/movie-cli-v4/errlog"
+	"github.com/alimtvnetwork/movie-cli-v4/tmdb"
 )
 
 // handleTags handles POST /api/tags (add/remove tags).

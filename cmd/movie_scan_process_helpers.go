@@ -8,10 +8,10 @@ import (
 	"path/filepath"
 	"strconv"
 
-	"github.com/alimtvnetwork/movie-cli-v3/cleaner"
-	"github.com/alimtvnetwork/movie-cli-v3/db"
-	"github.com/alimtvnetwork/movie-cli-v3/errlog"
-	"github.com/alimtvnetwork/movie-cli-v3/tmdb"
+	"github.com/alimtvnetwork/movie-cli-v4/cleaner"
+	"github.com/alimtvnetwork/movie-cli-v4/db"
+	"github.com/alimtvnetwork/movie-cli-v4/errlog"
+	"github.com/alimtvnetwork/movie-cli-v4/tmdb"
 )
 
 // isAlreadyScanned checks if a file is already in the DB and updates counters.

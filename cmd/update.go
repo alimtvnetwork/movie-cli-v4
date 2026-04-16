@@ -9,7 +9,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/alimtvnetwork/movie-cli-v3/updater"
+	"github.com/alimtvnetwork/movie-cli-v4/updater"
 )
 
 var updateCmd = &cobra.Command{

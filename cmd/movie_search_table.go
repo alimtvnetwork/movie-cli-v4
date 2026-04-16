@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/alimtvnetwork/movie-cli-v3/tmdb"
+	"github.com/alimtvnetwork/movie-cli-v4/tmdb"
 )
 
 // printSearchResultsTable outputs TMDb search results as a formatted table.

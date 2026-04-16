@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/alimtvnetwork/movie-cli-v3/tmdb"
+	"github.com/alimtvnetwork/movie-cli-v4/tmdb"
 )
 
 // searchJSONItem represents a single TMDb search result in JSON output.

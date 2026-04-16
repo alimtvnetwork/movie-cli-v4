@@ -286,7 +286,7 @@ All notable changes to this project will be documented in this file.
 ### Changed
 - **`movie ls`** now only shows scan-indexed items (filters by non-empty `original_file_path`)
 - **`movie suggest`** upgraded from recommendations-only to 3-phase strategy (DiscoverByGenre → Recommendations → Trending)
-- **Repository migrated** from `movie-cli-v1` to `movie-cli-v2` to `movie-cli-v3` across all imports, workflows, and docs
+- **Repository migrated** from `movie-cli-v1` to `movie-cli-v2` to `movie-cli-v4` across all imports, workflows, and docs
 
 ### Fixed
 - Timestamp bug — `saveHistoryLog` now uses `time.Now().Format(time.RFC3339)` instead of hardcoded "now"

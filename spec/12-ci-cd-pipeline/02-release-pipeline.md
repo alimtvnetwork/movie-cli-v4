@@ -93,9 +93,9 @@ Build for 6 platform/architecture combinations:
 ```bash
 CGO_ENABLED=0 GOOS="$os" GOARCH="$arch" go build \
   -ldflags "-s -w \
-    -X 'github.com/alimtvnetwork/movie-cli-v3/version.Version=$VERSION' \
-    -X 'github.com/alimtvnetwork/movie-cli-v3/version.Commit=$COMMIT' \
-    -X 'github.com/alimtvnetwork/movie-cli-v3/version.BuildDate=$BUILD_DATE'" \
+    -X 'github.com/alimtvnetwork/movie-cli-v4/version.Version=$VERSION' \
+    -X 'github.com/alimtvnetwork/movie-cli-v4/version.Commit=$COMMIT' \
+    -X 'github.com/alimtvnetwork/movie-cli-v4/version.BuildDate=$BUILD_DATE'" \
   -o "dist/movie-${VERSION}-${os}-${arch}${ext}" .
 ```
 

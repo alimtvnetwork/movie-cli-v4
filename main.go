@@ -2,7 +2,7 @@
 package main
 
 import (
-	"github.com/alimtvnetwork/movie-cli-v3/cmd"
+	"github.com/alimtvnetwork/movie-cli-v4/cmd"
 )
 
 func main() {

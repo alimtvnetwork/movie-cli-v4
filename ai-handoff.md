@@ -33,7 +33,7 @@
 | **Type** | Go CLI application — **NOT a web app** |
 | **Binary** | `movie-cli` |
 | **Language** | Go 1.22 |
-| **Module** | `github.com/alimtvnetwork/movie-cli-v3` |
+| **Module** | `github.com/alimtvnetwork/movie-cli-v4` |
 | **Framework** | Cobra (CLI), SQLite (storage), TMDb API (metadata) |
 | **Purpose** | Cross-platform CLI tool for managing a personal movie and TV show library |
 | **Development Period** | 15-Mar-2026 → 18-Mar-2026 (active), maintained since |

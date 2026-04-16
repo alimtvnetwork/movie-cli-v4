@@ -7,8 +7,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/alimtvnetwork/movie-cli-v3/cleaner"
-	"github.com/alimtvnetwork/movie-cli-v3/db"
+	"github.com/alimtvnetwork/movie-cli-v4/cleaner"
+	"github.com/alimtvnetwork/movie-cli-v4/db"
 )
 
 // scanJSONOutput is the top-level JSON written to stdout with --format json.

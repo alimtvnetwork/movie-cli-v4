@@ -4,7 +4,7 @@ package db
 import (
 	"fmt"
 
-	"github.com/alimtvnetwork/movie-cli-v3/version"
+	"github.com/alimtvnetwork/movie-cli-v4/version"
 )
 
 // migrateSchema creates all tables, indexes, views, and seed data.

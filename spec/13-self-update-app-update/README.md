@@ -81,7 +81,7 @@ User runs: movie update
 | `<binary>` | CLI binary name | `movie` (or `movie.exe`) |
 | `<deploy-dir>` | Install directory | From `powershell.json` `deployPath` |
 | `<repo-root>` | Source repository root | Directory containing `go.mod` |
-| `<module>` | Go module path | `github.com/alimtvnetwork/movie-cli-v3` |
+| `<module>` | Go module path | `github.com/alimtvnetwork/movie-cli-v4` |
 
 ---
 

@@ -14,7 +14,7 @@ The update command checks these locations in order:
 |----------|--------|-----|
 | 1 | `--repo-path` flag | User explicitly passes the path |
 | 2 | Binary's own directory | `os.Executable()` → check for `.git` and `go.mod` |
-| 3 | Sibling clone | `<binary-dir>/movie-cli-v3/` |
+| 3 | Sibling clone | `<binary-dir>/movie-cli-v4/` |
 | 4 | Current working directory | `os.Getwd()` → check for `.git` and `go.mod` |
 | 5 | Bootstrap clone | Clone fresh next to the binary |
 
@@ -24,7 +24,7 @@ The update command checks these locations in order:
 
 A candidate path is valid only if it contains BOTH:
 - A `.git` directory (it's a git repo)
-- A `go.mod` file with module `github.com/alimtvnetwork/movie-cli-v3`
+- A `go.mod` file with module `github.com/alimtvnetwork/movie-cli-v4`
 
 This prevents false matches on unrelated git repos.
 
@@ -34,8 +34,8 @@ This prevents false matches on unrelated git repos.
 
 If no repo is found at any location:
 
-1. Print: `📥 No local repo found. Cloning to: <binary-dir>/movie-cli-v3/`
-2. Run: `git clone --depth 1 https://github.com/alimtvnetwork/movie-cli-v3.git`
+1. Print: `📥 No local repo found. Cloning to: <binary-dir>/movie-cli-v4/`
+2. Run: `git clone --depth 1 https://github.com/alimtvnetwork/movie-cli-v4.git`
 3. Report **bootstrap success** — NOT "already up to date"
 4. Tell user to run `movie update` again to build
 
@@ -48,7 +48,7 @@ run `movie update` a second time (or `pwsh run.ps1` manually).
 ## `--repo-path` Flag
 
 ```
-movie update --repo-path C:\dev\movie-cli-v3
+movie update --repo-path C:\dev\movie-cli-v4
 ```
 
 When provided, this flag overrides all automatic resolution. The path is:
@@ -76,7 +76,7 @@ func resolveRepoPath() string {
     }
 
     // 3. Sibling clone
-    sibling := filepath.Join(exeDir, "movie-cli-v3")
+    sibling := filepath.Join(exeDir, "movie-cli-v4")
     if isValidRepo(sibling) {
         return sibling
     }
