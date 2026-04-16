@@ -95,12 +95,13 @@ func executePopout(database *db.DB, items []popoutItem, batchID string) (success
 func trackPopoutMove(database *db.DB, item popoutItem, batchID string) int64 {
 	mediaID := findPopoutMedia(database, item)
 
-	if mediaID == 0 {
-		mediaID = insertPopoutMedia(database, item)
-	} else {
+	if mediaID != 0 {
 		if err := database.UpdateMediaPath(mediaID, item.destPath); err != nil {
 			errlog.Error("DB update path error: %v", err)
 		}
+	}
+	if mediaID == 0 {
+		mediaID = insertPopoutMedia(database, item)
 	}
 
 	if mediaID > 0 {

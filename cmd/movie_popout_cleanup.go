@@ -62,10 +62,10 @@ func printFolderSummary(folders []popoutFolderInfo) {
 	for i, f := range folders {
 		if len(f.files) == 0 {
 			fmt.Printf("  %d. %s/\n     └── (empty)\n", i+1, f.name)
-		} else {
-			fmt.Printf("  %d. %s/\n     └── %d files remaining (%s)\n",
-				i+1, f.name, len(f.files), humanSize(f.totalSize))
+			continue
 		}
+		fmt.Printf("  %d. %s/\n     └── %d files remaining (%s)\n",
+			i+1, f.name, len(f.files), humanSize(f.totalSize))
 	}
 }
 
@@ -119,9 +119,9 @@ func selectiveFolderRemoval(scanner *bufio.Scanner, database *db.DB, folders []p
 		answer := strings.ToLower(strings.TrimSpace(scanner.Text()))
 		if answer == "y" || answer == "yes" {
 			removeFolder(database, f.path, f.name, batchID)
-		} else {
-			fmt.Println("    Kept.")
+			continue
 		}
+		fmt.Println("    Kept.")
 	}
 }
 
@@ -130,7 +130,8 @@ func listThenDecide(scanner *bufio.Scanner, database *db.DB, folders []popoutFol
 		fmt.Printf("\n  📁 %s/\n", f.name)
 		if len(f.files) == 0 {
 			fmt.Println("    (empty)")
-		} else {
+		}
+		if len(f.files) > 0 {
 			for _, file := range f.files {
 				fmt.Printf("    - %s\n", file)
 			}
@@ -142,9 +143,9 @@ func listThenDecide(scanner *bufio.Scanner, database *db.DB, folders []popoutFol
 		answer := strings.ToLower(strings.TrimSpace(scanner.Text()))
 		if answer == "y" || answer == "yes" {
 			removeFolder(database, f.path, f.name, batchID)
-		} else {
-			fmt.Println("    Kept.")
+			continue
 		}
+		fmt.Println("    Kept.")
 	}
 }
 

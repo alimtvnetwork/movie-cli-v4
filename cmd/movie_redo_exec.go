@@ -154,9 +154,9 @@ func executeRedoBatch(database *db.DB, actions []db.ActionRecord) int {
 func printRedoBatchResult(shortBatch string, redoable, failed int) {
 	if failed == 0 {
 		fmt.Printf("✅ Batch %s redone (%d actions).\n", shortBatch, redoable)
-	} else {
-		fmt.Printf("⚠️  Batch %s: %d redone, %d failed.\n", shortBatch, redoable-failed, failed)
+		return
 	}
+	fmt.Printf("⚠️  Batch %s: %d redone, %d failed.\n", shortBatch, redoable-failed, failed)
 }
 
 func confirmRedo(scanner *bufio.Scanner) bool {

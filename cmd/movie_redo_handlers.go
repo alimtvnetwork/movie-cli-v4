@@ -192,9 +192,9 @@ func redoLastOperation(database *db.DB, scanner *bufio.Scanner) {
 	// Both available — pick the newest reverted
 	if lastAction.CreatedAt >= lastMove.MovedAt {
 		redoSingleAction(database, scanner, lastAction)
-	} else {
-		redoSingleMove(database, scanner, lastMove)
+		return
 	}
+	redoSingleMove(database, scanner, lastMove)
 }
 
 func redoSingleMove(database *db.DB, scanner *bufio.Scanner, m *db.MoveRecord) {

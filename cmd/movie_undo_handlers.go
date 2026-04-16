@@ -186,9 +186,9 @@ func undoLastOperation(database *db.DB, scanner *bufio.Scanner) {
 
 	if lastAction.CreatedAt >= lastMove.MovedAt {
 		undoSingleAction(database, scanner, lastAction)
-	} else {
-		undoSingleMove(database, scanner, lastMove)
+		return
 	}
+	undoSingleMove(database, scanner, lastMove)
 }
 
 func undoSingleMove(database *db.DB, scanner *bufio.Scanner, m *db.MoveRecord) {
@@ -270,7 +270,7 @@ func executeUndoBatch(database *db.DB, actions []db.ActionRecord) int {
 func printUndoBatchResult(shortBatch string, undoable, failed int) {
 	if failed == 0 {
 		fmt.Printf("✅ Batch %s reverted (%d actions).\n", shortBatch, undoable)
-	} else {
-		fmt.Printf("⚠️  Batch %s: %d reverted, %d failed.\n", shortBatch, undoable-failed, failed)
+		return
 	}
+	fmt.Printf("⚠️  Batch %s: %d reverted, %d failed.\n", shortBatch, undoable-failed, failed)
 }
