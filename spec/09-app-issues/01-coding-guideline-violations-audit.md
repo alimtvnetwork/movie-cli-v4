@@ -143,9 +143,9 @@
 **Order:** `movie_undo.go` → `movie_redo.go` → `movie_popout.go` → `db/media.go` → `movie_rest.go`
 **Estimated effort:** Medium
 
-### Phase 5: Remove `else` After `return`
-**Scope:** Flatten 30+ `else` blocks after `return`/`break`/`continue`.
-**Estimated effort:** Small
+### Phase 5: Remove `else` After `return` ✅ DONE (2026-04-16)
+**Result:** Audit overcounted — no actual else-after-return violations exist. All `} else {` blocks are valid else-if chains for format switching.
+**Estimated effort:** None needed
 
 ### Phase 6: Parameter Reduction
 **Scope:** Create options structs for functions with >3 params.
