@@ -173,15 +173,20 @@ func printPopoutPreview(items []popoutItem) {
 	fmt.Printf("\n🎬 Movie Popout — %d files found in subfolders\n\n", len(items))
 	fmt.Println("  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 	for i, item := range items {
-		yearStr := ""
-		if item.result.Year > 0 {
-			yearStr = fmt.Sprintf(" (%d)", item.result.Year)
-		}
+		yearStr := formatYearSuffix(item.result.Year)
 		fmt.Printf("\n  %d. %s%s  [%s]\n", i+1, item.result.CleanTitle, yearStr, humanSize(item.size))
 		fmt.Printf("     From: %s\n", item.srcPath)
 		fmt.Printf("     To:   %s\n", item.destPath)
 	}
 	fmt.Println("\n  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+}
+
+// formatYearSuffix returns " (YYYY)" or "" if year is zero.
+func formatYearSuffix(year int) string {
+	if year <= 0 {
+		return ""
+	}
+	return fmt.Sprintf(" (%d)", year)
 }
 
 func confirmPopout(scanner *bufio.Scanner, count int) bool {
@@ -300,57 +305,66 @@ func executePopout(database *db.DB, items []popoutItem, batchID string) (success
 
 // trackPopoutMove records the popout in move_history and updates/creates media.
 func trackPopoutMove(database *db.DB, item popoutItem, batchID string) int64 {
-	var mediaID int64
+	mediaID := findExistingMediaID(database, item)
 
-	// Look for existing media entry
+	if mediaID == 0 {
+		mediaID = insertPopoutMedia(database, item)
+	} else {
+		updatePopoutMediaPath(database, mediaID, item.destPath)
+	}
+
+	logPopoutMoveHistory(database, mediaID, item)
+	saveHistoryLog(database.BasePath, item.result.CleanTitle, item.result.Year, item.srcPath, item.destPath)
+	return mediaID
+}
+
+func findExistingMediaID(database *db.DB, item popoutItem) int64 {
 	existing, searchErr := database.SearchMedia(item.result.CleanTitle)
 	if searchErr != nil {
 		errlog.Warn("DB search error: %v", searchErr)
+		return 0
 	}
 	for i := range existing {
 		if existing[i].CurrentFilePath == item.srcPath || existing[i].OriginalFilePath == item.srcPath {
-			mediaID = existing[i].ID
-			break
+			return existing[i].ID
 		}
 	}
+	return 0
+}
 
-	if mediaID == 0 {
-		// Insert new media record
-		m := &db.Media{
-			Title:            item.result.CleanTitle,
-			CleanTitle:       item.result.CleanTitle,
-			Year:             item.result.Year,
-			Type:             item.result.Type,
-			OriginalFileName: filepath.Base(item.srcPath),
-			OriginalFilePath: item.srcPath,
-			CurrentFilePath:  item.destPath,
-			FileExtension:    item.result.Extension,
-			FileSize:         item.size,
-		}
-		var insertErr error
-		mediaID, insertErr = database.InsertMedia(m)
-		if insertErr != nil {
-			errlog.Error("DB insert error: %v", insertErr)
-		}
-	} else {
-		// Update existing entry's path
-		if err := database.UpdateMediaPath(mediaID, item.destPath); err != nil {
-			errlog.Error("DB update path error: %v", err)
-		}
+func insertPopoutMedia(database *db.DB, item popoutItem) int64 {
+	m := &db.Media{
+		Title:            item.result.CleanTitle,
+		CleanTitle:       item.result.CleanTitle,
+		Year:             item.result.Year,
+		Type:             item.result.Type,
+		OriginalFileName: filepath.Base(item.srcPath),
+		OriginalFilePath: item.srcPath,
+		CurrentFilePath:  item.destPath,
+		FileExtension:    item.result.Extension,
+		FileSize:         item.size,
 	}
-
-	// Log to move_history
-	if mediaID > 0 {
-		if err := database.InsertMoveHistory(mediaID, int(db.FileActionPopout), item.srcPath, item.destPath,
-			filepath.Base(item.srcPath), item.cleanName); err != nil {
-			errlog.Warn("DB move history error: %v", err)
-		}
+	mediaID, insertErr := database.InsertMedia(m)
+	if insertErr != nil {
+		errlog.Error("DB insert error: %v", insertErr)
 	}
-
-	// Save JSON history log
-	saveHistoryLog(database.BasePath, item.result.CleanTitle, item.result.Year, item.srcPath, item.destPath)
-
 	return mediaID
+}
+
+func updatePopoutMediaPath(database *db.DB, mediaID int64, destPath string) {
+	if err := database.UpdateMediaPath(mediaID, destPath); err != nil {
+		errlog.Error("DB update path error: %v", err)
+	}
+}
+
+func logPopoutMoveHistory(database *db.DB, mediaID int64, item popoutItem) {
+	if mediaID <= 0 {
+		return
+	}
+	if err := database.InsertMoveHistory(mediaID, int(db.FileActionPopout), item.srcPath, item.destPath,
+		filepath.Base(item.srcPath), item.cleanName); err != nil {
+		errlog.Warn("DB move history error: %v", err)
+	}
 }
 
 // offerFolderCleanup lists source subfolders and offers removal options.

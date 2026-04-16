@@ -14,35 +14,50 @@ import (
 
 // resolveScanDir determines and validates the scan directory from args.
 func resolveScanDir(args []string, quiet bool) (string, error) {
-	var scanDir string
-	var err error
+	scanDir, err := scanDirFromArgs(args, quiet)
+	if err != nil {
+		return "", err
+	}
 
+	scanDir, err = expandTilde(scanDir)
+	if err != nil {
+		return "", err
+	}
+
+	return validateDirPath(scanDir)
+}
+
+func scanDirFromArgs(args []string, quiet bool) (string, error) {
 	if len(args) > 0 {
-		scanDir = args[0]
-	} else {
-		scanDir, err = os.Getwd()
-		if err != nil {
-			return "", fmt.Errorf("cannot determine current directory: %v", err)
-		}
-		if !quiet {
-			fmt.Printf("📂 No folder specified — scanning current directory\n\n")
-		}
+		return args[0], nil
 	}
-
-	if strings.HasPrefix(scanDir, "~") {
-		home, homeErr := os.UserHomeDir()
-		if homeErr != nil {
-			return "", fmt.Errorf("cannot determine home directory: %v", homeErr)
-		}
-		scanDir = filepath.Join(home, scanDir[1:])
+	dir, err := os.Getwd()
+	if err != nil {
+		return "", fmt.Errorf("cannot determine current directory: %v", err)
 	}
-
-	info, statErr := os.Stat(scanDir)
-	if statErr != nil || !info.IsDir() {
-		return "", fmt.Errorf("folder not found: %s", scanDir)
+	if !quiet {
+		fmt.Printf("📂 No folder specified — scanning current directory\n\n")
 	}
+	return dir, nil
+}
 
-	return scanDir, nil
+func expandTilde(path string) (string, error) {
+	if !strings.HasPrefix(path, "~") {
+		return path, nil
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", fmt.Errorf("cannot determine home directory: %v", err)
+	}
+	return filepath.Join(home, path[1:]), nil
+}
+
+func validateDirPath(path string) (string, error) {
+	info, err := os.Stat(path)
+	if err != nil || !info.IsDir() {
+		return "", fmt.Errorf("folder not found: %s", path)
+	}
+	return path, nil
 }
 
 // createOutputDirs creates the .movie-output directory structure.
@@ -79,12 +94,11 @@ func printScanHeader(scanDir, outputDir string) {
 	if scanDryRun {
 		fmt.Println("  🧪 Mode: dry run (no writes)")
 	}
-	if scanRecursive {
-		if scanDepth > 0 {
-			fmt.Printf("  🔄 Mode: recursive (max depth: %d)\n", scanDepth)
-		} else {
-			fmt.Println("  🔄 Mode: recursive (all subdirectories)")
-		}
+	if scanRecursive && scanDepth > 0 {
+		fmt.Printf("  🔄 Mode: recursive (max depth: %d)\n", scanDepth)
+	}
+	if scanRecursive && scanDepth <= 0 {
+		fmt.Println("  🔄 Mode: recursive (all subdirectories)")
 	}
 	if !scanDryRun {
 		fmt.Printf("  📁 Output: %s\n", outputDir)
@@ -100,46 +114,18 @@ func printScanFooter(scanDir, outputDir string, scannedItems []db.Media,
 	fmt.Println()
 	fmt.Println("  ■ Summary")
 	fmt.Println("  ──────────────────────────────────────────")
+	label := "📊 Scan Complete!"
 	if scanDryRun {
-		fmt.Println("  📊 Dry Run Complete!")
-	} else {
-		fmt.Println("  📊 Scan Complete!")
+		label = "📊 Dry Run Complete!"
 	}
-	fmt.Printf("     Total files: %d\n", totalFiles)
-	fmt.Printf("     Movies:      %d\n", movieCount)
-	fmt.Printf("     TV Shows:    %d\n", tvCount)
-	newCount := totalFiles - skipped
-	if newCount > 0 {
-		fmt.Printf("     New:         %d\n", newCount)
-	}
-	if skipped > 0 {
-		fmt.Printf("     Existing:    %d (already in DB)\n", skipped)
-	}
-	if removed > 0 {
-		fmt.Printf("     Removed:     %d (files no longer on disk)\n", removed)
-	}
+	fmt.Println("  " + label)
+	printScanCounts(totalFiles, movieCount, tvCount, skipped, removed)
+
 	if scanDryRun {
 		fmt.Println("\n  💡 Run without --dry-run to actually scan and save.")
-	} else {
-		fmt.Println()
-		fmt.Println("  ■ Output Files")
-		fmt.Println("  ──────────────────────────────────────────")
-		fmt.Printf("  📁 %s/\n", outputDir)
-		if summaryErr := writeScanSummary(outputDir, scanDir, scannedItems,
-			totalFiles, movieCount, tvCount, skipped); summaryErr != nil {
-			errlog.Warn("Could not write summary.json: %v", summaryErr)
-		} else {
-			fmt.Printf("  ├── 📄 summary.json      Scan report with metadata\n")
-		}
-		if htmlErr := writeHTMLReport(outputDir, scanDir, scannedItems,
-			totalFiles, movieCount, tvCount, skipped); htmlErr != nil {
-			errlog.Warn("Could not write report.html: %v", htmlErr)
-		} else {
-			fmt.Printf("  ├── 🌐 report.html       Interactive HTML report\n")
-		}
-		fmt.Printf("  ├── 📁 json/movie/       Per-movie JSON metadata\n")
-		fmt.Printf("  ├── 📁 json/tv/          Per-show JSON metadata\n")
-		fmt.Printf("  └── 📁 thumbnails/       Movie poster thumbnails\n")
+		return
 	}
+
+	printScanOutputFiles(outputDir, scanDir, scannedItems, totalFiles, movieCount, tvCount, skipped)
 	fmt.Println()
 }

@@ -21,21 +21,24 @@ func executeUpdateWindows(repoPath string) error {
 
 // executeUpdateUnix runs the update via pwsh (if available) or direct commands.
 func executeUpdateUnix(repoPath string) error {
-	// Try pwsh first
-	if _, err := exec.LookPath("pwsh"); err == nil {
-		runPS1 := filepath.Join(repoPath, "run.ps1")
-		if _, statErr := os.Stat(runPS1); statErr == nil {
-			scriptPath, err := writeUpdateScript(repoPath)
-			if err != nil {
-				return fmt.Errorf("cannot write update script: %w", err)
-			}
-			defer os.Remove(scriptPath)
-			return runPowerShellScript(scriptPath)
-		}
+	if !hasPwshWithRunPS1(repoPath) {
+		return executeUpdateDirect(repoPath)
 	}
+	scriptPath, err := writeUpdateScript(repoPath)
+	if err != nil {
+		return fmt.Errorf("cannot write update script: %w", err)
+	}
+	defer os.Remove(scriptPath)
+	return runPowerShellScript(scriptPath)
+}
 
-	// Fallback: direct git pull + go build
-	return executeUpdateDirect(repoPath)
+func hasPwshWithRunPS1(repoPath string) bool {
+	if _, err := exec.LookPath("pwsh"); err != nil {
+		return false
+	}
+	runPS1 := filepath.Join(repoPath, "run.ps1")
+	_, statErr := os.Stat(runPS1)
+	return statErr == nil
 }
 
 // executeUpdateDirect runs the update pipeline directly without PowerShell.

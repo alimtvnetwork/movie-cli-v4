@@ -52,12 +52,12 @@ var tagAddCmd = &cobra.Command{
 		}
 
 		err = d.AddTag(id, tag)
+		if err != nil && strings.Contains(err.Error(), "UNIQUE constraint") {
+			errlog.Error("Tag \"%s\" already exists on \"%s\"", tag, media.Title)
+			return
+		}
 		if err != nil {
-			if strings.Contains(err.Error(), "UNIQUE constraint") {
-				errlog.Error("Tag \"%s\" already exists on \"%s\"", tag, media.Title)
-			} else {
-				errlog.Error("Error adding tag: %v", err)
-			}
+			errlog.Error("Error adding tag: %v", err)
 			return
 		}
 
@@ -127,55 +127,10 @@ var tagListCmd = &cobra.Command{
 		defer d.Close()
 
 		if len(args) == 1 {
-			id, err := strconv.Atoi(args[0])
-			if err != nil {
-				errlog.Error("Invalid ID: %s", args[0])
-				return
-			}
-
-			media, err := d.GetMediaByID(int64(id))
-			if err != nil || media == nil {
-				errlog.Error("Media not found with ID %d", id)
-				return
-			}
-
-			tags, err := d.GetTagsByMediaID(id)
-			if err != nil {
-				errlog.Error("Error reading tags: %v", err)
-				return
-			}
-
-			year := ""
-			if media.Year > 0 {
-				year = fmt.Sprintf(" (%d)", media.Year)
-			}
-
-			if len(tags) == 0 {
-				fmt.Printf("📭 No tags for \"%s%s\"\n", media.Title, year)
-				return
-			}
-
-			fmt.Printf("🏷️  Tags for \"%s%s\":\n", media.Title, year)
-			for _, t := range tags {
-				fmt.Printf("  • %s\n", t)
-			}
-		} else {
-			tagCounts, err := d.GetAllTagCounts()
-			if err != nil {
-				errlog.Error("Error reading tags: %v", err)
-				return
-			}
-
-			if len(tagCounts) == 0 {
-				fmt.Println("📭 No tags in library")
-				return
-			}
-
-			fmt.Println("🏷️  All tags:")
-			for _, tc := range tagCounts {
-				fmt.Printf("  %s (%d)\n", tc.Tag, tc.Count)
-			}
+			listTagsForMedia(d, args[0])
+			return
 		}
+		listAllTags(d)
 	},
 }
 
@@ -184,4 +139,47 @@ func init() {
 	tagCmd.AddCommand(tagAddCmd)
 	tagCmd.AddCommand(tagRemoveCmd)
 	tagCmd.AddCommand(tagListCmd)
+}
+
+func listTagsForMedia(d *db.DB, idArg string) {
+	id, err := strconv.Atoi(idArg)
+	if err != nil {
+		errlog.Error("Invalid ID: %s", idArg)
+		return
+	}
+	media, err := d.GetMediaByID(int64(id))
+	if err != nil || media == nil {
+		errlog.Error("Media not found with ID %d", id)
+		return
+	}
+	tags, err := d.GetTagsByMediaID(id)
+	if err != nil {
+		errlog.Error("Error reading tags: %v", err)
+		return
+	}
+	year := formatYearSuffix(media.Year)
+	if len(tags) == 0 {
+		fmt.Printf("📭 No tags for \"%s%s\"\n", media.Title, year)
+		return
+	}
+	fmt.Printf("🏷️  Tags for \"%s%s\":\n", media.Title, year)
+	for _, t := range tags {
+		fmt.Printf("  • %s\n", t)
+	}
+}
+
+func listAllTags(d *db.DB) {
+	tagCounts, err := d.GetAllTagCounts()
+	if err != nil {
+		errlog.Error("Error reading tags: %v", err)
+		return
+	}
+	if len(tagCounts) == 0 {
+		fmt.Println("📭 No tags in library")
+		return
+	}
+	fmt.Println("🏷️  All tags:")
+	for _, tc := range tagCounts {
+		fmt.Printf("  %s (%d)\n", tc.Tag, tc.Count)
+	}
 }
