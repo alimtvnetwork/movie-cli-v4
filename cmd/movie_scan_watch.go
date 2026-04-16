@@ -52,12 +52,15 @@ func runWatchLoop(scanDir, outputDir string, database *db.DB, creds tmdbCredenti
 		fmt.Printf("\n  🔔 Detected %d new file(s) at %s\n",
 			len(newFiles), time.Now().Format("15:04:05"))
 
-		var totalFiles, movieCount, tvCount, skipped int
-		var scannedItems []db.Media
+		watchCtx := &ScanContext{
+			Database: database,
+			Client:   client,
+			HasTMDb:  useTMDb,
+			OutputDir: outputDir,
+		}
 
 		for _, vf := range newFiles {
-			processVideoFile(vf, database, client, useTMDb, outputDir,
-				&totalFiles, &movieCount, &tvCount, &skipped, &scannedItems, false, "")
+			processVideoFile(vf, watchCtx)
 		}
 
 		// Log watch cycle
