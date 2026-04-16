@@ -160,6 +160,8 @@ func (d *DB) UpdateMediaPath(mediaID int64, newPath string) error {
 }
 
 // ListMedia returns paginated media records with genres populated.
+// ListMedia returns file-backed media only (OriginalFilePath != '').
+// Items added via search/info without a local file are excluded.
 func (d *DB) ListMedia(offset, limit int) ([]Media, error) {
 	rows, err := d.Query(`SELECT `+mediaColumns+`
 		FROM Media WHERE OriginalFilePath != ''
