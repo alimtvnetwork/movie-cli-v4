@@ -14,11 +14,9 @@ import (
 
 // executeMoveRedo re-applies a previously reverted file move.
 func executeMoveRedo(database *db.DB, m *db.MoveRecord) error {
-	if _, err := os.Stat(m.FromPath); err != nil {
-		if os.IsNotExist(err) {
-			return apperror.New("file not found at %s — cannot redo", m.FromPath)
-		}
-		return apperror.Wrapf(err, "cannot access %s", m.FromPath)
+	statErr := checkFileExists(m.FromPath)
+	if statErr != nil {
+		return statErr
 	}
 
 	destDir := m.ToPath[:strings.LastIndex(m.ToPath, string(os.PathSeparator))]

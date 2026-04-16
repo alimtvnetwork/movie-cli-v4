@@ -95,12 +95,8 @@ func handleResponse(resp *http.Response, target interface{}, attempt int) error 
 		resp.Body.Close()
 		lastErr := apperror.New("%w (HTTP %d)", ErrServerError, resp.StatusCode)
 		if attempt == 0 {
-			delay := 3 * time.Second
-			if resp.StatusCode == 502 || resp.StatusCode == 503 || resp.StatusCode == 504 {
-				delay = 5 * time.Second
-			}
+			delay := serverRetryDelay(resp.StatusCode)
 			time.Sleep(delay)
-			return lastErr
 		}
 		return lastErr
 
