@@ -11,7 +11,7 @@ import (
 func printHistoryTableUnified(records []unifiedRecord) {
 	idW := 6
 	typeW := 14
-	statusW := 6
+	statusW := 8
 	dateW := 19
 	detailW := 40
 
@@ -32,8 +32,8 @@ func printHistoryTableUnified(records []unifiedRecord) {
 
 	for _, r := range records {
 		status := "OK"
-		if r.Undone {
-			status = "Undone"
+		if r.IsReverted {
+			status = "Reverted"
 		}
 
 		prefix := r.Source[0:1] // "m" or "a"
@@ -66,14 +66,14 @@ func printHistoryTable(records []db.MoveRecord) {
 			recType = "rename"
 		}
 		unified = append(unified, unifiedRecord{
-			Source:    "move",
-			ID:        m.ID,
-			Type:      recType,
-			Detail:    fmt.Sprintf("%s → %s", m.OriginalFileName, m.NewFileName),
-			FromPath:  m.FromPath,
-			ToPath:    m.ToPath,
-			Timestamp: m.MovedAt,
-			Undone:    m.Undone,
+			Source:     "move",
+			ID:         m.ID,
+			Type:       recType,
+			Detail:     fmt.Sprintf("%s → %s", m.OriginalFileName, m.NewFileName),
+			FromPath:   m.FromPath,
+			ToPath:     m.ToPath,
+			Timestamp:  m.MovedAt,
+			IsReverted: m.IsReverted,
 		})
 	}
 	printHistoryTableUnified(unified)

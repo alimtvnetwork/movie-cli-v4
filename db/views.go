@@ -65,7 +65,7 @@ func (d *DB) createViews() error {
 		fa.Name AS ActionName,
 		mh.FromPath, mh.ToPath,
 		mh.OriginalFileName, mh.NewFileName,
-		mh.IsUndone, mh.MovedAt
+		mh.IsReverted, mh.MovedAt
 	FROM MoveHistory mh
 	INNER JOIN Media m ON mh.MediaId = m.MediaId
 	INNER JOIN FileAction fa ON mh.FileActionId = fa.FileActionId;
@@ -76,7 +76,7 @@ func (d *DB) createViews() error {
 		m.Title AS MediaTitle,
 		fa.Name AS ActionName,
 		ah.MediaSnapshot, ah.Detail, ah.BatchId,
-		ah.IsUndone, ah.CreatedAt
+		ah.IsReverted, ah.CreatedAt
 	FROM ActionHistory ah
 	INNER JOIN FileAction fa ON ah.FileActionId = fa.FileActionId
 	LEFT JOIN Media m ON ah.MediaId = m.MediaId;

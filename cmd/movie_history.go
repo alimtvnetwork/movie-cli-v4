@@ -55,15 +55,15 @@ func init() {
 
 // unifiedRecord merges move_history and action_history into one display item.
 type unifiedRecord struct {
-	Source    string `json:"source"`     // "move" or "action"
-	ID        int64  `json:"id"`
-	Type      string `json:"type"`       // move, rename, scan_add, scan_remove, delete, popout, restore, rescan_update
-	Detail    string `json:"detail"`
-	FromPath  string `json:"from_path,omitempty"`
-	ToPath    string `json:"to_path,omitempty"`
-	BatchID   string `json:"batch_id,omitempty"`
-	Timestamp string `json:"timestamp"`
-	Undone    bool   `json:"undone"`
+	Source     string `json:"source"`
+	ID         int64  `json:"id"`
+	Type       string `json:"type"`
+	Detail     string `json:"detail"`
+	FromPath   string `json:"from_path,omitempty"`
+	ToPath     string `json:"to_path,omitempty"`
+	BatchID    string `json:"batch_id,omitempty"`
+	Timestamp  string `json:"timestamp"`
+	IsReverted bool   `json:"is_reverted"`
 }
 
 func runMovieHistory(cmd *cobra.Command, args []string) {
@@ -125,14 +125,14 @@ func collectUnifiedRecords(database *db.DB) []unifiedRecord {
 			}
 			detail := fmt.Sprintf("%s → %s", m.OriginalFileName, m.NewFileName)
 			records = append(records, unifiedRecord{
-				Source:    "move",
-				ID:        m.ID,
-				Type:      recType,
-				Detail:    detail,
-				FromPath:  m.FromPath,
-				ToPath:    m.ToPath,
-				Timestamp: m.MovedAt,
-				Undone:    m.Undone,
+				Source:     "move",
+				ID:         m.ID,
+				Type:       recType,
+				Detail:     detail,
+				FromPath:   m.FromPath,
+				ToPath:     m.ToPath,
+				Timestamp:  m.MovedAt,
+				IsReverted: m.IsReverted,
 			})
 		}
 	}
@@ -166,13 +166,13 @@ func collectUnifiedRecords(database *db.DB) []unifiedRecord {
 				detail = a.FileActionId.String()
 			}
 			records = append(records, unifiedRecord{
-				Source:    "action",
-				ID:        a.ActionHistoryId,
-				Type:      a.FileActionId.String(),
-				Detail:    detail,
-				BatchID:   a.BatchId,
-				Timestamp: a.CreatedAt,
-				Undone:    a.IsUndone,
+				Source:     "action",
+				ID:         a.ActionHistoryId,
+				Type:       a.FileActionId.String(),
+				Detail:     detail,
+				BatchID:    a.BatchId,
+				Timestamp:  a.CreatedAt,
+				IsReverted: a.IsReverted,
 			})
 		}
 	}
@@ -235,7 +235,7 @@ func showBatchHistory(database *db.DB) {
 	fmt.Printf("📋 Batch: %s (%d actions)\n\n", historyBatch, len(actions))
 	for _, a := range actions {
 		status := "✅"
-		if a.IsUndone {
+		if a.IsReverted {
 			status = "↩️ "
 		}
 		detail := a.Detail
@@ -256,7 +256,7 @@ func printUnifiedDefault(records []unifiedRecord) {
 
 	for _, r := range records {
 		status := "✅"
-		if r.Undone {
+		if r.IsReverted {
 			status = "↩️ "
 		}
 

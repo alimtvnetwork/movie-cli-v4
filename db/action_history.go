@@ -60,11 +60,11 @@ type ActionRecord struct {
 	MediaSnapshot   string
 	Detail          string
 	BatchId         string
-	IsUndone        bool
+	IsReverted      bool
 	CreatedAt       string
 }
 
-const actionCols = `ActionHistoryId, FileActionId, MediaId, MediaSnapshot, Detail, BatchId, IsUndone, CreatedAt`
+const actionCols = `ActionHistoryId, FileActionId, MediaId, MediaSnapshot, Detail, BatchId, IsReverted, CreatedAt`
 
 // InsertAction logs a state-changing action to ActionHistory.
 func (d *DB) InsertAction(fileAction FileActionType, mediaId sql.NullInt64, snapshot, detail, batchId string) (int64, error) {
@@ -85,12 +85,12 @@ func (d *DB) InsertActionSimple(fileAction FileActionType, mediaId int64, snapsh
 	return d.InsertAction(fileAction, mid, snapshot, detail, batchId)
 }
 
-// GetLastUndoableAction returns the most recent un-undone action.
-func (d *DB) GetLastUndoableAction() (*ActionRecord, error) {
+// GetLastRevertableAction returns the most recent non-reverted action.
+func (d *DB) GetLastRevertableAction() (*ActionRecord, error) {
 	row := d.QueryRow(`
 		SELECT ` + actionCols + `
 		FROM ActionHistory
-		WHERE IsUndone = 0
+		WHERE IsReverted = 0
 		ORDER BY ActionHistoryId DESC LIMIT 1`)
 	return scanActionRow(row)
 }
@@ -103,12 +103,12 @@ func (d *DB) GetActionByID(id int64) (*ActionRecord, error) {
 	return scanActionRow(row)
 }
 
-// GetLastRedoableAction returns the most recent undone action (for redo).
-func (d *DB) GetLastRedoableAction() (*ActionRecord, error) {
+// GetLastRevertedAction returns the most recent reverted action (for redo).
+func (d *DB) GetLastRevertedAction() (*ActionRecord, error) {
 	row := d.QueryRow(`
 		SELECT ` + actionCols + `
 		FROM ActionHistory
-		WHERE IsUndone = 1
+		WHERE IsReverted = 1
 		ORDER BY ActionHistoryId DESC LIMIT 1`)
 	return scanActionRow(row)
 }
@@ -160,38 +160,38 @@ func (d *DB) ListActionsByBatch(batchId string) ([]ActionRecord, error) {
 	return scanActionRows(rows)
 }
 
-// MarkActionUndone sets IsUndone = 1 for the given action.
-func (d *DB) MarkActionUndone(id int64) error {
-	_, err := d.Exec("UPDATE ActionHistory SET IsUndone = 1 WHERE ActionHistoryId = ?", id)
+// MarkActionReverted sets IsReverted = 1 for the given action.
+func (d *DB) MarkActionReverted(id int64) error {
+	_, err := d.Exec("UPDATE ActionHistory SET IsReverted = 1 WHERE ActionHistoryId = ?", id)
 	if err != nil {
-		return fmt.Errorf("mark action undone %d: %w", id, err)
+		return fmt.Errorf("mark action reverted %d: %w", id, err)
 	}
 	return nil
 }
 
-// MarkActionRedone sets IsUndone = 0 for the given action (redo).
-func (d *DB) MarkActionRedone(id int64) error {
-	_, err := d.Exec("UPDATE ActionHistory SET IsUndone = 0 WHERE ActionHistoryId = ?", id)
+// MarkActionRestored sets IsReverted = 0 for the given action (redo).
+func (d *DB) MarkActionRestored(id int64) error {
+	_, err := d.Exec("UPDATE ActionHistory SET IsReverted = 0 WHERE ActionHistoryId = ?", id)
 	if err != nil {
-		return fmt.Errorf("mark action redone %d: %w", id, err)
+		return fmt.Errorf("mark action restored %d: %w", id, err)
 	}
 	return nil
 }
 
-// MarkBatchUndone sets IsUndone = 1 for all actions in a batch.
-func (d *DB) MarkBatchUndone(batchId string) error {
-	_, err := d.Exec("UPDATE ActionHistory SET IsUndone = 1 WHERE BatchId = ?", batchId)
+// MarkBatchReverted sets IsReverted = 1 for all actions in a batch.
+func (d *DB) MarkBatchReverted(batchId string) error {
+	_, err := d.Exec("UPDATE ActionHistory SET IsReverted = 1 WHERE BatchId = ?", batchId)
 	if err != nil {
-		return fmt.Errorf("mark batch undone %s: %w", batchId, err)
+		return fmt.Errorf("mark batch reverted %s: %w", batchId, err)
 	}
 	return nil
 }
 
-// MarkBatchRedone sets IsUndone = 0 for all actions in a batch.
-func (d *DB) MarkBatchRedone(batchId string) error {
-	_, err := d.Exec("UPDATE ActionHistory SET IsUndone = 0 WHERE BatchId = ?", batchId)
+// MarkBatchRestored sets IsReverted = 0 for all actions in a batch.
+func (d *DB) MarkBatchRestored(batchId string) error {
+	_, err := d.Exec("UPDATE ActionHistory SET IsReverted = 0 WHERE BatchId = ?", batchId)
 	if err != nil {
-		return fmt.Errorf("mark batch redone %s: %w", batchId, err)
+		return fmt.Errorf("mark batch restored %s: %w", batchId, err)
 	}
 	return nil
 }
@@ -199,7 +199,7 @@ func (d *DB) MarkBatchRedone(batchId string) error {
 func scanActionRow(row *sql.Row) (*ActionRecord, error) {
 	r := &ActionRecord{}
 	err := row.Scan(&r.ActionHistoryId, &r.FileActionId, &r.MediaId, &r.MediaSnapshot,
-		&r.Detail, &r.BatchId, &r.IsUndone, &r.CreatedAt)
+		&r.Detail, &r.BatchId, &r.IsReverted, &r.CreatedAt)
 	if err != nil {
 		return nil, fmt.Errorf("scan action row: %w", err)
 	}
@@ -211,7 +211,7 @@ func scanActionRows(rows *sql.Rows) ([]ActionRecord, error) {
 	for rows.Next() {
 		var r ActionRecord
 		if err := rows.Scan(&r.ActionHistoryId, &r.FileActionId, &r.MediaId, &r.MediaSnapshot,
-			&r.Detail, &r.BatchId, &r.IsUndone, &r.CreatedAt); err != nil {
+			&r.Detail, &r.BatchId, &r.IsReverted, &r.CreatedAt); err != nil {
 			return nil, fmt.Errorf("scan action rows: %w", err)
 		}
 		records = append(records, r)

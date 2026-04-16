@@ -1,15 +1,15 @@
-// movie_redo.go — movie redo: re-applies the last undone operation.
+// movie_redo.go — movie redo: re-applies the last reverted operation.
 //
 // Supports redoing:
-//   - File moves/renames  (from move_history, undone=1)
-//   - Action history ops  (from action_history, undone=1)
+//   - File moves/renames  (from move_history, IsReverted=1)
+//   - Action history ops  (from action_history, IsReverted=1)
 //
 // Flags:
 //
 //	--list           Show recent redoable actions
 //	--id <id>        Redo a specific action_history record
 //	--move-id <id>   Redo a specific move_history record
-//	--batch          Redo the entire last undone batch
+//	--batch          Redo the entire last reverted batch
 package cmd
 
 import (
@@ -33,23 +33,23 @@ var (
 
 var movieRedoCmd = &cobra.Command{
 	Use:   "redo",
-	Short: "Redo the last undone operation",
-	Long: `Re-applies the most recent undone operation.
+	Short: "Redo the last reverted operation",
+	Long: `Re-applies the most recent reverted operation.
 
-Without flags, redoes the single most recent undone action
+Without flags, redoes the single most recent reverted action
 (checks both move_history and action_history, picks the newest).
 
 Flags:
   --list           Show recent redoable actions
   --id <id>        Redo a specific action_history record by ID
   --move-id <id>   Redo a specific move_history record by ID
-  --batch          Redo the entire last undone batch`,
+  --batch          Redo the entire last reverted batch`,
 	Run: runMovieRedo,
 }
 
 func init() {
 	movieRedoCmd.Flags().BoolVar(&redoListFlag, "list", false, "Show recent redoable actions")
-	movieRedoCmd.Flags().BoolVar(&redoBatchFlag, "batch", false, "Redo entire last undone batch")
+	movieRedoCmd.Flags().BoolVar(&redoBatchFlag, "batch", false, "Redo entire last reverted batch")
 	movieRedoCmd.Flags().Int64Var(&redoActionID, "id", 0, "Redo specific action_history record")
 	movieRedoCmd.Flags().Int64Var(&redoMoveID, "move-id", 0, "Redo specific move_history record")
 }
@@ -95,14 +95,14 @@ func showRedoableList(database *db.DB) {
 	moves, _ := database.ListMoveHistory(20)
 	redoableMoves := 0
 	for _, m := range moves {
-		if m.Undone {
+		if m.IsReverted {
 			redoableMoves++
 		}
 	}
 	if redoableMoves > 0 {
 		fmt.Println("  📁 Moves / Renames:")
 		for _, m := range moves {
-			if !m.Undone {
+			if !m.IsReverted {
 				continue
 			}
 			fmt.Printf("    [move-%d]  %s → %s  (%s)\n", m.ID, m.FromPath, m.ToPath, m.MovedAt)
@@ -113,14 +113,14 @@ func showRedoableList(database *db.DB) {
 	actions, _ := database.ListActions(40)
 	redoableActions := 0
 	for _, a := range actions {
-		if a.IsUndone {
+		if a.IsReverted {
 			redoableActions++
 		}
 	}
 	if redoableActions > 0 {
 		fmt.Println("  📋 Actions:")
 		for _, a := range actions {
-			if !a.IsUndone {
+			if !a.IsReverted {
 				continue
 			}
 			detail := a.Detail
@@ -152,8 +152,8 @@ func redoActionByID(database *db.DB, scanner *bufio.Scanner, id int64) {
 		errlog.Error("Cannot find action %d: %v", id, err)
 		return
 	}
-	if !action.IsUndone {
-		fmt.Printf("⚠️  Action %d is not undone — nothing to redo.\n", id)
+	if !action.IsReverted {
+		fmt.Printf("⚠️  Action %d is not reverted — nothing to redo.\n", id)
 		return
 	}
 
@@ -193,8 +193,8 @@ func redoMoveByID(database *db.DB, scanner *bufio.Scanner, id int64) {
 		errlog.Error("Move %d not found.", id)
 		return
 	}
-	if !target.Undone {
-		fmt.Printf("⚠️  Move %d is not undone — nothing to redo.\n", id)
+	if !target.IsReverted {
+		fmt.Printf("⚠️  Move %d is not reverted — nothing to redo.\n", id)
 		return
 	}
 
@@ -212,7 +212,7 @@ func redoMoveByID(database *db.DB, scanner *bufio.Scanner, id int64) {
 }
 
 // ---------------------------------------------------------------------------
-// --batch: redo last undone batch
+// --batch: redo last reverted batch
 // ---------------------------------------------------------------------------
 
 func redoLastBatch(database *db.DB, scanner *bufio.Scanner) {
@@ -224,13 +224,13 @@ func redoLastBatch(database *db.DB, scanner *bufio.Scanner) {
 
 	batchID := ""
 	for _, a := range actions {
-		if a.IsUndone && a.BatchId != "" {
+		if a.IsReverted && a.BatchId != "" {
 			batchID = a.BatchId
 			break
 		}
 	}
 	if batchID == "" {
-		fmt.Println("📭 No undone batch operations to redo.")
+		fmt.Println("📭 No reverted batch operations to redo.")
 		return
 	}
 
@@ -242,12 +242,12 @@ func redoLastBatch(database *db.DB, scanner *bufio.Scanner) {
 
 	redoable := 0
 	for _, a := range batchActions {
-		if a.IsUndone {
+		if a.IsReverted {
 			redoable++
 		}
 	}
 	if redoable == 0 {
-		fmt.Println("📭 Batch has no undone actions to redo.")
+		fmt.Println("📭 Batch has no reverted actions to redo.")
 		return
 	}
 
@@ -258,7 +258,7 @@ func redoLastBatch(database *db.DB, scanner *bufio.Scanner) {
 
 	fmt.Printf("⏩ Redo batch %s (%d actions):\n", shortBatch, redoable)
 	for _, a := range batchActions {
-		if !a.IsUndone {
+		if !a.IsReverted {
 			continue
 		}
 		detail := a.Detail
@@ -275,7 +275,7 @@ func redoLastBatch(database *db.DB, scanner *bufio.Scanner) {
 	failed := 0
 	for i := range batchActions {
 		a := batchActions[i]
-		if !a.IsUndone {
+		if !a.IsReverted {
 			continue
 		}
 		if err := executeActionRedo(database, &a); err != nil {
@@ -292,18 +292,18 @@ func redoLastBatch(database *db.DB, scanner *bufio.Scanner) {
 }
 
 // ---------------------------------------------------------------------------
-// Default: redo last undone operation
+// Default: redo last reverted operation
 // ---------------------------------------------------------------------------
 
 func redoLastOperation(database *db.DB, scanner *bufio.Scanner) {
-	lastMove, moveErr := database.GetLastUndoneMove()
-	lastAction, actionErr := database.GetLastRedoableAction()
+	lastMove, moveErr := database.GetLastRevertedMove()
+	lastAction, actionErr := database.GetLastRevertedAction()
 
 	haveMove := moveErr == nil && lastMove != nil
 	haveAction := actionErr == nil && lastAction != nil
 
 	if !haveMove && !haveAction {
-		fmt.Println("📭 No undone operations to redo.")
+		fmt.Println("📭 No reverted operations to redo.")
 		return
 	}
 
@@ -334,7 +334,7 @@ func redoLastOperation(database *db.DB, scanner *bufio.Scanner) {
 		return
 	}
 
-	// Both available — pick the newest undone
+	// Both available — pick the newest reverted
 	if lastAction.CreatedAt >= lastMove.MovedAt {
 		printActionRedo(lastAction)
 		if !confirmRedo(scanner) {
@@ -362,7 +362,7 @@ func redoLastOperation(database *db.DB, scanner *bufio.Scanner) {
 // Execution helpers
 // ---------------------------------------------------------------------------
 
-// executeMoveRedo re-applies a previously undone file move.
+// executeMoveRedo re-applies a previously reverted file move.
 func executeMoveRedo(database *db.DB, m *db.MoveRecord) error {
 	if _, err := os.Stat(m.FromPath); err != nil {
 		if os.IsNotExist(err) {
@@ -380,8 +380,8 @@ func executeMoveRedo(database *db.DB, m *db.MoveRecord) error {
 		return fmt.Errorf("redo move: %w", err)
 	}
 
-	if err := database.MarkMoveRedone(m.ID); err != nil {
-		errlog.Warn("Could not mark move %d as redone: %v", m.ID, err)
+	if err := database.MarkMoveRestored(m.ID); err != nil {
+		errlog.Warn("Could not mark move %d as restored: %v", m.ID, err)
 	}
 
 	if err := database.UpdateMediaPath(m.MediaID, m.ToPath); err != nil {
@@ -391,7 +391,7 @@ func executeMoveRedo(database *db.DB, m *db.MoveRecord) error {
 	return nil
 }
 
-// executeActionRedo re-applies a previously undone action_history entry.
+// executeActionRedo re-applies a previously reverted action_history entry.
 func executeActionRedo(database *db.DB, a *db.ActionRecord) error {
 	switch a.FileActionId {
 	case db.FileActionScanAdd:
@@ -416,10 +416,10 @@ func executeActionRedo(database *db.DB, a *db.ActionRecord) error {
 		}
 
 	case db.FileActionRescanUpdate:
-		// Redo rescan = can't re-fetch TMDb here; just mark redone
+		// Redo rescan = can't re-fetch TMDb here; just mark restored
 
 	case db.FileActionPopout:
-		// Popout redo handled via move_history — just mark redone
+		// Popout redo handled via move_history — just mark restored
 
 	case db.FileActionRestore:
 		if a.MediaSnapshot != "" {
@@ -436,7 +436,7 @@ func executeActionRedo(database *db.DB, a *db.ActionRecord) error {
 		return fmt.Errorf("unknown action type for redo: %s", a.FileActionId)
 	}
 
-	return database.MarkActionRedone(a.ActionHistoryId)
+	return database.MarkActionRestored(a.ActionHistoryId)
 }
 
 // ---------------------------------------------------------------------------
@@ -457,7 +457,7 @@ func confirmRedo(scanner *bufio.Scanner) bool {
 }
 
 func printActionRedo(a *db.ActionRecord) {
-	fmt.Printf("⏩ Last undone action (%s):\n", a.FileActionId)
+	fmt.Printf("⏩ Last reverted action (%s):\n", a.FileActionId)
 	if a.Detail != "" {
 		fmt.Printf("   %s\n", a.Detail)
 	}

@@ -10,7 +10,7 @@ type MoveRecord struct {
 	ID               int64
 	MediaID          int64
 	FileActionId     int
-	IsUndone         bool
+	IsReverted       bool
 }
 
 // ListMoveHistory returns all move records ordered by most recent first.
@@ -20,7 +20,7 @@ func (d *DB) ListMoveHistory(limit int) ([]MoveRecord, error) {
 	}
 	rows, err := d.Query(`
 		SELECT MoveHistoryId, MediaId, FileActionId, FromPath, ToPath,
-		       OriginalFileName, NewFileName, MovedAt, IsUndone
+		       OriginalFileName, NewFileName, MovedAt, IsReverted
 		FROM MoveHistory ORDER BY MovedAt DESC LIMIT ?`, limit)
 	if err != nil {
 		return nil, err
@@ -32,7 +32,7 @@ func (d *DB) ListMoveHistory(limit int) ([]MoveRecord, error) {
 		var r MoveRecord
 		if scanErr := rows.Scan(&r.ID, &r.MediaID, &r.FileActionId,
 			&r.FromPath, &r.ToPath, &r.OriginalFileName, &r.NewFileName,
-			&r.MovedAt, &r.IsUndone); scanErr != nil {
+			&r.MovedAt, &r.IsReverted); scanErr != nil {
 			return nil, scanErr
 		}
 		records = append(records, r)
@@ -48,42 +48,42 @@ func (d *DB) InsertMoveHistory(mediaID int64, fileActionId int, fromPath, toPath
 	return err
 }
 
-// GetLastMove returns the latest un-undone move.
+// GetLastMove returns the latest non-reverted move.
 func (d *DB) GetLastMove() (*MoveRecord, error) {
 	row := d.QueryRow(`
 		SELECT MoveHistoryId, MediaId, FileActionId, FromPath, ToPath,
-		       OriginalFileName, NewFileName, IsUndone
-		FROM MoveHistory WHERE IsUndone = 0 ORDER BY MovedAt DESC LIMIT 1`)
+		       OriginalFileName, NewFileName, IsReverted
+		FROM MoveHistory WHERE IsReverted = 0 ORDER BY MovedAt DESC LIMIT 1`)
 	r := &MoveRecord{}
 	err := row.Scan(&r.ID, &r.MediaID, &r.FileActionId,
-		&r.FromPath, &r.ToPath, &r.OriginalFileName, &r.NewFileName, &r.IsUndone)
+		&r.FromPath, &r.ToPath, &r.OriginalFileName, &r.NewFileName, &r.IsReverted)
 	if err != nil {
 		return nil, err
 	}
 	return r, nil
 }
 
-// MarkMoveUndone marks a MoveHistory record as undone.
-func (d *DB) MarkMoveUndone(id int64) error {
-	_, err := d.Exec("UPDATE MoveHistory SET IsUndone = 1 WHERE MoveHistoryId = ?", id)
+// MarkMoveReverted marks a MoveHistory record as reverted.
+func (d *DB) MarkMoveReverted(id int64) error {
+	_, err := d.Exec("UPDATE MoveHistory SET IsReverted = 1 WHERE MoveHistoryId = ?", id)
 	return err
 }
 
-// MarkMoveRedone marks a MoveHistory record as not undone (redo).
-func (d *DB) MarkMoveRedone(id int64) error {
-	_, err := d.Exec("UPDATE MoveHistory SET IsUndone = 0 WHERE MoveHistoryId = ?", id)
+// MarkMoveRestored marks a MoveHistory record as not reverted (redo).
+func (d *DB) MarkMoveRestored(id int64) error {
+	_, err := d.Exec("UPDATE MoveHistory SET IsReverted = 0 WHERE MoveHistoryId = ?", id)
 	return err
 }
 
-// GetLastUndoneMove returns the most recent undone move (for redo).
-func (d *DB) GetLastUndoneMove() (*MoveRecord, error) {
+// GetLastRevertedMove returns the most recent reverted move (for redo).
+func (d *DB) GetLastRevertedMove() (*MoveRecord, error) {
 	row := d.QueryRow(`
 		SELECT MoveHistoryId, MediaId, FileActionId, FromPath, ToPath,
-		       OriginalFileName, NewFileName, MovedAt, IsUndone
-		FROM MoveHistory WHERE IsUndone = 1 ORDER BY MovedAt DESC LIMIT 1`)
+		       OriginalFileName, NewFileName, MovedAt, IsReverted
+		FROM MoveHistory WHERE IsReverted = 1 ORDER BY MovedAt DESC LIMIT 1`)
 	r := &MoveRecord{}
 	err := row.Scan(&r.ID, &r.MediaID, &r.FileActionId,
-		&r.FromPath, &r.ToPath, &r.OriginalFileName, &r.NewFileName, &r.MovedAt, &r.IsUndone)
+		&r.FromPath, &r.ToPath, &r.OriginalFileName, &r.NewFileName, &r.MovedAt, &r.IsReverted)
 	if err != nil {
 		return nil, err
 	}

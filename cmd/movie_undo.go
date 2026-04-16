@@ -11,7 +11,7 @@
 //
 //	--list           Show recent undoable actions
 //	--id <id>        Undo a specific action_history record
-//	--batch          Undo the entire last batch
+//	--batch          Undo entire last batch
 //	--move-id <id>   Undo a specific move_history record
 package cmd
 
@@ -99,14 +99,14 @@ func showUndoableList(database *db.DB) {
 	moves, _ := database.ListMoveHistory(10)
 	undoableMoves := 0
 	for _, m := range moves {
-		if !m.Undone {
+		if !m.IsReverted {
 			undoableMoves++
 		}
 	}
 	if undoableMoves > 0 {
 		fmt.Println("  📁 Moves / Renames:")
 		for _, m := range moves {
-			if m.Undone {
+			if m.IsReverted {
 				continue
 			}
 			fmt.Printf("    [move-%d]  %s → %s  (%s)\n", m.ID, m.FromPath, m.ToPath, m.MovedAt)
@@ -118,14 +118,14 @@ func showUndoableList(database *db.DB) {
 	actions, _ := database.ListActions(20)
 	undoableActions := 0
 	for _, a := range actions {
-		if !a.IsUndone {
+		if !a.IsReverted {
 			undoableActions++
 		}
 	}
 	if undoableActions > 0 {
 		fmt.Println("  📋 Actions:")
 		for _, a := range actions {
-			if a.IsUndone {
+			if a.IsReverted {
 				continue
 			}
 			detail := a.Detail
@@ -157,8 +157,8 @@ func undoActionByID(database *db.DB, scanner *bufio.Scanner, id int64) {
 		errlog.Error("Cannot find action %d: %v", id, err)
 		return
 	}
-	if action.IsUndone {
-		fmt.Printf("⚠️  Action %d has already been undone.\n", id)
+	if action.IsReverted {
+		fmt.Printf("⚠️  Action %d has already been reverted.\n", id)
 		return
 	}
 
@@ -174,7 +174,7 @@ func undoActionByID(database *db.DB, scanner *bufio.Scanner, id int64) {
 		errlog.Error("Undo action %d failed: %v", id, err)
 		return
 	}
-	fmt.Printf("✅ Action %d undone successfully.\n", action.ActionHistoryId)
+	fmt.Printf("✅ Action %d reverted successfully.\n", action.ActionHistoryId)
 }
 
 // ---------------------------------------------------------------------------
@@ -198,8 +198,8 @@ func undoMoveByID(database *db.DB, scanner *bufio.Scanner, id int64) {
 		errlog.Error("Move %d not found.", id)
 		return
 	}
-	if target.Undone {
-		fmt.Printf("⚠️  Move %d has already been undone.\n", id)
+	if target.IsReverted {
+		fmt.Printf("⚠️  Move %d has already been reverted.\n", id)
 		return
 	}
 
@@ -213,7 +213,7 @@ func undoMoveByID(database *db.DB, scanner *bufio.Scanner, id int64) {
 		errlog.Error("Undo move %d failed: %v", id, err)
 		return
 	}
-	fmt.Printf("✅ Move %d undone successfully.\n", target.ID)
+	fmt.Printf("✅ Move %d reverted successfully.\n", target.ID)
 }
 
 // ---------------------------------------------------------------------------
@@ -229,7 +229,7 @@ func undoLastBatch(database *db.DB, scanner *bufio.Scanner) {
 
 	batchID := ""
 	for _, a := range actions {
-		if !a.IsUndone && a.BatchId != "" {
+		if !a.IsReverted && a.BatchId != "" {
 			batchID = a.BatchId
 			break
 		}
@@ -247,18 +247,18 @@ func undoLastBatch(database *db.DB, scanner *bufio.Scanner) {
 
 	undoable := 0
 	for _, a := range batchActions {
-		if !a.IsUndone {
+		if !a.IsReverted {
 			undoable++
 		}
 	}
 	if undoable == 0 {
-		fmt.Println("📭 Batch already undone.")
+		fmt.Println("📭 Batch already reverted.")
 		return
 	}
 
 	fmt.Printf("⏪ Undo batch %s (%d actions):\n", batchID[:8], undoable)
 	for _, a := range batchActions {
-		if a.IsUndone {
+		if a.IsReverted {
 			continue
 		}
 		detail := a.Detail
@@ -275,7 +275,7 @@ func undoLastBatch(database *db.DB, scanner *bufio.Scanner) {
 	failed := 0
 	for i := len(batchActions) - 1; i >= 0; i-- {
 		a := batchActions[i]
-		if a.IsUndone {
+		if a.IsReverted {
 			continue
 		}
 		if err := executeActionUndo(database, &a); err != nil {
@@ -285,9 +285,9 @@ func undoLastBatch(database *db.DB, scanner *bufio.Scanner) {
 	}
 
 	if failed == 0 {
-		fmt.Printf("✅ Batch %s undone (%d actions).\n", batchID[:8], undoable)
+		fmt.Printf("✅ Batch %s reverted (%d actions).\n", batchID[:8], undoable)
 	} else {
-		fmt.Printf("⚠️  Batch %s: %d undone, %d failed.\n", batchID[:8], undoable-failed, failed)
+		fmt.Printf("⚠️  Batch %s: %d reverted, %d failed.\n", batchID[:8], undoable-failed, failed)
 	}
 }
 
@@ -297,7 +297,7 @@ func undoLastBatch(database *db.DB, scanner *bufio.Scanner) {
 
 func undoLastOperation(database *db.DB, scanner *bufio.Scanner) {
 	lastMove, moveErr := database.GetLastMove()
-	lastAction, actionErr := database.GetLastUndoableAction()
+	lastAction, actionErr := database.GetLastRevertableAction()
 
 	haveMove := moveErr == nil && lastMove != nil
 	haveAction := actionErr == nil && lastAction != nil
@@ -380,8 +380,8 @@ func executeMoveUndo(database *db.DB, m *db.MoveRecord) error {
 		return fmt.Errorf("move file back: %w", err)
 	}
 
-	if err := database.MarkMoveUndone(m.ID); err != nil {
-		errlog.Warn("Could not mark move %d as undone: %v", m.ID, err)
+	if err := database.MarkMoveReverted(m.ID); err != nil {
+		errlog.Warn("Could not mark move %d as reverted: %v", m.ID, err)
 	}
 
 	if err := database.UpdateMediaPath(m.MediaID, m.FromPath); err != nil {
@@ -434,7 +434,7 @@ func executeActionUndo(database *db.DB, a *db.ActionRecord) error {
 		}
 
 	case db.FileActionPopout:
-		// Popout undo is handled via move_history — just mark action as undone
+		// Popout undo is handled via move_history — just mark action as reverted
 
 	case db.FileActionRestore:
 		// Undo a restore = delete the restored record again
@@ -448,7 +448,7 @@ func executeActionUndo(database *db.DB, a *db.ActionRecord) error {
 		return fmt.Errorf("unknown action type for undo: %s", a.FileActionId)
 	}
 
-	return database.MarkActionUndone(a.ActionHistoryId)
+	return database.MarkActionReverted(a.ActionHistoryId)
 }
 
 // ---------------------------------------------------------------------------
