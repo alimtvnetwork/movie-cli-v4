@@ -1,7 +1,10 @@
 // duplicates.go — duplicate detection queries for the Media table.
 package db
 
-import "fmt"
+import (
+	"fmt"
+	"time"
+)
 
 // DuplicateGroup represents a set of media records that share a duplicate key.
 type DuplicateGroup struct {
