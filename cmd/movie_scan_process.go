@@ -168,49 +168,7 @@ func enrichFromTMDb(client *tmdb.Client, database *db.DB, m *db.Media, result cl
 		fetchTVDetails(client, best.ID, m)
 	}
 
-	// Download thumbnail — saved to outputDir/thumbnails/{slug}-{tmdbID}.jpg
-	// Also saved to database.BasePath/thumbnails/ for REST server access
-	if best.PosterPath != "" {
-		slug := cleaner.ToSlug(m.CleanTitle)
-		if m.Year > 0 {
-			slug += "-" + strconv.Itoa(m.Year)
-		}
-		thumbFileName := slug + "-" + strconv.Itoa(m.TmdbID) + ".jpg"
-
-		// Primary: .movie-output/thumbnails/
-		thumbDir := filepath.Join(outputDir, "thumbnails")
-		if mkdirErr := os.MkdirAll(thumbDir, 0755); mkdirErr != nil {
-			if os.IsPermission(mkdirErr) {
-				errlog.Warn("⚠️ Cannot create thumbnail dir — skipping poster download")
-			} else {
-				errlog.Error("cannot create thumbnail dir %s: %v", thumbDir, mkdirErr)
-			}
-			return
-		}
-		thumbPath := filepath.Join(thumbDir, thumbFileName)
-		if dlErr := client.DownloadPoster(best.PosterPath, thumbPath); dlErr != nil {
-			// Per spec §1.4: Poster timeout → skip poster, continue with metadata
-			if errors.Is(dlErr, tmdb.ErrTimeout) || errors.Is(dlErr, tmdb.ErrNetworkError) {
-				errlog.Warn("⚠️ Poster download timed out — skipping for '%s'", m.CleanTitle)
-			} else {
-				errlog.Warn("thumbnail download failed for '%s': %v", m.CleanTitle, dlErr)
-			}
-		} else {
-			m.ThumbnailPath = "thumbnails/" + thumbFileName
-			fmt.Println("     🖼️  Thumbnail saved")
-
-			// Also copy to database data dir for REST server
-			dbThumbDir := filepath.Join(database.BasePath, "thumbnails")
-			if mkErr := os.MkdirAll(dbThumbDir, 0755); mkErr == nil {
-				dbThumbPath := filepath.Join(dbThumbDir, thumbFileName)
-				if src, rErr := os.ReadFile(thumbPath); rErr == nil {
-					if wErr := os.WriteFile(dbThumbPath, src, 0644); wErr != nil {
-						errlog.Warn("could not copy thumbnail to data dir: %v", wErr)
-					}
-				}
-			}
-		}
-	}
+	downloadThumbnail(client, database, m, best.PosterPath, outputDir)
 
 	fmt.Printf("     ⭐ %.1f  %s\n", m.TmdbRating, m.Title)
 }
