@@ -97,11 +97,7 @@ func processVideoFile(vf videoFile, ctx *ScanContext) bool {
 		printScanTableRow(buildMediaTableRow(ctx.TotalFiles, m, "new"))
 	}
 
-	if m.Type == string(db.MediaTypeMovie) {
-		ctx.MovieCount++
-	} else {
-		ctx.TVCount++
-	}
+	incrementTypeCount(ctx, m.Type)
 	if !ctx.UseTable {
 		fmt.Println()
 	}
