@@ -109,8 +109,9 @@
 - [ ] Add Tag commands (add, remove, list by tag)
 
 ### Phase 3: Spec Completeness (P2)
-- [ ] Acceptance criteria (GIVEN/WHEN/THEN) for all commands
-- [ ] Shared helper docs — code comments marking shared helpers
+- [x] Acceptance criteria (GIVEN/WHEN/THEN) for all 28 commands ✅ 16-Apr-2026
+- [x] Shared helper docs — 21 SHARED comments across 14 files ✅ 16-Apr-2026
+- [x] LS filter clarification — code + spec updated ✅ 16-Apr-2026
 - [ ] File size stats in `movie stats`
 
 ### Phase 4: Future Enhancements (P3)
