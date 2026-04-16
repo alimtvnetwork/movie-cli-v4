@@ -90,14 +90,14 @@ func (d *DB) InsertAction(input ActionInput) (int64, error) {
 }
 
 // InsertActionSimple is a convenience wrapper when MediaId is a plain int64.
-func (d *DB) InsertActionSimple(fileAction FileActionType, mediaId int64, snapshot, detail, batchId string) (int64, error) {
-	mid := sql.NullInt64{Int64: mediaId, Valid: mediaId > 0}
+func (d *DB) InsertActionSimple(input ActionSimpleInput) (int64, error) {
+	mid := sql.NullInt64{Int64: input.MediaID, Valid: input.MediaID > 0}
 	return d.InsertAction(ActionInput{
-		FileAction: fileAction,
+		FileAction: input.FileAction,
 		MediaID:    mid,
-		Snapshot:   snapshot,
-		Detail:     detail,
-		BatchID:    batchId,
+		Snapshot:   input.Snapshot,
+		Detail:     input.Detail,
+		BatchID:    input.BatchID,
 	})
 }
 

@@ -73,7 +73,7 @@ type popoutFolderInfo struct {
 func runMoviePopout(cmd *cobra.Command, args []string) {
 	database, openErr := db.Open()
 	if openErr != nil {
-		errlog.Error("Database error: %v", openErr)
+		errlog.Error(msgDatabaseError, openErr)
 		return
 	}
 	defer database.Close()
@@ -85,24 +85,13 @@ func runMoviePopout(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	rootDir := ""
-	if len(args) > 0 {
-		rootDir = expandHome(args[0], home)
-	}
-	if rootDir == "" {
-		rootDir = promptSourceDirectory(scanner, database, home)
-	}
+	mc := MoveContext{Scanner: scanner, Database: database, Home: home}
+	rootDir := resolvePopoutDir(args, mc)
 	if rootDir == "" {
 		return
 	}
 
-	info, statErr := os.Stat(rootDir)
-	if statErr != nil {
-		errlog.Error("Cannot access directory: %v", statErr)
-		return
-	}
-	if !info.IsDir() {
-		errlog.Error("Path is not a directory: %s", rootDir)
+	if !validateDirectory(rootDir) {
 		return
 	}
 
@@ -119,18 +108,42 @@ func runMoviePopout(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	if !confirmPopout(scanner, len(items)) {
+	executeAndCleanupPopout(mc, items, rootDir)
+}
+
+func resolvePopoutDir(args []string, mc MoveContext) string {
+	if len(args) > 0 {
+		return expandHome(args[0], mc.Home)
+	}
+	return promptSourceDirectory(mc.Scanner, mc.Database, mc.Home)
+}
+
+func validateDirectory(path string) bool {
+	info, statErr := os.Stat(path)
+	if statErr != nil {
+		errlog.Error("Cannot access directory: %v", statErr)
+		return false
+	}
+	if !info.IsDir() {
+		errlog.Error("Path is not a directory: %s", path)
+		return false
+	}
+	return true
+}
+
+func executeAndCleanupPopout(mc MoveContext, items []popoutItem, rootDir string) {
+	if !confirmPopout(mc.Scanner, len(items)) {
 		return
 	}
 
 	batchID := generateBatchID()
-	success, failed := executePopout(database, items, batchID)
+	success, failed := executePopout(mc.Database, items, batchID)
 	printPopoutResult(success, failed, batchID)
 
 	if success > 0 {
 		fmt.Println()
 		offerFolderCleanup(CleanupContext{
-			Scanner: scanner, Database: database, BatchID: batchID,
+			Scanner: mc.Scanner, Database: mc.Database, BatchID: batchID,
 		}, rootDir, items)
 	}
 }

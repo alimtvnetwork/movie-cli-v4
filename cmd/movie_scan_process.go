@@ -49,7 +49,7 @@ func processVideoFile(vf videoFile, ctx *ScanContext) bool {
 	}
 
 	mediaID := insertScanMedia(ctx, m)
-	trackScanAction(ctx, m, vf.FullPath, mediaID, nil)
+	trackScanAction(ctx, TrackScanResult{Media: m, FullPath: vf.FullPath, MediaID: mediaID})
 	writeScanJSON(ctx, m)
 
 	ctx.ScannedItems = append(ctx.ScannedItems, *m)

@@ -94,22 +94,27 @@ func runMovieScan(cmd *cobra.Command, args []string) {
 		printScanHeader(scanDir, outputDir)
 	}
 
-	var removed int
-	var jsonItems []scanJSONItem
+	ctx := createScanContext(database, creds, outputDir)
+	removed, jsonItems := executeScan(ctx, scanDir, useJSON)
+	finalizeScan(cmd, ctx, scanDir, outputDir, database, creds, removed, jsonItems, useJSON)
+}
 
-	videoFiles := collectVideoFiles(scanDir, scanRecursive, scanDepth)
-	useTable := scanFormat == string(db.OutputFormatTable)
-	useTMDb := creds.HasAuth()
-
+func createScanContext(database *db.DB, creds tmdbCredentials, outputDir string) *ScanContext {
 	tmdbClient := tmdb.NewClientWithToken(creds.APIKey, creds.Token)
-	ctx := &ScanContext{
+	return &ScanContext{
 		Database:  database,
 		Client:    tmdbClient,
-		HasTMDb:   useTMDb,
+		HasTMDb:   creds.HasAuth(),
 		OutputDir: outputDir,
-		UseTable:  useTable || useJSON,
+		UseTable:  scanFormat == string(db.OutputFormatTable) || scanFormat == "json",
 		BatchID:   generateBatchID(),
 	}
+}
+
+func executeScan(ctx *ScanContext, scanDir string, useJSON bool) (int, []scanJSONItem) {
+	videoFiles := collectVideoFiles(scanDir, scanRecursive, scanDepth)
+	useTable := scanFormat == string(db.OutputFormatTable)
+	var jsonItems []scanJSONItem
 
 	if useTable {
 		printScanTableHeader()
@@ -118,18 +123,25 @@ func runMovieScan(cmd *cobra.Command, args []string) {
 	if scanDryRun {
 		runDryRunScan(videoFiles, useJSON, useTable,
 			&jsonItems, &ctx.TotalFiles, &ctx.MovieCount, &ctx.TVCount)
+		if useTable {
+			printScanTableFooter()
+		}
+		return 0, jsonItems
 	}
-	if !scanDryRun {
-		removed = runMainScanLoop(ctx, videoFiles, ScanLoopConfig{
-			Client: tmdbClient, ScanDir: scanDir, BatchID: ctx.BatchID,
-			UseJSON: useJSON, UseTable: useTable, HasTMDb: useTMDb,
-		}, &jsonItems)
-	}
+
+	removed := runMainScanLoop(ctx, videoFiles, ScanLoopConfig{
+		Client: ctx.Client, ScanDir: scanDir, BatchID: ctx.BatchID,
+		UseJSON: useJSON, UseTable: useTable, HasTMDb: ctx.HasTMDb,
+	}, &jsonItems)
 
 	if useTable {
 		printScanTableFooter()
 	}
+	return removed, jsonItems
+}
 
+func finalizeScan(cmd *cobra.Command, ctx *ScanContext, scanDir, outputDir string,
+	database *db.DB, creds tmdbCredentials, removed int, jsonItems []scanJSONItem, useJSON bool) {
 	registerScanHistory(database, scanDir, ctx)
 
 	if useJSON {
@@ -145,6 +157,7 @@ func runMovieScan(cmd *cobra.Command, args []string) {
 		})
 	}
 
+	tmdbClient := tmdb.NewClientWithToken(creds.APIKey, creds.Token)
 	startPostScanServices(cmd, ScanServiceConfig{
 		ScanDir: scanDir, OutputDir: outputDir, Database: database, Creds: creds,
 	}, tmdbClient)
@@ -228,22 +241,24 @@ func runDryRunScan(videoFiles []videoFile, useJSON, useTable bool,
 		*tvCount = tc
 		return
 	}
-	runDryRunPlainOutput(videoFiles, totalFiles, movieCount, tvCount)
+	runDryRunPlainOutput(videoFiles, DryRunCounters{
+		TotalFiles: totalFiles, MovieCount: movieCount, TVCount: tvCount,
+	})
 }
 
 // runDryRunPlainOutput prints dry-run results in plain text format.
-func runDryRunPlainOutput(videoFiles []videoFile, totalFiles, movieCount, tvCount *int) {
+func runDryRunPlainOutput(videoFiles []videoFile, counters DryRunCounters) {
 	for _, vf := range videoFiles {
-		*totalFiles++
+		*counters.TotalFiles++
 		result := cleaner.Clean(vf.Name)
 		typeIcon := db.TypeIcon(result.Type)
-		fmt.Printf("\n  %d. %s %s", *totalFiles, typeIcon, result.CleanTitle)
+		fmt.Printf("\n  %d. %s %s", *counters.TotalFiles, typeIcon, result.CleanTitle)
 		if result.Year > 0 {
 			fmt.Printf(" (%d)", result.Year)
 		}
 		fmt.Printf(" [%s]\n", result.Type)
 		fmt.Printf("     └─ %s\n", vf.Name)
-		incrementTypeCountPtr(result.Type, movieCount, tvCount)
+		incrementTypeCountPtr(result.Type, counters.MovieCount, counters.TVCount)
 	}
 }
 

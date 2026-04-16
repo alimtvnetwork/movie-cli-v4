@@ -33,14 +33,45 @@ func Run() error {
 	}
 
 	if bootstrapped {
-		commit, _ := gitOutput(repoPath, "rev-parse", "--short", "HEAD")
-		fmt.Printf("\n✨ Bootstrapped local source repo in %s\n", repoPath)
-		fmt.Printf("🔁 Commit: %s\n", commit)
-		fmt.Println("\n💡 Run 'movie update' again to build and deploy")
-		return nil
+		return printBootstrapInfo(repoPath)
 	}
 
-	// Check for local changes
+	if err := prepareRepoBranch(repoPath); err != nil {
+		return err
+	}
+
+	selfPath, err := resolveSelfPath()
+	if err != nil {
+		return err
+	}
+
+	copyPath, err := createHandoffCopy(selfPath)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("🎯 Active binary: %s\n", selfPath)
+	fmt.Printf("🔄 Starting update from %s\n", repoPath)
+
+	return launchHandoff(copyPath, repoPath, selfPath)
+}
+
+func printBootstrapInfo(repoPath string) error {
+	commit, _ := gitOutput(repoPath, "rev-parse", "--short", "HEAD")
+	fmt.Printf("\n✨ Bootstrapped local source repo in %s\n", repoPath)
+	fmt.Printf("🔁 Commit: %s\n", commit)
+	fmt.Println("\n💡 Run 'movie update' again to build and deploy")
+	return nil
+}
+
+func prepareRepoBranch(repoPath string) error {
+	gm, gmErr := readGitMapLatest(repoPath)
+	branch := ""
+	if gmErr == nil && gm.Branch != "" {
+		branch = gm.Branch
+		fmt.Printf("📋 Gitmap: %s (branch: %s)\n", gm.Version, branch)
+	}
+
 	dirty, err := gitOutput(repoPath, "status", "--porcelain")
 	if err != nil {
 		return apperror.Wrap("cannot check git status", err)
@@ -49,19 +80,35 @@ func Run() error {
 		return apperror.New("repository has local changes; commit or stash them before update")
 	}
 
+	if branch == "" {
+		return nil
+	}
+	return checkoutBranch(repoPath, branch)
+}
+
+func checkoutBranch(repoPath, branch string) error {
+	currentBranch, _ := gitOutput(repoPath, "rev-parse", "--abbrev-ref", "HEAD")
+	if currentBranch == branch {
+		return nil
+	}
+	fmt.Printf("🔀 Switching from %s to %s\n", currentBranch, branch)
+	_, checkoutErr := gitOutput(repoPath, "checkout", branch)
+	if checkoutErr != nil {
+		return apperror.Wrap("cannot checkout branch from gitmap", checkoutErr)
+	}
+	return nil
+}
+
+func resolveSelfPath() (string, error) {
 	selfPath, err := os.Executable()
 	if err != nil {
-		return apperror.Wrap("cannot determine executable path", err)
+		return "", apperror.Wrap("cannot determine executable path", err)
 	}
-	resolvedSelfPath, resolveErr := filepath.EvalSymlinks(selfPath)
+	resolved, resolveErr := filepath.EvalSymlinks(selfPath)
 	if resolveErr == nil {
-		selfPath = resolvedSelfPath
+		return resolved, nil
 	}
-
-	copyPath := createHandoffCopy(selfPath)
-	fmt.Printf("🔄 Starting update from %s\n", repoPath)
-
-	return launchHandoff(copyPath, repoPath, selfPath)
+	return selfPath, nil
 }
 
 // RunWorker is the hidden update-runner entry point called from the handoff copy.

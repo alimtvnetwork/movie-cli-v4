@@ -475,6 +475,7 @@ function Test-SourceFiles {
         "updater/handoff.go",
         "updater/script.go",
         "updater/cleanup.go",
+        "updater/gitmap.go",
         "version/info.go",
         "templates/embed.go"
     )

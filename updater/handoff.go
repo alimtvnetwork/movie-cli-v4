@@ -12,27 +12,26 @@ import (
 )
 
 // createHandoffCopy creates a temporary copy of the binary for the handoff worker.
-func createHandoffCopy(selfPath string) string {
+func createHandoffCopy(selfPath string) (string, error) {
 	name := handoffName()
 	copyPath := filepath.Join(filepath.Dir(selfPath), name)
 
 	if copyFile(selfPath, copyPath) == nil {
 		makeExecutable(copyPath)
-		return copyPath
+		return copyPath, nil
 	}
 
 	// Fallback to temp directory
 	copyPath = filepath.Join(os.TempDir(), name)
 	if err := copyFile(selfPath, copyPath); err != nil {
-		fmt.Fprintf(os.Stderr, "❌ Cannot create handoff copy: %v\n", err)
-		os.Exit(1)
+		return "", apperror.Wrap("cannot create handoff copy", err)
 	}
 	makeExecutable(copyPath)
-	return copyPath
+	return copyPath, nil
 }
 
-// launchHandoff starts the handoff binary and returns immediately so the
-// current process can exit and release its file lock before rebuild/deploy.
+// launchHandoff starts the handoff binary in foreground (blocking) so
+// the terminal stays stable and the user sees all output.
 func launchHandoff(copyPath, repoPath, targetBinary string) error {
 	args := []string{
 		"update-runner",
@@ -40,16 +39,12 @@ func launchHandoff(copyPath, repoPath, targetBinary string) error {
 		"--target-binary", targetBinary,
 	}
 
-	cmd := exec.Command(copyPath, args...)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	cmd.Stdin = os.Stdin
-
-	if err := cmd.Start(); err != nil {
-		return apperror.Wrap("cannot start update worker", err)
-	}
-	_ = cmd.Process.Release()
 	fmt.Printf("🚀 Update handed off to %s\n", copyPath)
+
+	cmd := exec.Command(copyPath, args...)
+	if err := runAttached(cmd); err != nil {
+		return apperror.Wrap("update worker failed", err)
+	}
 	return nil
 }
 

@@ -88,12 +88,15 @@ func handleInsertError(ctx *ScanContext, m *db.Media, insertErr error) {
 }
 
 // trackScanAction records scan_add in action_history for undo support.
-func trackScanAction(ctx *ScanContext, m *db.Media, fullPath string, mediaID int64, insertErr error) {
-	if insertErr != nil || mediaID <= 0 || ctx.BatchID == "" {
+func trackScanAction(ctx *ScanContext, result TrackScanResult) {
+	if result.InsertErr != nil || result.MediaID <= 0 || ctx.BatchID == "" {
 		return
 	}
-	detail := fmt.Sprintf("Scan added: %s (%s)", m.CleanTitle, fullPath)
-	ctx.Database.InsertActionSimple(db.FileActionScanAdd, mediaID, "", detail, ctx.BatchID)
+	detail := fmt.Sprintf("Scan added: %s (%s)", result.Media.CleanTitle, result.FullPath)
+	ctx.Database.InsertActionSimple(db.ActionSimpleInput{
+		FileAction: db.FileActionScanAdd, MediaID: result.MediaID,
+		Detail: detail, BatchID: ctx.BatchID,
+	})
 }
 
 // downloadThumbnail downloads poster from TMDb and saves to output + data dirs.

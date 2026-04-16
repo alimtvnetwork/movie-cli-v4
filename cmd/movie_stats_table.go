@@ -17,7 +17,7 @@ func printStatsTable(database *db.DB, counts StatsCounts) {
 	fmt.Println()
 	printStatsTableHeader()
 	printStatsTableCounts(counts.Movies, counts.TV, counts.Total)
-	printStatsTableStorage(database, total)
+	printStatsTableStorage(database, counts.Total)
 	printStatsTableGenres(database)
 	printStatsTableRatings(database)
 	printStatsTableFooter()

@@ -234,7 +234,11 @@ func TestMoveHistory(t *testing.T) {
 	d := openTestDB(t)
 	id := seedMedia(t, d, "Moved Movie", 200)
 
-	err := d.InsertMoveHistory(id, int(FileActionMove), "/old/path.mkv", "/new/path.mkv", "old.mkv", "new.mkv")
+	err := d.InsertMoveHistory(MoveInput{
+		MediaID: id, FileActionID: int(FileActionMove),
+		FromPath: "/old/path.mkv", ToPath: "/new/path.mkv",
+		OrigName: "old.mkv", NewName: "new.mkv",
+	})
 	if err != nil {
 		t.Fatalf("insert history: %v", err)
 	}
@@ -247,7 +251,7 @@ func TestMoveHistory(t *testing.T) {
 		t.Errorf("move record: from=%q to=%q", rec.FromPath, rec.ToPath)
 	}
 
-	if err := d.MarkMoveUndone(rec.ID); err != nil {
+	if err := d.MarkMoveReverted(rec.ID); err != nil {
 		t.Fatalf("undo: %v", err)
 	}
 
@@ -262,7 +266,7 @@ func TestMoveHistory(t *testing.T) {
 func TestWatchlist(t *testing.T) {
 	d := openTestDB(t)
 
-	if err := d.AddToWatchlist(550, "Fight Club", 1999, "movie", 0); err != nil {
+	if err := d.AddToWatchlist(WatchlistInput{TmdbID: 550, Title: "Fight Club", Year: 1999, MediaType: "movie"}); err != nil {
 		t.Fatalf("add: %v", err)
 	}
 
@@ -302,8 +306,8 @@ func TestWatchlist(t *testing.T) {
 
 func TestWatchlistUpsert(t *testing.T) {
 	d := openTestDB(t)
-	d.AddToWatchlist(550, "Fight Club", 1999, "movie", 0)
-	if err := d.AddToWatchlist(550, "Fight Club (Updated)", 1999, "movie", 0); err != nil {
+	d.AddToWatchlist(WatchlistInput{TmdbID: 550, Title: "Fight Club", Year: 1999, MediaType: "movie"})
+	if err := d.AddToWatchlist(WatchlistInput{TmdbID: 550, Title: "Fight Club (Updated)", Year: 1999, MediaType: "movie"}); err != nil {
 		t.Fatalf("upsert: %v", err)
 	}
 	entry, _ := d.GetWatchlistByTmdbID(550)

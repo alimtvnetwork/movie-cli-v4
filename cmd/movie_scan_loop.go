@@ -86,7 +86,10 @@ func snapshotRemovedMedia(database *db.DB, media []*db.Media, scanBatchID string
 			continue
 		}
 		detail := fmt.Sprintf("Scan removed: %s (%s)", rm.CleanTitle, rm.OriginalFilePath)
-		database.InsertActionSimple(db.FileActionScanRemove, rm.ID, snapshot, detail, scanBatchID)
+		database.InsertActionSimple(db.ActionSimpleInput{
+			FileAction: db.FileActionScanRemove, MediaID: rm.ID,
+			Snapshot: snapshot, Detail: detail, BatchID: scanBatchID,
+		})
 	}
 }
 
@@ -94,10 +97,11 @@ func processExistingMedia(ctx *ScanContext, em *db.Media, vf videoFile,
 	client *tmdb.Client, database *db.DB, opts ScanOutputOpts, batchID string, hasTMDb bool) {
 	ctx.TotalFiles++
 
-	if hasTMDb && mediaNeedsRescan(em) {
+	needsRescan := hasTMDb && mediaNeedsRescan(em)
+	if needsRescan {
 		handleRescan(ctx, em, client, database, opts, batchID)
 	}
-	if !(hasTMDb && mediaNeedsRescan(em)) {
+	if !needsRescan {
 		handleSkippedMedia(ctx, em, opts)
 	}
 
@@ -120,7 +124,10 @@ func handleRescan(ctx *ScanContext, em *db.Media, client *tmdb.Client,
 		return
 	}
 	detail := fmt.Sprintf("Rescan updated: %s", em.CleanTitle)
-	database.InsertActionSimple(db.FileActionRescanUpdate, em.ID, preSnapshot, detail, batchID)
+	database.InsertActionSimple(db.ActionSimpleInput{
+		FileAction: db.FileActionRescanUpdate, MediaID: em.ID,
+		Snapshot: preSnapshot, Detail: detail, BatchID: batchID,
+	})
 	if opts.UseTable {
 		printScanTableRow(buildMediaTableRow(ctx.TotalFiles, em, "rescanned"))
 		return

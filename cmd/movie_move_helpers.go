@@ -9,7 +9,7 @@
 //	promptDestination(scanner, db, home)       — interactive destination picker
 //	MoveFile(src, dst) error                   — move with cross-device fallback
 //	crossDeviceMove(src, dst) error            — copy+delete for cross-filesystem moves
-//	saveHistoryLog(basePath, title, year, from, to) — write move-log.json
+//	saveHistoryLog(input HistoryLogInput)               — write move-log.json
 //
 // Consumers: movie_move.go, movie_rename.go, movie_undo.go, movie_stats.go
 //
@@ -88,8 +88,20 @@ func promptSourceDirectory(scanner interface {
 	fmt.Println("📂 Where are your video files?")
 	fmt.Println()
 
-	options := []string{}
-	labels := []string{}
+	options, labels := buildDirOptions(scanDir, home)
+
+	for i, label := range labels {
+		fmt.Printf("  %d. %s\n", i+1, label)
+	}
+	fmt.Printf("  %d. Enter custom path\n", len(labels)+1)
+	fmt.Println()
+	fmt.Print("  Choose: ")
+
+	return readDirChoice(scanner, options, home)
+}
+
+func buildDirOptions(scanDir, home string) ([]string, []string) {
+	var options, labels []string
 
 	if scanDir != "" {
 		options = append(options, scanDir)
@@ -107,14 +119,13 @@ func promptSourceDirectory(scanner interface {
 		options = append(options, desktop)
 		labels = append(labels, fmt.Sprintf("Desktop (%s)", desktop))
 	}
+	return options, labels
+}
 
-	for i, label := range labels {
-		fmt.Printf("  %d. %s\n", i+1, label)
-	}
-	fmt.Printf("  %d. Enter custom path\n", len(labels)+1)
-	fmt.Println()
-	fmt.Print("  Choose: ")
-
+func readDirChoice(scanner interface {
+	Scan() bool
+	Text() string
+}, options []string, home string) string {
 	if !scanner.Scan() {
 		return ""
 	}
@@ -123,7 +134,6 @@ func promptSourceDirectory(scanner interface {
 		errlog.Error("Invalid choice")
 		return ""
 	}
-
 	if choice <= len(options) {
 		return options[choice-1]
 	}
@@ -140,31 +150,7 @@ func promptDestination(scanner interface {
 	Scan() bool
 	Text() string
 }, database *db.DB, home string) string {
-	moviesDir, cfgErr := database.GetConfig("MoviesDir")
-	if cfgErr != nil && cfgErr.Error() != "sql: no rows in result set" {
-		errlog.Warn("Config read error (movies_dir): %v", cfgErr)
-	}
-	tvDir, cfgErr := database.GetConfig("TvDir")
-	if cfgErr != nil && cfgErr.Error() != "sql: no rows in result set" {
-		errlog.Warn("Config read error (tv_dir): %v", cfgErr)
-	}
-	archiveDir, cfgErr := database.GetConfig("ArchiveDir")
-	if cfgErr != nil && cfgErr.Error() != "sql: no rows in result set" {
-		errlog.Warn("Config read error (archive_dir): %v", cfgErr)
-	}
-	moviesDir = expandHome(moviesDir, home)
-	tvDir = expandHome(tvDir, home)
-	archiveDir = expandHome(archiveDir, home)
-
-	if moviesDir == "" {
-		moviesDir = expandHome("~/Movies", home)
-	}
-	if tvDir == "" {
-		tvDir = expandHome("~/TVShows", home)
-	}
-	if archiveDir == "" {
-		archiveDir = expandHome("~/Archive", home)
-	}
+	moviesDir, tvDir, archiveDir := loadDestinationDirs(database, home)
 
 	fmt.Println()
 	fmt.Println("  📁 Move to:")
@@ -199,6 +185,31 @@ func promptDestination(scanner interface {
 	}
 }
 
+func loadDestinationDirs(database *db.DB, home string) (string, string, string) {
+	moviesDir := loadConfigDir(database, "MoviesDir", home)
+	tvDir := loadConfigDir(database, "TvDir", home)
+	archiveDir := loadConfigDir(database, "ArchiveDir", home)
+
+	if moviesDir == "" {
+		moviesDir = expandHome("~/Movies", home)
+	}
+	if tvDir == "" {
+		tvDir = expandHome("~/TVShows", home)
+	}
+	if archiveDir == "" {
+		archiveDir = expandHome("~/Archive", home)
+	}
+	return moviesDir, tvDir, archiveDir
+}
+
+func loadConfigDir(database *db.DB, key, home string) string {
+	val, err := database.GetConfig(key)
+	if err != nil && err.Error() != "sql: no rows in result set" {
+		errlog.Warn("Config read error (%s): %v", key, err)
+	}
+	return expandHome(val, home)
+}
+
 // MoveFile moves a file from src to dst using os.Rename with cross-device fallback.
 func MoveFile(src, dst string) error {
 	err := os.Rename(src, dst)
@@ -213,13 +224,14 @@ func MoveFile(src, dst string) error {
 // (e.g., USB drives, network mounts, different partitions).
 func isCrossDeviceError(err error) bool {
 	var linkErr *os.LinkError
-	if errors.As(err, &linkErr) {
-		var errno syscall.Errno
-		if errors.As(linkErr.Err, &errno) {
-			return errno == syscall.EXDEV
-		}
+	if !errors.As(err, &linkErr) {
+		return false
 	}
-	return false
+	var errno syscall.Errno
+	if !errors.As(linkErr.Err, &errno) {
+		return false
+	}
+	return errno == syscall.EXDEV
 }
 
 // crossDeviceMove copies the file from src to dst, preserves the original file

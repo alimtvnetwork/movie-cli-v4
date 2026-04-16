@@ -21,14 +21,16 @@ func discoverNestedVideos(rootDir string, maxDepth int) []popoutItem {
 		if err != nil {
 			return nil
 		}
-		return processWalkEntry(rootDir, path, info, maxDepth, &items)
+		return processWalkEntry(WalkEntryInput{
+			RootDir: rootDir, Path: path, Info: info, MaxDepth: maxDepth, Items: &items,
+		})
 	})
 
 	return items
 }
 
-func processWalkEntry(rootDir, path string, info os.FileInfo, maxDepth int, items *[]popoutItem) error {
-	rel, relErr := filepath.Rel(rootDir, path)
+func processWalkEntry(input WalkEntryInput) error {
+	rel, relErr := filepath.Rel(input.RootDir, input.Path)
 	if relErr != nil {
 		return nil
 	}
@@ -37,24 +39,24 @@ func processWalkEntry(rootDir, path string, info os.FileInfo, maxDepth int, item
 	if depth == 0 {
 		return nil
 	}
-	if info.IsDir() && depth >= maxDepth {
+	if input.Info.IsDir() && depth >= input.MaxDepth {
 		return filepath.SkipDir
 	}
-	if info.IsDir() || !cleaner.IsVideoFile(info.Name()) {
+	if input.Info.IsDir() || !cleaner.IsVideoFile(input.Info.Name()) {
 		return nil
 	}
 
-	result := cleaner.Clean(info.Name())
-	destName := buildDestName(info.Name(), result)
-	destPath := filepath.Join(rootDir, destName)
+	result := cleaner.Clean(input.Info.Name())
+	destName := buildDestName(input.Info.Name(), result)
+	destPath := filepath.Join(input.RootDir, destName)
 
 	parts := strings.SplitN(rel, string(os.PathSeparator), 2)
-	*items = append(*items, popoutItem{
-		srcPath:   path,
+	*input.Items = append(*input.Items, popoutItem{
+		srcPath:   input.Path,
 		destPath:  destPath,
 		cleanName: destName,
 		result:    result,
-		size:      info.Size(),
+		size:      input.Info.Size(),
 		subDir:    parts[0],
 	})
 
@@ -85,7 +87,10 @@ func executePopout(database *db.DB, items []popoutItem, batchID string) (success
 
 		mediaID := trackPopoutMove(database, item, batchID)
 		detail := fmt.Sprintf("Popped out: %s from %s/", item.cleanName, item.subDir)
-		database.InsertActionSimple(db.FileActionPopout, mediaID, "", detail, batchID)
+		database.InsertActionSimple(db.ActionSimpleInput{
+			FileAction: db.FileActionPopout, MediaID: mediaID,
+			Detail: detail, BatchID: batchID,
+		})
 		success++
 	}
 	return
@@ -114,7 +119,10 @@ func trackPopoutMove(database *db.DB, item popoutItem, batchID string) int64 {
 		}
 	}
 
-	saveHistoryLog(database.BasePath, item.result.CleanTitle, item.result.Year, item.srcPath, item.destPath)
+	saveHistoryLog(HistoryLogInput{
+		BasePath: database.BasePath, Title: item.result.CleanTitle,
+		Year: item.result.Year, FromPath: item.srcPath, ToPath: item.destPath,
+	})
 	return mediaID
 }
 

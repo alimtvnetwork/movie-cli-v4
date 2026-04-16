@@ -25,7 +25,7 @@ var moviePlayCmd = &cobra.Command{
 func runMoviePlay(cmd *cobra.Command, args []string) {
 	database, err := db.Open()
 	if err != nil {
-		errlog.Error("Database error: %v", err)
+		errlog.Error(msgDatabaseError, err)
 		return
 	}
 	defer database.Close()
@@ -42,13 +42,7 @@ func runMoviePlay(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	filePath := m.CurrentFilePath
-	if _, statErr := os.Stat(filePath); statErr != nil {
-		if os.IsNotExist(statErr) {
-			errlog.Error("File not found: %s", filePath)
-			return
-		}
-		errlog.Error("Cannot access file %s: %v", filePath, statErr)
+	if !validateFilePath(m.CurrentFilePath) {
 		return
 	}
 
@@ -58,21 +52,42 @@ func runMoviePlay(cmd *cobra.Command, args []string) {
 	}
 	fmt.Println()
 
-	var openCmd *exec.Cmd
-	switch runtime.GOOS {
-	case "darwin":
-		openCmd = exec.Command("open", filePath)
-	case "linux":
-		openCmd = exec.Command("xdg-open", filePath)
-	case "windows":
-		openCmd = exec.Command("cmd", "/c", "start", "", filePath)
-	default:
+	launchPlayer(m.CurrentFilePath)
+}
+
+func validateFilePath(filePath string) bool {
+	_, statErr := os.Stat(filePath)
+	if statErr == nil {
+		return true
+	}
+	if os.IsNotExist(statErr) {
+		errlog.Error("File not found: %s", filePath)
+		return false
+	}
+	errlog.Error("Cannot access file %s: %v", filePath, statErr)
+	return false
+}
+
+func launchPlayer(filePath string) {
+	openCmd := buildOpenCommand(filePath)
+	if openCmd == nil {
 		errlog.Error("Unsupported OS: %s", runtime.GOOS)
 		return
 	}
-
 	if err := openCmd.Start(); err != nil {
 		errlog.Error("Cannot open player: %v", err)
-		return
+	}
+}
+
+func buildOpenCommand(filePath string) *exec.Cmd {
+	switch runtime.GOOS {
+	case "darwin":
+		return exec.Command("open", filePath)
+	case "linux":
+		return exec.Command("xdg-open", filePath)
+	case "windows":
+		return exec.Command("cmd", "/c", "start", "", filePath)
+	default:
+		return nil
 	}
 }

@@ -36,7 +36,7 @@ func init() {
 func runMovieCleanup(cmd *cobra.Command, args []string) {
 	database, err := db.Open()
 	if err != nil {
-		errlog.Error("Database error: %v", err)
+		errlog.Error(msgDatabaseError, err)
 		return
 	}
 	defer database.Close()
@@ -52,30 +52,39 @@ func runMovieCleanup(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	fmt.Printf("🔍 Found %d stale entries (file missing from disk):\n", len(stale))
-	fmt.Println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-
-	for i, s := range stale {
-		fmt.Printf("  %d. [ID %d] %s (%d)\n", i+1, s.Media.ID, s.Media.Title, s.Media.Year)
-		fmt.Printf("     Missing: %s\n", s.FilePath)
-	}
+	printStaleEntries(stale)
 
 	if !cleanupDryRun {
 		fmt.Printf("\n📋 Dry run — no changes made. Use --remove to delete these entries.\n")
 		return
 	}
 
-	// Confirm before deleting
-	fmt.Printf("\n⚠️  Delete %d stale entries from the database? [y/N] ", len(stale))
-	reader := bufio.NewReader(os.Stdin)
-	answer, _ := reader.ReadString('\n')
-	answer = strings.TrimSpace(strings.ToLower(answer))
-
-	if answer != "y" && answer != "yes" {
-		fmt.Println("❌ Aborted.")
+	if !confirmCleanupDelete(len(stale)) {
 		return
 	}
 
+	deleted := deleteStaleEntries(database, stale)
+	fmt.Printf("✅ Deleted %d stale entries from the database.\n", deleted)
+}
+
+func printStaleEntries(stale []db.StaleEntry) {
+	fmt.Printf("🔍 Found %d stale entries (file missing from disk):\n", len(stale))
+	fmt.Println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+	for i, s := range stale {
+		fmt.Printf("  %d. [ID %d] %s (%d)\n", i+1, s.Media.ID, s.Media.Title, s.Media.Year)
+		fmt.Printf("     Missing: %s\n", s.FilePath)
+	}
+}
+
+func confirmCleanupDelete(count int) bool {
+	fmt.Printf("\n⚠️  Delete %d stale entries from the database? [y/N] ", count)
+	reader := bufio.NewReader(os.Stdin)
+	answer, _ := reader.ReadString('\n')
+	answer = strings.TrimSpace(strings.ToLower(answer))
+	return answer == "y" || answer == "yes"
+}
+
+func deleteStaleEntries(database *db.DB, stale []db.StaleEntry) int {
 	deleted := 0
 	for _, s := range stale {
 		if err := database.DeleteMedia(s.Media.ID); err != nil {
@@ -84,6 +93,5 @@ func runMovieCleanup(cmd *cobra.Command, args []string) {
 		}
 		deleted++
 	}
-
-	fmt.Printf("✅ Deleted %d stale entries from the database.\n", deleted)
+	return deleted
 }

@@ -50,12 +50,7 @@ func collectMoveRecords(database *db.DB, records []unifiedRecord) []unifiedRecor
 		errlog.Warn("Error reading move history: %v", err)
 	}
 	for _, m := range moves {
-		recType := "move"
-		if m.FromPath != "" && m.ToPath != "" {
-			if dirOf(m.FromPath) == dirOf(m.ToPath) {
-				recType = "rename"
-			}
-		}
+		recType := detectMoveType(m)
 		if historyType != "all" && historyType != recType {
 			continue
 		}
@@ -97,10 +92,7 @@ func collectActionRecords(database *db.DB, records []unifiedRecord) []unifiedRec
 	}
 
 	for _, a := range actions {
-		detail := a.Detail
-		if detail == "" {
-			detail = a.FileActionId.String()
-		}
+		detail := actionDetail(a)
 		records = append(records, unifiedRecord{
 			Source:     "action",
 			ID:         a.ActionHistoryId,
@@ -121,6 +113,17 @@ func shouldIncludeActions() bool {
 	default:
 		return true
 	}
+}
+
+// detectMoveType returns "rename" if source and dest share a directory, otherwise "move".
+func detectMoveType(m db.MoveRecord) string {
+	if m.FromPath == "" || m.ToPath == "" {
+		return "move"
+	}
+	if dirOf(m.FromPath) == dirOf(m.ToPath) {
+		return "rename"
+	}
+	return "move"
 }
 
 func showBatchHistory(database *db.DB) {
@@ -163,10 +166,6 @@ func printBatchAction(a db.ActionRecord) {
 	if a.IsReverted {
 		status = "↩️ "
 	}
-	detail := a.Detail
-	if detail == "" {
-		detail = a.FileActionId.String()
-	}
-	fmt.Printf("  %s [%s] %s\n", status, a.FileActionId, detail)
+	fmt.Printf("  %s [%s] %s\n", status, a.FileActionId, actionDetail(a))
 	fmt.Printf("     ID: %d  Created: %s\n\n", a.ActionHistoryId, a.CreatedAt)
 }

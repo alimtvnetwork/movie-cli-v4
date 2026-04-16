@@ -45,7 +45,7 @@ func init() {
 func runMovieInfo(cmd *cobra.Command, args []string) {
 	database, err := db.Open()
 	if err != nil {
-		errlog.Error("Database error: %v", err)
+		errlog.Error(msgDatabaseError, err)
 		return
 	}
 	defer database.Close()
@@ -170,7 +170,7 @@ func downloadInfoThumbnail(input ThumbnailInput) {
 	if input.PosterPath == "" {
 		return
 	}
-	downloadThumbnailForMedia(input.Client, input.Database, input.Media, input.PosterPath)
+	downloadThumbnailForMedia(input)
 }
 
 func saveInfoMedia(database *db.DB, m *db.Media) {

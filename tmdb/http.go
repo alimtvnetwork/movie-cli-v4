@@ -3,7 +3,6 @@ package tmdb
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -70,7 +69,7 @@ func classifyHTTPError(err error) error {
 		return apperror.New("%w: check your internet connection", ErrTimeout)
 	}
 	if IsNetworkError(err) {
-		return apperror.Wrapf(err, "%w", ErrNetworkError)
+		return ErrNetworkError
 	}
 	return apperror.Wrap("HTTP request failed", err)
 }
@@ -95,12 +94,8 @@ func handleResponse(resp *http.Response, target interface{}, attempt int) error 
 		resp.Body.Close()
 		lastErr := apperror.New("%w (HTTP %d)", ErrServerError, resp.StatusCode)
 		if attempt == 0 {
-			delay := 3 * time.Second
-			if resp.StatusCode == 502 || resp.StatusCode == 503 || resp.StatusCode == 504 {
-				delay = 5 * time.Second
-			}
+			delay := serverRetryDelay(resp.StatusCode)
 			time.Sleep(delay)
-			return lastErr
 		}
 		return lastErr
 
@@ -122,4 +117,12 @@ func backoff(attempt int) {
 	}
 	d := time.Duration(1<<uint(attempt)) * time.Second
 	time.Sleep(d)
+}
+
+// serverRetryDelay returns the retry delay for server errors based on status code.
+func serverRetryDelay(statusCode int) time.Duration {
+	if statusCode == 502 || statusCode == 503 || statusCode == 504 {
+		return 5 * time.Second
+	}
+	return 3 * time.Second
 }

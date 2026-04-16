@@ -58,7 +58,7 @@ func init() {
 func runMovieUndo(cmd *cobra.Command, args []string) {
 	database, err := db.Open()
 	if err != nil {
-		errlog.Error("Database error: %v", err)
+		errlog.Error(msgDatabaseError, err)
 		return
 	}
 	defer database.Close()

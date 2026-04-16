@@ -54,6 +54,27 @@ func Open() (*DB, error) {
 	}
 
 	base := filepath.Join(binDir, "data")
+	if err := createDataDirs(base); err != nil {
+		return nil, err
+	}
+
+	removeLegacyDB(base)
+
+	conn, err := openAndConfigureDB(base)
+	if err != nil {
+		return nil, err
+	}
+
+	d := &DB{DB: conn, BasePath: base}
+	if err := d.migrateSchema(); err != nil {
+		conn.Close()
+		return nil, apperror.Wrap("migration failed", err)
+	}
+
+	return d, nil
+}
+
+func createDataDirs(base string) error {
 	dirs := []string{
 		base,
 		filepath.Join(base, "json", string(MediaTypeMovie)),
@@ -65,42 +86,30 @@ func Open() (*DB, error) {
 	}
 	for _, d := range dirs {
 		if err := os.MkdirAll(d, 0755); err != nil {
-			return nil, apperror.Wrapf(err, "cannot create directory %s", d)
+			return apperror.Wrapf(err, "cannot create directory %s", d)
 		}
 	}
+	return nil
+}
 
-	// Remove legacy database before opening new one
-	removeLegacyDB(base)
-
+func openAndConfigureDB(base string) (*sql.DB, error) {
 	dbPath := filepath.Join(base, dbFile)
 	conn, err := sql.Open("sqlite", dbPath)
 	if err != nil {
 		return nil, apperror.Wrap("cannot open database", err)
 	}
 
-	// Enable WAL mode for better concurrency
-	if _, err := conn.Exec("PRAGMA journal_mode=WAL"); err != nil {
-		conn.Close()
-		return nil, apperror.Wrap("cannot set WAL mode", err)
+	pragmas := []struct{ stmt, errMsg string }{
+		{"PRAGMA journal_mode=WAL", "cannot set WAL mode"},
+		{"PRAGMA busy_timeout = 5000", "cannot set busy_timeout"},
+		{"PRAGMA foreign_keys = ON", "cannot enable foreign keys"},
+	}
+	for _, p := range pragmas {
+		if _, err := conn.Exec(p.stmt); err != nil {
+			conn.Close()
+			return nil, apperror.Wrap(p.errMsg, err)
+		}
 	}
 
-	// Set busy timeout — wait up to 5s for locked DB
-	if _, err := conn.Exec("PRAGMA busy_timeout = 5000"); err != nil {
-		conn.Close()
-		return nil, apperror.Wrap("cannot set busy_timeout", err)
-	}
-
-	// Enable foreign keys
-	if _, err := conn.Exec("PRAGMA foreign_keys = ON"); err != nil {
-		conn.Close()
-		return nil, apperror.Wrap("cannot enable foreign keys", err)
-	}
-
-	d := &DB{DB: conn, BasePath: base}
-	if err := d.migrateSchema(); err != nil {
-		conn.Close()
-		return nil, apperror.Wrap("migration failed", err)
-	}
-
-	return d, nil
+	return conn, nil
 }

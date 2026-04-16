@@ -37,9 +37,9 @@ func runMovieSuggest(cmd *cobra.Command, args []string) {
 
 	switch choice {
 	case "1":
-		suggestByType(database, client, string(db.MediaTypeMovie), count)
+		suggestByType(SuggestTypeInput{Database: database, Client: client, MediaType: string(db.MediaTypeMovie), Count: count})
 	case "2":
-		suggestByType(database, client, string(db.MediaTypeTV), count)
+		suggestByType(SuggestTypeInput{Database: database, Client: client, MediaType: string(db.MediaTypeTV), Count: count})
 	case "3":
 		suggestRandom(client, count)
 	default:
@@ -59,7 +59,7 @@ func parseSuggestCount(args []string) int {
 func initSuggestDeps() (*db.DB, *tmdb.Client) {
 	database, err := db.Open()
 	if err != nil {
-		errlog.Error("Database error: %v", err)
+		errlog.Error(msgDatabaseError, err)
 		return nil, nil
 	}
 
@@ -97,25 +97,29 @@ func promptSuggestCategory() string {
 	return choice
 }
 
-func suggestByType(database *db.DB, client *tmdb.Client, mediaType string, count int) {
-	typeName := db.TypeLabelPlural(mediaType)
+func suggestByType(input SuggestTypeInput) {
+	typeName := db.TypeLabelPlural(input.MediaType)
 	fmt.Printf("🔍 Analyzing your %s library...\n\n", typeName)
 
-	sorted := analyzeTopGenres(database)
+	sorted := analyzeTopGenres(input.Database)
 	if sorted == nil {
-		showTrending(client, mediaType, count)
+		showTrending(input.Client, input.MediaType, input.Count)
 		return
 	}
 
 	printTopGenres(sorted)
-	existingIDs := collectExistingIDs(database, mediaType)
+	existingIDs := collectExistingIDs(input.Database, input.MediaType)
 
-	sc := SuggestCollector{Client: client, ExistingIDs: existingIDs, Count: count}
+	sc := SuggestCollector{Client: input.Client, ExistingIDs: existingIDs, Count: input.Count}
 	var suggestions []tmdb.SearchResult
 
-	suggestions = discoverByGenres(sc, sorted, mediaType, typeName)
-	suggestions = fillFromRecommendations(sc, database, mediaType, suggestions)
-	suggestions = fillFromTrending(sc, mediaType, suggestions)
+	suggestions = discoverByGenres(sc, DiscoverGenreInput{
+		Sorted: sorted, MediaType: input.MediaType, TypeName: typeName,
+	})
+	suggestions = fillFromRecommendations(sc, FillRecoInput{
+		Database: input.Database, MediaType: input.MediaType,
+	}, suggestions)
+	suggestions = fillFromTrending(sc, input.MediaType, suggestions)
 
 	fmt.Println()
 	printSuggestions(suggestions, typeName)
@@ -138,7 +142,7 @@ func suggestRandom(client *tmdb.Client, count int) {
 	all = append(all, tvTrending...)
 
 	seenIDs := make(map[int]bool)
-	suggestions := appendUnique(all, nil, seenIDs, count)
+	suggestions := appendUnique(all, nil, UniqueFilter{ExistingIDs: seenIDs, Count: count})
 	printSuggestions(suggestions, "Movies & TV Shows")
 }
 

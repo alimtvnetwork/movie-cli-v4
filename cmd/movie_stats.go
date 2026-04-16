@@ -58,7 +58,7 @@ type statsGenre struct {
 func runMovieStats(cmd *cobra.Command, args []string) {
 	database, err := db.Open()
 	if err != nil {
-		errlog.Error("Database error: %v", err)
+		errlog.Error(msgDatabaseError, err)
 		return
 	}
 	defer database.Close()
@@ -67,7 +67,7 @@ func runMovieStats(cmd *cobra.Command, args []string) {
 	totalTV, _ := database.CountMedia(string(db.MediaTypeTV))
 	total, err := database.CountMedia("")
 	if err != nil {
-		errlog.Error("Database error: %v", err)
+		errlog.Error(msgDatabaseError, err)
 		return
 	}
 
@@ -99,7 +99,7 @@ func printStatsJSON(database *db.DB, counts StatsCounts) {
 	out := statsJSONOutput{
 		TotalMovies: counts.Movies, TotalTV: counts.TV, Total: counts.Total,
 	}
-	out.Storage = buildStatsStorageJSON(database, total)
+	out.Storage = buildStatsStorageJSON(database, counts.Total)
 	out.TopGenres = buildStatsGenresJSON(database)
 	out.AvgImdb, out.AvgTmdb = computeAvgRatings(database)
 
@@ -139,7 +139,7 @@ func buildStatsGenresJSON(database *db.DB) []statsGenre {
 
 func printStatsDefault(database *db.DB, counts StatsCounts) {
 	printStatsDefaultCounts(counts.Movies, counts.TV, counts.Total)
-	printStatsDefaultStorage(database, total)
+	printStatsDefaultStorage(database, counts.Total)
 	printStatsDefaultGenres(database)
 	printStatsDefaultRatings(database)
 }

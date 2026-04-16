@@ -36,7 +36,7 @@ func init() {
 func runMovieMove(cmd *cobra.Command, args []string) {
 	database, err := db.Open()
 	if err != nil {
-		errlog.Error("Database error: %v", err)
+		errlog.Error(msgDatabaseError, err)
 		return
 	}
 	defer database.Close()
@@ -48,31 +48,14 @@ func runMovieMove(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	mc := MoveContext{
-		Database: database, Scanner: scanner, Home: home,
-	}
+	mc := MoveContext{Database: database, Scanner: scanner, Home: home}
 	sourceDir := resolveSourceDir(args, mc)
 	if sourceDir == "" {
 		return
 	}
 
-	info, statErr := os.Stat(sourceDir)
-	if statErr != nil {
-		errlog.Error("Cannot access directory: %v", statErr)
-		return
-	}
-	if !info.IsDir() {
-		errlog.Error("Path is not a directory: %s", sourceDir)
-		return
-	}
-
-	files, listErr := listVideoFiles(sourceDir)
-	if listErr != nil {
-		errlog.Error("%v", listErr)
-		return
-	}
-	if len(files) == 0 {
-		fmt.Printf("📭 No video files found in: %s\n", sourceDir)
+	files, valid := validateAndListVideos(sourceDir)
+	if !valid {
 		return
 	}
 
@@ -82,8 +65,24 @@ func runMovieMove(cmd *cobra.Command, args []string) {
 		runBatchMove(mc)
 		return
 	}
-
 	runInteractiveMove(mc)
+}
+
+// validateAndListVideos checks the directory and returns its video files.
+func validateAndListVideos(sourceDir string) ([]os.FileInfo, bool) {
+	if !validateDirectory(sourceDir) {
+		return nil, false
+	}
+	files, listErr := listVideoFiles(sourceDir)
+	if listErr != nil {
+		errlog.Error("%v", listErr)
+		return nil, false
+	}
+	if len(files) == 0 {
+		fmt.Printf("📭 No video files found in: %s\n", sourceDir)
+		return nil, false
+	}
+	return files, true
 }
 
 func resolveSourceDir(args []string, mc MoveContext) string {

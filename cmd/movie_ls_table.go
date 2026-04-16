@@ -9,6 +9,17 @@ import (
 	"github.com/alimtvnetwork/movie-cli-v4/db"
 )
 
+// table column widths
+const (
+	colNum      = 5
+	colTitle    = 40
+	colYear     = 6
+	colType     = 8
+	colRating   = 6
+	colGenre    = 25
+	colDirector = 20
+)
+
 // runMovieLsTable outputs all library items as a formatted table (no pager).
 func runMovieLsTable(database *db.DB) {
 	allMedia, err := database.ListMedia(0, 100000)
@@ -22,74 +33,59 @@ func runMovieLsTable(database *db.DB) {
 		return
 	}
 
-	numW := 5
-	titleW := 40
-	yearW := 6
-	typeW := 8
-	ratingW := 6
-	genreW := 25
-	directorW := 20
-
 	fmt.Println()
-	fmt.Printf("  %-*s │ %-*s │ %-*s │ %-*s │ %-*s │ %-*s │ %-*s\n",
-		numW, "#",
-		titleW, "Title",
-		yearW, "Year",
-		typeW, "Type",
-		ratingW, "Rating",
-		genreW, "Genre",
-		directorW, "Director")
-
-	fmt.Printf("  %s─┼─%s─┼─%s─┼─%s─┼─%s─┼─%s─┼─%s\n",
-		strings.Repeat("─", numW),
-		strings.Repeat("─", titleW),
-		strings.Repeat("─", yearW),
-		strings.Repeat("─", typeW),
-		strings.Repeat("─", ratingW),
-		strings.Repeat("─", genreW),
-		strings.Repeat("─", directorW))
-
+	printLsTableHeader()
 	for i := range allMedia {
-		m := &allMedia[i]
+		printLsTableRow(i+1, &allMedia[i])
+	}
+	printLsTableDivider("┴")
+	fmt.Printf("\n  Total: %d items\n\n", len(allMedia))
+}
 
-		title := truncate(m.CleanTitle, titleW)
-		yearStr := ""
-		if m.Year > 0 {
-			yearStr = fmt.Sprintf("%d", m.Year)
-		}
+func printLsTableHeader() {
+	fmt.Printf("  %-*s │ %-*s │ %-*s │ %-*s │ %-*s │ %-*s │ %-*s\n",
+		colNum, "#", colTitle, "Title", colYear, "Year",
+		colType, "Type", colRating, "Rating", colGenre, "Genre",
+		colDirector, "Director")
+	printLsTableDivider("┼")
+}
 
-		typeLabel := capitalize(m.Type)
+func printLsTableDivider(joint string) {
+	fmt.Printf("  %s─%s─%s─%s─%s─%s─%s─%s─%s─%s─%s─%s─%s\n",
+		strings.Repeat("─", colNum), joint,
+		strings.Repeat("─", colTitle), joint,
+		strings.Repeat("─", colYear), joint,
+		strings.Repeat("─", colType), joint,
+		strings.Repeat("─", colRating), joint,
+		strings.Repeat("─", colGenre), joint,
+		strings.Repeat("─", colDirector))
+}
 
-		rating := "N/A"
-		if m.TmdbRating > 0 {
-			rating = fmt.Sprintf("%.1f", m.TmdbRating)
-		} else if m.ImdbRating > 0 {
-			rating = fmt.Sprintf("%.1f", m.ImdbRating)
-		}
-
-		genre := truncate(m.Genre, genreW)
-		director := truncate(m.Director, directorW)
-
-		fmt.Printf("  %-*d │ %-*s │ %-*s │ %-*s │ %-*s │ %-*s │ %-*s\n",
-			numW, i+1,
-			titleW, title,
-			yearW, yearStr,
-			typeW, typeLabel,
-			ratingW, rating,
-			genreW, genre,
-			directorW, director)
+func printLsTableRow(num int, m *db.Media) {
+	title := truncate(m.CleanTitle, colTitle)
+	yearStr := ""
+	if m.Year > 0 {
+		yearStr = fmt.Sprintf("%d", m.Year)
 	}
 
-	fmt.Printf("  %s─┴─%s─┴─%s─┴─%s─┴─%s─┴─%s─┴─%s\n",
-		strings.Repeat("─", numW),
-		strings.Repeat("─", titleW),
-		strings.Repeat("─", yearW),
-		strings.Repeat("─", typeW),
-		strings.Repeat("─", ratingW),
-		strings.Repeat("─", genreW),
-		strings.Repeat("─", directorW))
+	rating := formatRating(m.TmdbRating, m.ImdbRating)
+	genre := truncate(m.Genre, colGenre)
+	director := truncate(m.Director, colDirector)
 
-	fmt.Printf("\n  Total: %d items\n\n", len(allMedia))
+	fmt.Printf("  %-*d │ %-*s │ %-*s │ %-*s │ %-*s │ %-*s │ %-*s\n",
+		colNum, num, colTitle, title, colYear, yearStr,
+		colType, capitalize(m.Type), colRating, rating,
+		colGenre, genre, colDirector, director)
+}
+
+func formatRating(tmdbRating, imdbRating float64) string {
+	if tmdbRating > 0 {
+		return fmt.Sprintf("%.1f", tmdbRating)
+	}
+	if imdbRating > 0 {
+		return fmt.Sprintf("%.1f", imdbRating)
+	}
+	return "N/A"
 }
 
 // truncate shortens a string to maxLen, adding "…" if needed.

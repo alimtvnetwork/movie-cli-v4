@@ -7,26 +7,24 @@ import (
 	"strconv"
 
 	"github.com/alimtvnetwork/movie-cli-v4/cleaner"
-	"github.com/alimtvnetwork/movie-cli-v4/db"
 	"github.com/alimtvnetwork/movie-cli-v4/errlog"
-	"github.com/alimtvnetwork/movie-cli-v4/tmdb"
 )
 
 // downloadThumbnailForMedia downloads a poster and sets m.ThumbnailPath.
-func downloadThumbnailForMedia(client *tmdb.Client, database *db.DB, m *db.Media, posterPath string) {
-	slug := cleaner.ToSlug(m.CleanTitle)
-	if m.Year > 0 {
-		slug += "-" + strconv.Itoa(m.Year)
+func downloadThumbnailForMedia(input ThumbnailInput) {
+	slug := cleaner.ToSlug(input.Media.CleanTitle)
+	if input.Media.Year > 0 {
+		slug += "-" + strconv.Itoa(input.Media.Year)
 	}
-	thumbDir := filepath.Join(database.BasePath, "thumbnails", slug)
+	thumbDir := filepath.Join(input.Database.BasePath, "thumbnails", slug)
 	if mkdirErr := os.MkdirAll(thumbDir, 0755); mkdirErr != nil {
 		errlog.Warn("Cannot create thumbnail dir: %v", mkdirErr)
 		return
 	}
 	thumbPath := filepath.Join(thumbDir, slug+".jpg")
-	if dlErr := client.DownloadPoster(posterPath, thumbPath); dlErr != nil {
+	if dlErr := input.Client.DownloadPoster(input.PosterPath, thumbPath); dlErr != nil {
 		errlog.Warn("Thumbnail download failed: %v", dlErr)
 		return
 	}
-	m.ThumbnailPath = thumbPath
+	input.Media.ThumbnailPath = thumbPath
 }
