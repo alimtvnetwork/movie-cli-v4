@@ -227,10 +227,10 @@ func handleLsInput(input string, pg LsPage, database *db.DB) int {
 		fmt.Println("👋 Bye!")
 		return -1
 	default:
-		if num, parseErr := strconv.Atoi(input); parseErr == nil && num > 0 && num <= total {
+		if num, parseErr := strconv.Atoi(input); parseErr == nil && num > 0 && num <= pg.Total {
 			showMediaDetail(database, int64(num))
 			fmt.Print("\nPress Enter to continue...")
 		}
-		return offset
+		return pg.Offset
 	}
 }

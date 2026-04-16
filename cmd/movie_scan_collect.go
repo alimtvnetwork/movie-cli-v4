@@ -42,24 +42,24 @@ func collectRecursive(scanDir string, maxDepth int) []videoFile {
 	return files
 }
 
-func handleRecursiveDir(d os.DirEntry, path string, baseParts, maxDepth int) error {
+func handleRecursiveDir(d os.DirEntry, path string, opts RecursiveWalkOpts) error {
 	base := d.Name()
 	if base == ".movie-output" || (strings.HasPrefix(base, ".") && base != ".") {
 		return filepath.SkipDir
 	}
-	if maxDepth > 0 {
+	if opts.MaxDepth > 0 {
 		dirParts := len(splitPath(filepath.Clean(path)))
-		if dirParts-baseParts > maxDepth {
+		if dirParts-opts.BaseParts > opts.MaxDepth {
 			return filepath.SkipDir
 		}
 	}
 	return nil
 }
 
-func handleRecursiveFile(d os.DirEntry, path, scanDir string, baseParts, maxDepth int, files *[]videoFile) error {
-	if maxDepth > 0 {
+func handleRecursiveFile(d os.DirEntry, path, scanDir string, opts RecursiveWalkOpts, files *[]videoFile) error {
+	if opts.MaxDepth > 0 {
 		fileParts := len(splitPath(filepath.Clean(filepath.Dir(path))))
-		if fileParts-baseParts > maxDepth {
+		if fileParts-opts.BaseParts > opts.MaxDepth {
 			return nil
 		}
 	}

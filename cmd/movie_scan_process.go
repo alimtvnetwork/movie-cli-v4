@@ -46,7 +46,7 @@ func processVideoFile(vf videoFile, ctx *ScanContext) bool {
 	}
 
 	if ctx.HasTMDb {
-		enrichFromTMDb(ctx.Client, ctx.Database, m, result, ctx.OutputDir)
+		enrichFromTMDb(ctx, m, result)
 	}
 
 	mediaID := insertScanMedia(ctx, m)
@@ -127,10 +127,10 @@ func writeScanJSON(ctx *ScanContext, m *db.Media) {
 }
 
 // enrichFromTMDb fetches metadata, details, and thumbnail from TMDb.
-func enrichFromTMDb(client *tmdb.Client, database *db.DB, m *db.Media, result cleaner.Result, outputDir string) {
+func enrichFromTMDb(ctx *ScanContext, m *db.Media, result cleaner.Result) {
 	searchQuery := buildTMDbSearchQuery(result)
 
-	tmdbResults, tmdbErr := client.SearchMulti(searchQuery)
+	tmdbResults, tmdbErr := ctx.Client.SearchMulti(searchQuery)
 	if tmdbErr != nil {
 		logTMDbSearchError(searchQuery, tmdbErr)
 		return
@@ -140,7 +140,7 @@ func enrichFromTMDb(client *tmdb.Client, database *db.DB, m *db.Media, result cl
 		return
 	}
 
-	applyTMDbResult(client, database, m, tmdbResults[0], outputDir)
+	applyTMDbResult(ctx, m, tmdbResults[0])
 }
 
 func buildTMDbSearchQuery(result cleaner.Result) string {
@@ -173,7 +173,7 @@ func logTMDbSearchError(query string, tmdbErr error) {
 	}
 }
 
-func applyTMDbResult(client *tmdb.Client, database *db.DB, m *db.Media, best tmdb.SearchResult, outputDir string) {
+func applyTMDbResult(ctx *ScanContext, m *db.Media, best tmdb.SearchResult) {
 	m.TmdbID = best.ID
 	m.TmdbRating = best.VoteAvg
 	m.Popularity = best.Popularity
@@ -182,13 +182,16 @@ func applyTMDbResult(client *tmdb.Client, database *db.DB, m *db.Media, best tmd
 
 	if best.MediaType == string(db.MediaTypeTV) {
 		m.Type = string(db.MediaTypeTV)
-		fetchTVDetails(client, best.ID, m)
+		fetchTVDetails(ctx.Client, best.ID, m)
 	}
 	if best.MediaType != string(db.MediaTypeTV) {
 		m.Type = string(db.MediaTypeMovie)
-		fetchMovieDetails(client, best.ID, m)
+		fetchMovieDetails(ctx.Client, best.ID, m)
 	}
 
-	downloadThumbnail(client, database, m, best.PosterPath, outputDir)
+	downloadThumbnail(ThumbnailInput{
+		Client: ctx.Client, Database: ctx.Database,
+		Media: m, PosterPath: best.PosterPath, OutputDir: ctx.OutputDir,
+	})
 	fmt.Printf("     ⭐ %.1f  %s\n", m.TmdbRating, m.Title)
 }

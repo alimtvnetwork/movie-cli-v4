@@ -97,16 +97,16 @@ func trackScanAction(ctx *ScanContext, m *db.Media, fullPath string, mediaID int
 }
 
 // downloadThumbnail downloads poster from TMDb and saves to output + data dirs.
-func downloadThumbnail(client *tmdb.Client, database *db.DB, m *db.Media, posterPath, outputDir string) {
-	if posterPath == "" {
+func downloadThumbnail(input ThumbnailInput) {
+	if input.PosterPath == "" {
 		return
 	}
 
-	slug := cleaner.ToSlug(m.CleanTitle)
-	if m.Year > 0 {
-		slug += "-" + strconv.Itoa(m.Year)
+	slug := cleaner.ToSlug(input.Media.CleanTitle)
+	if input.Media.Year > 0 {
+		slug += "-" + strconv.Itoa(input.Media.Year)
 	}
-	thumbFileName := slug + "-" + strconv.Itoa(m.TmdbID) + ".jpg"
+	thumbFileName := slug + "-" + strconv.Itoa(input.Media.TmdbID) + ".jpg"
 
 	thumbDir := filepath.Join(outputDir, "thumbnails")
 	if mkdirErr := os.MkdirAll(thumbDir, 0755); mkdirErr != nil {
