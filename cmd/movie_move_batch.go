@@ -142,8 +142,11 @@ func executeBatchMoves(database *db.DB, moves []moveItem) {
 func runInteractiveMove(mc MoveContext) {
 	printFileList(mc.Files, mc.SourceDir)
 
-	selectedFile, selectedPath := selectFile(mc.Scanner, mc.Files, mc.SourceDir)
+	selectedFile, _ := selectFile(mc.Scanner, mc.Files)
 	if selectedFile == nil {
+		return
+	}
+	selectedPath := filepath.Join(mc.SourceDir, selectedFile.Name())
 		return
 	}
 	result := cleaner.Clean(selectedFile.Name())
