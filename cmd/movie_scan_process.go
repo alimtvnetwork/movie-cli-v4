@@ -32,9 +32,7 @@ func processVideoFile(
 
 	result := cleaner.Clean(vf.Name)
 	if !useTable {
-		typeIcon := "🎬"
-		if result.Type == "tv" {
-			typeIcon = "📺"
+		typeIcon := db.TypeIcon(result.Type)
 		}
 		fmt.Printf("\n  %d. %s %s", *totalFiles, typeIcon, result.CleanTitle)
 		if result.Year > 0 {
@@ -63,7 +61,7 @@ func processVideoFile(
 				fmt.Println("     ⏩ Already in database, skipping")
 			}
 			*skipped++
-			if result.Type == "movie" {
+			if result.Type == string(db.MediaTypeMovie) {
 				*movieCount++
 			} else {
 				*tvCount++
@@ -144,7 +142,7 @@ func processVideoFile(
 		printScanTableRow(buildMediaTableRow(*totalFiles, m, "new"))
 	}
 
-	if m.Type == "movie" {
+	if m.Type == string(db.MediaTypeMovie) {
 		*movieCount++
 	} else {
 		*tvCount++
@@ -206,11 +204,11 @@ func enrichFromTMDb(client *tmdb.Client, database *db.DB, m *db.Media, result cl
 	m.Description = best.Overview
 	m.Genre = tmdb.GenreNames(best.GenreIDs)
 
-	if best.MediaType == "movie" || best.MediaType == "" {
-		m.Type = "movie"
+	if best.MediaType == string(db.MediaTypeMovie) || best.MediaType == "" {
+		m.Type = string(db.MediaTypeMovie)
 		fetchMovieDetails(client, best.ID, m)
-	} else if best.MediaType == "tv" {
-		m.Type = "tv"
+	} else if best.MediaType == string(db.MediaTypeTV) {
+		m.Type = string(db.MediaTypeTV)
 		fetchTVDetails(client, best.ID, m)
 	}
 

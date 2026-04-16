@@ -59,7 +59,7 @@ func runMovieSearch(cmd *cobra.Command, args []string) {
 
 	client := tmdb.NewClient(apiKey)
 	query := strings.Join(args, " ")
-	if searchFormat != "json" && searchFormat != "table" {
+	if searchFormat != string(db.OutputFormatJSON) && searchFormat != string(db.OutputFormatTable) {
 		fmt.Printf("🔎 Searching TMDb for: %s\n\n", query)
 	}
 
@@ -71,7 +71,7 @@ func runMovieSearch(cmd *cobra.Command, args []string) {
 	}
 
 	if len(results) == 0 {
-		if searchFormat == "json" {
+		if searchFormat == string(db.OutputFormatJSON) {
 			fmt.Println("[]")
 		} else {
 			fmt.Println("📭 No results found on TMDb.")
@@ -80,13 +80,13 @@ func runMovieSearch(cmd *cobra.Command, args []string) {
 	}
 
 	// JSON mode: output results and exit (no interactive prompt)
-	if searchFormat == "json" {
+	if searchFormat == string(db.OutputFormatJSON) {
 		printSearchResultsJSON(results)
 		return
 	}
 
 	// Table mode: output results and exit (no interactive prompt)
-	if searchFormat == "table" {
+	if searchFormat == string(db.OutputFormatTable) {
 		printSearchResultsTable(results)
 		return
 	}
@@ -99,11 +99,8 @@ func runMovieSearch(cmd *cobra.Command, args []string) {
 		}
 		title := results[i].GetDisplayTitle()
 		year := results[i].GetYear()
-		typeIcon := "🎬"
-		typeLabel := "Movie"
-		if results[i].MediaType == "tv" {
-			typeIcon = "📺"
-			typeLabel = "TV Show"
+		typeIcon := db.TypeIcon(results[i].MediaType)
+		typeLabel := db.TypeLabel(results[i].MediaType)
 		}
 
 		rating := "N/A"
