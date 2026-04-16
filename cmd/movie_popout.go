@@ -70,15 +70,37 @@ type popoutFolderInfo struct {
 }
 
 func runMoviePopout(cmd *cobra.Command, args []string) {
-	database, openErr := openDB()
+	database, openErr := db.Open()
 	if openErr != nil {
+		errlog.Error("Database error: %v", openErr)
 		return
 	}
 	defer database.Close()
 
 	scanner := bufio.NewScanner(os.Stdin)
-	rootDir := resolvePopoutDir(args, scanner, database)
+	home, homeErr := os.UserHomeDir()
+	if homeErr != nil {
+		errlog.Error("Cannot determine home directory: %v", homeErr)
+		return
+	}
+
+	var rootDir string
+	if len(args) > 0 {
+		rootDir = expandHome(args[0], home)
+	} else {
+		rootDir = promptSourceDirectory(scanner, database, home)
+	}
 	if rootDir == "" {
+		return
+	}
+
+	info, statErr := os.Stat(rootDir)
+	if statErr != nil {
+		errlog.Error("Cannot access directory: %v", statErr)
+		return
+	}
+	if !info.IsDir() {
+		errlog.Error("Path is not a directory: %s", rootDir)
 		return
 	}
 
