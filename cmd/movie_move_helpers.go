@@ -140,31 +140,7 @@ func promptDestination(scanner interface {
 	Scan() bool
 	Text() string
 }, database *db.DB, home string) string {
-	moviesDir, cfgErr := database.GetConfig("MoviesDir")
-	if cfgErr != nil && cfgErr.Error() != "sql: no rows in result set" {
-		errlog.Warn("Config read error (movies_dir): %v", cfgErr)
-	}
-	tvDir, cfgErr := database.GetConfig("TvDir")
-	if cfgErr != nil && cfgErr.Error() != "sql: no rows in result set" {
-		errlog.Warn("Config read error (tv_dir): %v", cfgErr)
-	}
-	archiveDir, cfgErr := database.GetConfig("ArchiveDir")
-	if cfgErr != nil && cfgErr.Error() != "sql: no rows in result set" {
-		errlog.Warn("Config read error (archive_dir): %v", cfgErr)
-	}
-	moviesDir = expandHome(moviesDir, home)
-	tvDir = expandHome(tvDir, home)
-	archiveDir = expandHome(archiveDir, home)
-
-	if moviesDir == "" {
-		moviesDir = expandHome("~/Movies", home)
-	}
-	if tvDir == "" {
-		tvDir = expandHome("~/TVShows", home)
-	}
-	if archiveDir == "" {
-		archiveDir = expandHome("~/Archive", home)
-	}
+	moviesDir, tvDir, archiveDir := loadDestinationDirs(database, home)
 
 	fmt.Println()
 	fmt.Println("  📁 Move to:")
@@ -197,6 +173,31 @@ func promptDestination(scanner interface {
 		errlog.Error("Invalid choice")
 		return ""
 	}
+}
+
+func loadDestinationDirs(database *db.DB, home string) (string, string, string) {
+	moviesDir := loadConfigDir(database, "MoviesDir", home)
+	tvDir := loadConfigDir(database, "TvDir", home)
+	archiveDir := loadConfigDir(database, "ArchiveDir", home)
+
+	if moviesDir == "" {
+		moviesDir = expandHome("~/Movies", home)
+	}
+	if tvDir == "" {
+		tvDir = expandHome("~/TVShows", home)
+	}
+	if archiveDir == "" {
+		archiveDir = expandHome("~/Archive", home)
+	}
+	return moviesDir, tvDir, archiveDir
+}
+
+func loadConfigDir(database *db.DB, key, home string) string {
+	val, err := database.GetConfig(key)
+	if err != nil && err.Error() != "sql: no rows in result set" {
+		errlog.Warn("Config read error (%s): %v", key, err)
+	}
+	return expandHome(val, home)
 }
 
 // MoveFile moves a file from src to dst using os.Rename with cross-device fallback.
