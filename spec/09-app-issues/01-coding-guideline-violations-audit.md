@@ -147,9 +147,8 @@
 **Result:** Audit overcounted — no actual else-after-return violations exist. All `} else {` blocks are valid else-if chains for format switching.
 **Estimated effort:** None needed
 
-### Phase 6: Parameter Reduction
-**Scope:** Create options structs for functions with >3 params.
-**Priority:** `processVideoFile` (10 params!) → `InsertScanHistory` (9) → others
+### Phase 6: Parameter Reduction ✅ DONE (2026-04-16)
+**Result:** Created `ScanContext` struct, refactored `processVideoFile` from 10 params to 2 (vf + ctx). Updated all callers.
 **Estimated effort:** Medium
 
 ### Phase 7: Error Handling — `apperror` Migration
