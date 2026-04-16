@@ -1,7 +1,7 @@
 # Runtime Error Handling — TMDb, Database, Network
 
 **Version:** 1.0.0  
-**Updated:** 2026-04-10  
+**Updated:** 2026-04-16  
 **Format:** Error scenarios with handling strategy and GIVEN/WHEN/THEN criteria
 
 ---
@@ -209,7 +209,7 @@ When the network is unavailable, commands should degrade gracefully:
 | `movie tag` | Reads/writes DB | Works fully offline ✅ |
 | `movie export` | Reads from DB | Works fully offline ✅ |
 | `movie config` | Reads/writes DB | Works fully offline ✅ |
-| `movie self-update` | `git pull` | `❌ Network required for self-update` |
+| `movie update` | `git pull` + rebuild | `❌ Network required for update` |
 
 **Detection pattern:**
 
