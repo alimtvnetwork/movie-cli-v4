@@ -59,7 +59,7 @@ func parseSuggestCount(args []string) int {
 func initSuggestDeps() (*db.DB, *tmdb.Client) {
 	database, err := db.Open()
 	if err != nil {
-		errlog.Error("Database error: %v", err)
+		errlog.Error(msgDatabaseError, err)
 		return nil, nil
 	}
 

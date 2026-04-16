@@ -29,7 +29,7 @@ var tagAddCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		d, err := db.Open()
 		if err != nil {
-			errlog.Error("Database error: %v", err)
+			errlog.Error(msgDatabaseError, err)
 			return
 		}
 		defer d.Close()
@@ -77,7 +77,7 @@ var tagRemoveCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		d, err := db.Open()
 		if err != nil {
-			errlog.Error("Database error: %v", err)
+			errlog.Error(msgDatabaseError, err)
 			return
 		}
 		defer d.Close()
@@ -121,7 +121,7 @@ var tagListCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		d, err := db.Open()
 		if err != nil {
-			errlog.Error("Database error: %v", err)
+			errlog.Error(msgDatabaseError, err)
 			return
 		}
 		defer d.Close()

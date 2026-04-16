@@ -58,7 +58,7 @@ type statsGenre struct {
 func runMovieStats(cmd *cobra.Command, args []string) {
 	database, err := db.Open()
 	if err != nil {
-		errlog.Error("Database error: %v", err)
+		errlog.Error(msgDatabaseError, err)
 		return
 	}
 	defer database.Close()
@@ -67,7 +67,7 @@ func runMovieStats(cmd *cobra.Command, args []string) {
 	totalTV, _ := database.CountMedia(string(db.MediaTypeTV))
 	total, err := database.CountMedia("")
 	if err != nil {
-		errlog.Error("Database error: %v", err)
+		errlog.Error(msgDatabaseError, err)
 		return
 	}
 
