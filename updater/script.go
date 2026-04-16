@@ -1,6 +1,7 @@
 package updater
 
 import (
+	"github.com/alimtvnetwork/movie-cli-v4/apperror"
 	"fmt"
 	"os"
 	"os/exec"
@@ -12,7 +13,7 @@ import (
 func executeUpdateWindows(repoPath string) error {
 	scriptPath, err := writeUpdateScript(repoPath)
 	if err != nil {
-		return fmt.Errorf("cannot write update script: %w", err)
+		return apperror.Wrap("cannot write update script", err)
 	}
 	defer os.Remove(scriptPath)
 
@@ -26,7 +27,7 @@ func executeUpdateUnix(repoPath string) error {
 	}
 	scriptPath, err := writeUpdateScript(repoPath)
 	if err != nil {
-		return fmt.Errorf("cannot write update script: %w", err)
+		return apperror.Wrap("cannot write update script", err)
 	}
 	defer os.Remove(scriptPath)
 	return runPowerShellScript(scriptPath)
@@ -47,7 +48,7 @@ func executeUpdateDirect(repoPath string) error {
 	fmt.Println("📥 Pulling latest changes...")
 	pullOut, err := gitOutput(repoPath, "pull", "--ff-only")
 	if err != nil {
-		return fmt.Errorf("git pull failed: %w", err)
+		return apperror.Wrap("git pull failed", err)
 	}
 
 	if pullOut == "Already up to date." {
@@ -63,7 +64,7 @@ func executeUpdateDirect(repoPath string) error {
 	buildCmd.Stdout = os.Stdout
 	buildCmd.Stderr = os.Stderr
 	if err := buildCmd.Run(); err != nil {
-		return fmt.Errorf("build failed: %w", err)
+		return apperror.Wrap("build failed", err)
 	}
 
 	fmt.Println("✅ Build complete")

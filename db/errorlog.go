@@ -1,7 +1,10 @@
 // errorlog.go — ErrorLog table helpers.
 package db
 
-import "fmt"
+import (
+	"github.com/alimtvnetwork/movie-cli-v4/apperror"
+	"fmt"
+)
 
 // InsertErrorLog writes an error entry to the ErrorLog table.
 func (d *DB) InsertErrorLog(timestamp, level, source, function, command, workDir, message, stackTrace string) error {
@@ -11,7 +14,7 @@ func (d *DB) InsertErrorLog(timestamp, level, source, function, command, workDir
 		timestamp, level, source, function, command, workDir, message, stackTrace,
 	)
 	if err != nil {
-		return fmt.Errorf("insert error log: %w", err)
+		return apperror.Wrap("insert error log", err)
 	}
 	return nil
 }
@@ -22,7 +25,7 @@ func (d *DB) RecentErrorLogs(limit int) ([]map[string]string, error) {
 		SELECT ErrorLogId, Timestamp, Level, Source, Function, Command, WorkDir, Message, StackTrace
 		FROM ErrorLog ORDER BY ErrorLogId DESC LIMIT ?`, limit)
 	if err != nil {
-		return nil, fmt.Errorf("query error logs: %w", err)
+		return nil, apperror.Wrap("query error logs", err)
 	}
 	defer rows.Close()
 
@@ -31,7 +34,7 @@ func (d *DB) RecentErrorLogs(limit int) ([]map[string]string, error) {
 		var id int
 		var ts, lvl, src, fn, cmd, wd, msg, st string
 		if scanErr := rows.Scan(&id, &ts, &lvl, &src, &fn, &cmd, &wd, &msg, &st); scanErr != nil {
-			return nil, fmt.Errorf("scan error log: %w", scanErr)
+			return nil, apperror.Wrap("scan error log", scanErr)
 		}
 		results = append(results, map[string]string{
 			"id":          fmt.Sprintf("%d", id),
@@ -46,7 +49,7 @@ func (d *DB) RecentErrorLogs(limit int) ([]map[string]string, error) {
 		})
 	}
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("rows iteration: %w", err)
+		return nil, apperror.Wrap("rows iteration", err)
 	}
 	return results, nil
 }

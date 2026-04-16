@@ -1,6 +1,7 @@
 package updater
 
 import (
+	"github.com/alimtvnetwork/movie-cli-v4/apperror"
 	"fmt"
 	"os"
 	"os/exec"
@@ -43,12 +44,12 @@ func findRepoPath() (string, bool, error) {
 		cloneDir := filepath.Join(exeDir, "movie-cli-v4")
 		fmt.Printf("📥 No local repo found. Cloning to: %s\n", cloneDir)
 		if _, cloneErr := gitOutput(exeDir, "clone", "--depth", "1", repoURL); cloneErr != nil {
-			return "", false, fmt.Errorf("cannot clone repository: %w", cloneErr)
+			return "", false, apperror.Wrap("cannot clone repository", cloneErr)
 		}
 		return cloneDir, true, nil
 	}
 
-	return "", false, fmt.Errorf("cannot locate the movie-cli-v4 repository")
+	return "", false, apperror.New("cannot locate the movie-cli-v4 repository")
 }
 
 // isValidRepo checks if a directory is a valid movie-cli-v4 repo
@@ -84,7 +85,7 @@ func gitOutput(dir string, args ...string) (string, error) {
 		if text == "" {
 			return "", err
 		}
-		return "", fmt.Errorf("%s", text)
+		return "", apperror.New("%s", text)
 	}
 	return text, nil
 }

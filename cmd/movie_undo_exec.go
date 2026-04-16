@@ -2,6 +2,7 @@
 package cmd
 
 import (
+	"github.com/alimtvnetwork/movie-cli-v4/apperror"
 	"bufio"
 	"fmt"
 	"os"
@@ -15,18 +16,18 @@ import (
 func executeMoveUndo(database *db.DB, m *db.MoveRecord) error {
 	if _, err := os.Stat(m.ToPath); err != nil {
 		if os.IsNotExist(err) {
-			return fmt.Errorf("file not found at %s — may have been moved manually", m.ToPath)
+			return apperror.New("file not found at %s — may have been moved manually", m.ToPath)
 		}
-		return fmt.Errorf("cannot access %s: %w", m.ToPath, err)
+		return apperror.Wrapf(err, "cannot access %s", m.ToPath)
 	}
 
 	destDir := m.FromPath[:strings.LastIndex(m.FromPath, string(os.PathSeparator))]
 	if err := os.MkdirAll(destDir, 0755); err != nil {
-		return fmt.Errorf("cannot create directory %s: %w", destDir, err)
+		return apperror.Wrapf(err, "cannot create directory %s", destDir)
 	}
 
 	if err := MoveFile(m.ToPath, m.FromPath); err != nil {
-		return fmt.Errorf("move file back: %w", err)
+		return apperror.Wrap("move file back", err)
 	}
 
 	if err := database.MarkMoveReverted(m.ID); err != nil {
@@ -54,7 +55,7 @@ func executeActionUndo(database *db.DB, a *db.ActionRecord) error {
 	case db.FileActionRestore:
 		return undoRestore(database, a)
 	default:
-		return fmt.Errorf("unknown action type for undo: %s", a.FileActionId)
+		return apperror.New("unknown action type for undo: %s", a.FileActionId)
 	}
 	return database.MarkActionReverted(a.ActionHistoryId)
 }
@@ -62,7 +63,7 @@ func executeActionUndo(database *db.DB, a *db.ActionRecord) error {
 func undoScanAdd(database *db.DB, a *db.ActionRecord) error {
 	if a.MediaId.Valid {
 		if err := database.DeleteMediaByID(a.MediaId.Int64); err != nil {
-			return fmt.Errorf("undo scan_add (delete media %d): %w", a.MediaId.Int64, err)
+			return apperror.Wrapf(err, "undo scan_add (delete media %d)", a.MediaId.Int64)
 		}
 	}
 	return database.MarkActionReverted(a.ActionHistoryId)
@@ -70,15 +71,15 @@ func undoScanAdd(database *db.DB, a *db.ActionRecord) error {
 
 func undoDelete(database *db.DB, a *db.ActionRecord) error {
 	if a.MediaSnapshot == "" {
-		return fmt.Errorf("no snapshot available for action %d — cannot restore", a.ActionHistoryId)
+		return apperror.New("no snapshot available for action %d — cannot restore", a.ActionHistoryId)
 	}
 	media, err := db.MediaFromJSON(a.MediaSnapshot)
 	if err != nil {
-		return fmt.Errorf("parse snapshot for action %d: %w", a.ActionHistoryId, err)
+		return apperror.Wrapf(err, "parse snapshot for action %d", a.ActionHistoryId)
 	}
 	newID, insertErr := database.InsertMedia(media)
 	if insertErr != nil {
-		return fmt.Errorf("re-insert media from snapshot: %w", insertErr)
+		return apperror.Wrap("re-insert media from snapshot", insertErr)
 	}
 	database.InsertActionSimple(db.FileActionRestore, newID, a.MediaSnapshot,
 		fmt.Sprintf("Restored: %s (from undo of action %d)", media.Title, a.ActionHistoryId), "")
@@ -87,15 +88,15 @@ func undoDelete(database *db.DB, a *db.ActionRecord) error {
 
 func undoRescanUpdate(database *db.DB, a *db.ActionRecord) error {
 	if a.MediaSnapshot == "" {
-		return fmt.Errorf("no snapshot for action %d — cannot revert metadata", a.ActionHistoryId)
+		return apperror.New("no snapshot for action %d — cannot revert metadata", a.ActionHistoryId)
 	}
 	media, err := db.MediaFromJSON(a.MediaSnapshot)
 	if err != nil {
-		return fmt.Errorf("parse snapshot for action %d: %w", a.ActionHistoryId, err)
+		return apperror.Wrapf(err, "parse snapshot for action %d", a.ActionHistoryId)
 	}
 	if media.ID > 0 {
 		if updateErr := database.UpdateMediaByID(media); updateErr != nil {
-			return fmt.Errorf("restore metadata for media %d: %w", media.ID, updateErr)
+			return apperror.Wrapf(updateErr, "restore metadata for media %d", media.ID)
 		}
 	}
 	return database.MarkActionReverted(a.ActionHistoryId)
@@ -104,7 +105,7 @@ func undoRescanUpdate(database *db.DB, a *db.ActionRecord) error {
 func undoRestore(database *db.DB, a *db.ActionRecord) error {
 	if a.MediaId.Valid {
 		if err := database.DeleteMediaByID(a.MediaId.Int64); err != nil {
-			return fmt.Errorf("undo restore (delete media %d): %w", a.MediaId.Int64, err)
+			return apperror.Wrapf(err, "undo restore (delete media %d)", a.MediaId.Int64)
 		}
 	}
 	return database.MarkActionReverted(a.ActionHistoryId)
