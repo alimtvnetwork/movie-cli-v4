@@ -74,24 +74,36 @@ func downloadSearchThumbnail(client *tmdb.Client, database *db.DB, selected tmdb
 	}
 }
 
-// persistMedia inserts (or updates) the media record in the database.
+// persistMedia inserts (or updates) the media record and links genres.
 func persistMedia(database *db.DB, m *db.Media) {
 	jsonDir := filepath.Join(database.BasePath, "json", m.Type)
 	if mkdirErr := os.MkdirAll(jsonDir, 0755); mkdirErr != nil {
 		errlog.Warn("Cannot create JSON dir: %v", mkdirErr)
 	}
 
-	_, insertErr := database.InsertMedia(m)
+	mediaID, insertErr := database.InsertMedia(m)
 	if insertErr != nil {
 		if m.TmdbID > 0 {
 			updateErr := database.UpdateMediaByTmdbID(m)
 			if updateErr == nil {
 				fmt.Printf("🔄 Updated existing record for: %s\n", m.Title)
+				// Replace genre links on update
+				if m.Genre != "" {
+					existing, _ := database.GetMediaByTmdbID(m.TmdbID)
+					if existing != nil {
+						database.ReplaceMediaGenres(existing.ID, m.Genre)
+					}
+				}
 			} else {
 				errlog.Error("DB error: %v", updateErr)
 			}
 		} else {
 			errlog.Error("DB error: %v", insertErr)
+		}
+	} else if mediaID > 0 && m.Genre != "" {
+		// Link genres via M:N tables on insert
+		if linkErr := database.LinkMediaGenres(mediaID, m.Genre); linkErr != nil {
+			errlog.Warn("Genre link error: %v", linkErr)
 		}
 	}
 }

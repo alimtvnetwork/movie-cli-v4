@@ -11,7 +11,10 @@ import (
 )
 
 // mediaNeedsRescan returns true if the entry is missing genre, rating, or description.
+// Genre is populated from the M:N Genre/MediaGenre tables via the compat field.
 func mediaNeedsRescan(m *db.Media) bool {
+	return m.Genre == "" || m.TmdbRating == 0 || m.Description == ""
+}
 	return m.Genre == "" || m.TmdbRating == 0 || m.Description == ""
 }
 
@@ -66,6 +69,11 @@ func rescanMediaEntry(database *db.DB, client *tmdb.Client, m *db.Media) bool {
 			errlog.Error("rescan DB update failed for '%s': %v", m.Title, updateErr)
 			return false
 		}
+	}
+
+	// Link genres via M:N tables
+	if m.Genre != "" && m.ID > 0 {
+		database.ReplaceMediaGenres(m.ID, m.Genre)
 	}
 
 	return true

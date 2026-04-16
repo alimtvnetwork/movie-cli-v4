@@ -111,9 +111,20 @@ func processVideoFile(
 		if m.TmdbID > 0 {
 			if updateErr := database.UpdateMediaByTmdbID(m); updateErr != nil {
 				errlog.Error("DB update error for '%s': %v", m.Title, updateErr)
+			} else if m.Genre != "" {
+				// On update, replace genre links
+				existing, _ := database.GetMediaByTmdbID(m.TmdbID)
+				if existing != nil {
+					database.ReplaceMediaGenres(existing.ID, m.Genre)
+				}
 			}
 		} else {
 			errlog.Error("DB insert error for '%s': %v", m.Title, insertErr)
+		}
+	} else if mediaID > 0 && m.Genre != "" {
+		// On insert, link genres via M:N tables
+		if linkErr := database.LinkMediaGenres(mediaID, m.Genre); linkErr != nil {
+			errlog.Warn("Genre link error for '%s': %v", m.Title, linkErr)
 		}
 	}
 

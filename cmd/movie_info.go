@@ -164,16 +164,24 @@ func runMovieInfo(cmd *cobra.Command, args []string) {
 		}
 	}
 
-	// Save to DB
-	_, insertErr := database.InsertMedia(m)
+	// Save to DB and link genres
+	mediaID, insertErr := database.InsertMedia(m)
 	if insertErr != nil {
 		if m.TmdbID > 0 {
 			insertErr = database.UpdateMediaByTmdbID(m)
+			if insertErr == nil && m.Genre != "" {
+				existing, _ := database.GetMediaByTmdbID(m.TmdbID)
+				if existing != nil {
+					database.ReplaceMediaGenres(existing.ID, m.Genre)
+				}
+			}
 		}
 		if insertErr != nil {
 			errlog.Error("DB error: %v", insertErr)
 			return
 		}
+	} else if mediaID > 0 && m.Genre != "" {
+		database.LinkMediaGenres(mediaID, m.Genre)
 	}
 
 	if infoFormat == "json" {
