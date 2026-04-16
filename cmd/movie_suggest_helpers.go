@@ -66,11 +66,11 @@ func collectExistingIDs(database *db.DB, mediaType string) map[int]bool {
 	return ids
 }
 
-func discoverByGenres(sc SuggestCollector, sorted []genreCount, mediaType, typeName string) []tmdb.SearchResult {
+func discoverByGenres(sc SuggestCollector, input DiscoverGenreInput) []tmdb.SearchResult {
 	var suggestions []tmdb.SearchResult
 	genreNameToID := tmdb.GenreNameToID()
 
-	for _, g := range sorted {
+	for _, g := range input.Sorted {
 		if len(suggestions) >= sc.Count {
 			break
 		}
@@ -78,31 +78,32 @@ func discoverByGenres(sc SuggestCollector, sorted []genreCount, mediaType, typeN
 		if !ok {
 			continue
 		}
-		fmt.Printf("  🎭 Discovering %s %s...\n", g.name, typeName)
-		results, discErr := sc.Client.DiscoverByGenre(mediaType, genreID, 1)
-		suggestions = appendUniqueResults(results, discErr, suggestions, sc.ExistingIDs, sc.Count)
+		fmt.Printf("  🎭 Discovering %s %s...\n", g.name, input.TypeName)
+		results, discErr := sc.Client.DiscoverByGenre(input.MediaType, genreID, 1)
+		suggestions = appendUniqueResults(results, discErr, suggestions, UniqueFilter{ExistingIDs: sc.ExistingIDs, Count: sc.Count})
 	}
 	return suggestions
 }
 
-func fillFromRecommendations(sc SuggestCollector, database *db.DB, mediaType string, suggestions []tmdb.SearchResult) []tmdb.SearchResult {
+func fillFromRecommendations(sc SuggestCollector, input FillRecoInput, suggestions []tmdb.SearchResult) []tmdb.SearchResult {
 	if len(suggestions) >= sc.Count {
 		return suggestions
 	}
-	existing, _ := database.MediaByType(mediaType, 1000)
+	existing, _ := input.Database.MediaByType(input.MediaType, 1000)
 	if len(existing) == 0 {
 		return suggestions
 	}
+	filter := UniqueFilter{ExistingIDs: sc.ExistingIDs, Count: sc.Count}
 	indices := rand.Perm(len(existing))
 	for _, idx := range indices {
 		if len(suggestions) >= sc.Count {
 			break
 		}
-		recs, recErr := sc.Client.GetRecommendations(existing[idx].TmdbID, mediaType, 1)
+		recs, recErr := sc.Client.GetRecommendations(existing[idx].TmdbID, input.MediaType, 1)
 		if recErr != nil {
 			continue
 		}
-		suggestions = appendUnique(recs, suggestions, sc.ExistingIDs, sc.Count)
+		suggestions = appendUnique(recs, suggestions, filter)
 	}
 	return suggestions
 }
@@ -116,25 +117,25 @@ func fillFromTrending(sc SuggestCollector, mediaType string, suggestions []tmdb.
 		errlog.Warn("Trending fetch error: %v", trendErr)
 		return suggestions
 	}
-	return appendUnique(trending, suggestions, sc.ExistingIDs, sc.Count)
+	return appendUnique(trending, suggestions, UniqueFilter{ExistingIDs: sc.ExistingIDs, Count: sc.Count})
 }
 
-func appendUniqueResults(results []tmdb.SearchResult, discErr error, suggestions []tmdb.SearchResult, existingIDs map[int]bool, count int) []tmdb.SearchResult {
+func appendUniqueResults(results []tmdb.SearchResult, discErr error, suggestions []tmdb.SearchResult, filter UniqueFilter) []tmdb.SearchResult {
 	if discErr != nil {
 		errlog.Warn("Discover error: %v", discErr)
 		return suggestions
 	}
-	return appendUnique(results, suggestions, existingIDs, count)
+	return appendUnique(results, suggestions, filter)
 }
 
-func appendUnique(results, suggestions []tmdb.SearchResult, existingIDs map[int]bool, count int) []tmdb.SearchResult {
+func appendUnique(results, suggestions []tmdb.SearchResult, filter UniqueFilter) []tmdb.SearchResult {
 	for i := range results {
-		if len(suggestions) >= count {
+		if len(suggestions) >= filter.Count {
 			break
 		}
-		if !existingIDs[results[i].ID] {
+		if !filter.ExistingIDs[results[i].ID] {
 			suggestions = append(suggestions, results[i])
-			existingIDs[results[i].ID] = true
+			filter.ExistingIDs[results[i].ID] = true
 		}
 	}
 	return suggestions
